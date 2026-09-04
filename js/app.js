@@ -56,11 +56,31 @@ const App = {
     if (btnLight) btnLight.classList.toggle('active', theme === 'cream');
     if (btnDark) btnDark.classList.toggle('active', theme === 'dark');
 
+    // Universal Screen Re-render upon Theme Change
     setTimeout(() => {
-      if (window.Charts && window.Navigation && Navigation.activeScreen === 'dashboard') {
+      const active = window.Navigation ? Navigation.activeScreen : 'dashboard';
+      if (active === 'dashboard' && window.Charts) {
         Charts.renderDashboardSpline();
         Charts.renderSparklines();
         Charts.renderEventDistributionDonut();
+      } else if (active === 'analytics' && window.AnalyticsModule) {
+        AnalyticsModule.onScreenOpen();
+      } else if (active === 'sources' && window.SourcesModule) {
+        SourcesModule.onScreenOpen();
+      } else if (active === 'parsers' && window.ParsersModule) {
+        ParsersModule.onScreenOpen();
+      } else if (active === 'topology' && window.TopologyModule) {
+        TopologyModule.onScreenOpen();
+      } else if (active === 'anomalies' && window.AnomalyModule) {
+        AnomalyModule.onScreenOpen('anomalies');
+      } else if (active === 'alerts' && window.AnomalyModule) {
+        AnomalyModule.onScreenOpen('alerts');
+      } else if (active === 'normalizer' && window.Normalizer) {
+        Normalizer.onScreenOpen();
+      } else if (active === 'ai-mapper' && window.AiMapper) {
+        AiMapper.onScreenOpen();
+      } else if (active === 'settings' && window.SettingsModule) {
+        SettingsModule.onScreenOpen();
       }
     }, 50);
   },

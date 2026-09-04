@@ -102,6 +102,7 @@ const SourcesModule = {
     const scaled = Utils.setupHiDPICanvas(canvas, 80);
     if (!scaled) return;
     const { ctx, width: w, height: h } = scaled;
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
 
     ctx.clearRect(0, 0, w, h);
 
@@ -109,7 +110,7 @@ const SourcesModule = {
     ctx.setLineDash([4, 4]);
     ctx.moveTo(30, h * 0.35);
     ctx.lineTo(w - 10, h * 0.35);
-    ctx.strokeStyle = '#D4A8B0';
+    ctx.strokeStyle = isDark ? 'rgba(232, 160, 170, 0.25)' : '#D4A8B0';
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.setLineDash([]);
@@ -126,7 +127,7 @@ const SourcesModule = {
     ];
 
     const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, 'rgba(180, 35, 60, 0.35)');
+    grad.addColorStop(0, isDark ? 'rgba(212, 56, 83, 0.45)' : 'rgba(180, 35, 60, 0.35)');
     grad.addColorStop(1, 'rgba(180, 35, 60, 0.0)');
 
     ctx.beginPath();
@@ -151,21 +152,21 @@ const SourcesModule = {
       ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
     }
     ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
-    ctx.strokeStyle = '#B4233C';
+    ctx.strokeStyle = isDark ? '#D43853' : '#B4233C';
     ctx.lineWidth = 2;
     ctx.stroke();
 
     const apex = points[points.length - 1];
     ctx.beginPath();
     ctx.arc(apex.x, apex.y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#74152A';
+    ctx.fillStyle = isDark ? '#D43853' : '#74152A';
     ctx.fill();
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
     ctx.font = '600 8.5px Inter, sans-serif';
-    ctx.fillStyle = '#756568';
+    ctx.fillStyle = isDark ? '#A89094' : '#756568';
     ctx.fillText('05:00', 35, h - 4);
     ctx.fillText('06:00', 105, h - 4);
     ctx.fillText('12:00', 190, h - 4);
@@ -214,17 +215,18 @@ const SourcesModule = {
     const scaled = Utils.setupHiDPICanvas(canvas, 65);
     if (!scaled) return;
     const { ctx, width: w, height: h } = scaled;
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
 
     ctx.clearRect(0, 0, w, h);
 
     const bars = [
-      { eps: '702', hPct: 0.95, color: '#4A0814', label: 'FW01' },
-      { eps: '304', hPct: 0.72, color: '#74152A', label: 'SSH' },
-      { eps: '213', hPct: 0.60, color: '#9C1A30', label: 'WIN' },
-      { eps: '140', hPct: 0.48, color: '#B4233C', label: 'AWS' },
-      { eps: '85', hPct: 0.36, color: '#C47A16', label: 'EVE' },
-      { eps: '35', hPct: 0.22, color: '#D48B28', label: 'VPN' },
-      { eps: '0', hPct: 0.06, color: '#756568', label: 'BAK' }
+      { eps: '702', hPct: 0.95, color: isDark ? '#D43853' : '#4A0814', label: 'FW01' },
+      { eps: '304', hPct: 0.72, color: isDark ? '#E8A0AA' : '#74152A', label: 'SSH' },
+      { eps: '213', hPct: 0.60, color: isDark ? '#B4233C' : '#9C1A30', label: 'WIN' },
+      { eps: '140', hPct: 0.48, color: '#D43853', label: 'AWS' },
+      { eps: '85', hPct: 0.36, color: '#DD6B20', label: 'EVE' },
+      { eps: '35', hPct: 0.22, color: '#E09F3E', label: 'VPN' },
+      { eps: '0', hPct: 0.06, color: isDark ? '#68595B' : '#756568', label: 'BAK' }
     ];
 
     const barWidth = 14;
@@ -239,12 +241,12 @@ const SourcesModule = {
       ctx.fillRect(x, y, barWidth, barH);
 
       ctx.font = '700 8.5px "JetBrains Mono", monospace';
-      ctx.fillStyle = '#24191B';
+      ctx.fillStyle = isDark ? '#FFF8F0' : '#24191B';
       ctx.textAlign = 'center';
       ctx.fillText(b.eps, x + barWidth / 2, y - 3);
 
       ctx.font = '600 7.5px Inter, sans-serif';
-      ctx.fillStyle = '#756568';
+      ctx.fillStyle = isDark ? '#A89094' : '#756568';
       ctx.fillText(b.label, x + barWidth / 2, h - 3);
     });
   },

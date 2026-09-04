@@ -972,10 +972,9 @@ body {
 /* Event Distribution Donut Card (From Reference Screenshot) */
 .event-dist-body-flex {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
+  justify-content: space-between;
+  gap: 12px;
   padding: 8px 4px;
   width: 100%;
   box-sizing: border-box;
@@ -983,18 +982,17 @@ body {
 
 .donut-chart-container {
   position: relative;
-  width: 150px;
-  height: 150px;
+  width: 140px;
+  height: 140px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto;
 }
 
 #eventDonutCanvas {
-  width: 150px;
-  height: 150px;
+  width: 140px;
+  height: 140px;
   display: block;
 }
 
@@ -1027,11 +1025,11 @@ body {
 }
 
 .event-dist-legend-list {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px 14px;
-  width: 100%;
-  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
 }
 
 .event-legend-row {
@@ -4621,7 +4619,6 @@ body {
 
   .dash-middle-grid,
   .dash-lower-grid,
-  .live-stream-top-grid,
   .normalizer-split-grid {
     grid-template-columns: 1fr;
   }

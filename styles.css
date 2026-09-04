@@ -2724,11 +2724,32 @@ body {
   height: 200px;
   padding: 12px 16px;
   overflow-y: auto;
+  overflow-x: auto;
   font-family: var(--font-mono);
   font-size: 0.74rem;
   line-height: 1.55;
   color: #E0D4D6;
   background-color: #0E0709;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180, 35, 60, 0.45) #0E0709;
+}
+
+.terminal-body-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.terminal-body-scroll::-webkit-scrollbar-track {
+  background: #0E0709;
+}
+
+.terminal-body-scroll::-webkit-scrollbar-thumb {
+  background: rgba(180, 35, 60, 0.45);
+  border-radius: 4px;
+}
+
+.terminal-body-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--cherry-primary);
 }
 
 .term-line {
@@ -4600,6 +4621,7 @@ body {
 
   .dash-middle-grid,
   .dash-lower-grid,
+  .live-stream-top-grid,
   .normalizer-split-grid {
     grid-template-columns: 1fr;
   }
@@ -5263,6 +5285,7 @@ body {
   .dashboard-main-grid,
   .dash-middle-grid,
   .dash-lower-grid,
+  .live-stream-top-grid,
   .charts-split-grid,
   .normalizer-split-view,
   .normalizer-split-grid,

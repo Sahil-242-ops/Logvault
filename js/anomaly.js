@@ -211,7 +211,8 @@ const AnomalyModule = {
     }
 
     const ctx = canvas.getContext('2d');
-    ctx.resetTransform();
+    if (!ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, w, h);
 

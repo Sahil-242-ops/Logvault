@@ -54,19 +54,37 @@ const Utils = {
   setupHiDPICanvas(canvas, customHeight) {
     if (!canvas) return null;
     const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 2;
+    if (!ctx) return null;
+    const dpr = window.devicePixelRatio || 1;
+    
+    const parent = canvas.parentElement;
+    const parentW = parent ? parent.clientWidth : 0;
+    const attrW = parseInt(canvas.getAttribute('width'), 10) || 0;
     const rect = canvas.getBoundingClientRect();
-    const width = rect.width || canvas.clientWidth || parseInt(canvas.getAttribute('width')) || 300;
-    const height = customHeight || rect.height || canvas.clientHeight || parseInt(canvas.getAttribute('height')) || 150;
-
-    if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
-      canvas.width = Math.round(width * dpr);
-      canvas.height = Math.round(height * dpr);
+    
+    let width = rect.width;
+    if (!width || width < 20) {
+      width = parentW > 20 ? parentW : (attrW > 20 ? attrW : 300);
     }
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    
+    let height = customHeight;
+    if (!height) {
+      const attrH = parseInt(canvas.getAttribute('height'), 10) || 0;
+      height = rect.height > 20 ? rect.height : (attrH > 20 ? attrH : 150);
+    }
 
-    ctx.resetTransform();
+    const targetW = Math.max(20, Math.round(width * dpr));
+    const targetH = Math.max(20, Math.round(height * dpr));
+
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+    }
+    
+    canvas.style.width = `${Math.round(width)}px`;
+    canvas.style.height = `${Math.round(height)}px`;
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
     return { ctx, width, height, dpr };
   }

@@ -31,8 +31,9 @@ const server = http.createServer((req, res) => {
     reqUrl = '/index.html';
   }
 
-  const safePath = path.normalize(reqUrl).replace(/^(\.\.[\/\\])+/, '');
-  let filePath = path.join(BASE_DIR, safePath);
+  // Remove leading slashes so path.join doesn't root to drive C:\ on Windows
+  const cleanPath = reqUrl.replace(/^[\/\\]+/, '');
+  let filePath = path.join(BASE_DIR, cleanPath);
 
   fs.stat(filePath, (err, stats) => {
     if (err || !stats.isFile()) {
@@ -44,8 +45,8 @@ const server = http.createServer((req, res) => {
 
     fs.readFile(filePath, (readErr, content) => {
       if (readErr) {
-        res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end('500 Internal Server Error');
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('404 Not Found');
         return;
       }
 

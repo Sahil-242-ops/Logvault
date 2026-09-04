@@ -21,7 +21,7 @@ const AiMapper = {
       ],
       overallConfidence: 96.8,
       latency: '1.20 ms',
-      engine: 'Local Deterministic Heuristic'
+      engine: 'Key-Value Parser Engine'
     },
     cisco_asa: {
       name: 'Cisco ASA Network Firewall',
@@ -54,7 +54,7 @@ const AiMapper = {
       ],
       overallConfidence: 97.2,
       latency: '1.10 ms',
-      engine: 'Local Heuristic Engine'
+      engine: 'SCADA Telemetry Parser'
     },
     iso_8583: {
       name: 'ISO 8583 Financial Payment Stream',
@@ -86,7 +86,7 @@ const AiMapper = {
       ],
       overallConfidence: 99.0,
       latency: '0.90 ms',
-      engine: 'OpenTelemetry Neural Mapper'
+      engine: 'OpenTelemetry Trace Parser'
     },
     kernel_syslog: {
       name: 'Embedded Linux Kernel Syslog',
@@ -101,7 +101,7 @@ const AiMapper = {
       ],
       overallConfidence: 98.6,
       latency: '1.15 ms',
-      engine: 'Auditd Heuristic Engine'
+      engine: 'Linux Auditd Engine'
     }
   },
 
@@ -198,10 +198,10 @@ const AiMapper = {
 
   executeInference(rawString) {
     const badge = document.getElementById('ai-inference-status-badge');
-    if (badge) badge.innerHTML = '<span class="pulse-dot"></span> INFERRING FIELDS...';
+    if (badge) badge.innerHTML = '<span class="pulse-dot"></span> PARSING SCHEMA...';
 
     setTimeout(() => {
-      if (badge) badge.innerHTML = '<span class="status-dot green-dot"></span> LOCAL HEURISTIC INFERRED';
+      if (badge) badge.innerHTML = '<span class="status-dot green-dot"></span> SCHEMA INFERRED';
 
       const tokens = rawString.split(/[\s,;|]+/);
       const mappings = [];
@@ -242,11 +242,11 @@ const AiMapper = {
         mappings,
         overallConfidence: meanConf,
         latency: '0.85 ms',
-        engine: 'Zero-Shot Heuristic Parser'
+        engine: 'Dynamic Pattern Parser'
       };
 
       this.renderInference(dynamicResult);
-      Utils.showToast(`AI Inference finished: Extracted ${mappings.length} fields locally.`, 'success');
+      Utils.showToast(`Schema extracted: Identified ${mappings.length} fields.`, 'success');
     }, 280);
   },
 

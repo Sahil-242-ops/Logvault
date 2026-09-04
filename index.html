@@ -4,9 +4,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LOGVAULT — Universal Log Intelligence &amp; Autonomous SOC (SIH26156)</title>
+  <title>LOGVAULT — Universal Log Intelligence &amp; SOC Analytics (SIH26156)</title>
   <meta name="description"
-    content="LOGVAULT: Universal Log Intelligence &amp; Autonomous Security Operations Center Platform" />
+    content="LOGVAULT: High-Throughput Universal Log Ingestion, Normalization &amp; Security Analytics Platform" />
 
   <!-- Google Fonts: Instrument Serif, Plus Jakarta Sans, Inter, JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -72,7 +72,7 @@
         </button>
         <button class="nav-item" data-screen="ai-mapper">
           <i data-lucide="sparkles"></i>
-          <span>Unknown Logs (AI)</span>
+          <span>Schema Inference</span>
         </button>
         <button class="nav-item" data-screen="analytics">
           <i data-lucide="pie-chart"></i>
@@ -130,7 +130,7 @@
       <header class="top-header">
         <div class="header-left-greeting">
           <h1>Security Command Center</h1>
-          <p>Autonomous Log Ingestion, Normalization &amp; Heuristic Analytics</p>
+          <p>Universal Log Ingestion, Normalization &amp; Security Analytics</p>
         </div>
 
         <!-- Global Search Bar with Cmd+K -->
@@ -147,16 +147,16 @@
             <span class="badge-dot green"></span>
             <div>
               <span class="badge-text-primary">18.4K logs/s</span>
-              <span class="badge-text-sub">System OK</span>
+              <span class="badge-text-sub">Pipeline Healthy</span>
             </div>
           </div>
 
-          <!-- Offline / Local Heuristic Badge -->
+          <!-- Offline / Edge Processing Badge -->
           <div class="header-status-badge cherry">
             <span class="badge-dot cherry"></span>
             <div>
               <span class="badge-text-primary">Air-Gapped</span>
-              <span class="badge-text-sub">Local Heuristic</span>
+              <span class="badge-text-sub">Edge Processing</span>
             </div>
           </div>
 
@@ -470,9 +470,9 @@
           <!-- Header Toolbar with Play/Pause & Speed -->
           <div class="live-stream-header-toolbar">
             <div class="stream-title-group">
-              <h2>LIVE LOG STREAM</h2>
+              <h2>Live Ingestion Stream</h2>
               <div class="live-indicator-badge live" id="stream-live-badge">
-                <span class="pulse-dot"></span> LIVE STREAM
+                <span class="pulse-dot"></span> Pipeline Active
               </div>
             </div>
 
@@ -499,7 +499,7 @@
             </div>
           </div>
 
-          <!-- Floating Holographic Control Deck (From Reference Screenshot) -->
+          <!-- Ingestion Control Deck -->
           <div class="holographic-deck-grid">
             <!-- Card 1: Stream Details -->
             <div class="holo-panel-card">
@@ -517,8 +517,8 @@
               </div>
               <div
                 style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:0.68rem; color:var(--text-muted);">
-                <span>Collector Node</span>
-                <span class="badge-pill green-pill">Synchronized</span>
+                <span>Cluster State</span>
+                <span class="badge-pill green-pill">Healthy (0.04ms)</span>
               </div>
             </div>
 
@@ -542,8 +542,9 @@
                   <strong style="color:var(--cherry-primary);">Security</strong>
                 </div>
               </div>
-              <div style="display:flex; justify-content:flex-end; gap:4px; margin-top:4px;">
-                <span class="badge-pill gold-pill">3 Rules Active</span>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:0.68rem; color:var(--text-muted);">
+                <span>Filter Rules</span>
+                <strong style="color:var(--text-ink);">3 Active</strong>
               </div>
             </div>
 
@@ -567,8 +568,8 @@
             <!-- Card 4: Real-time Alerts -->
             <div class="holo-panel-card" style="border-left:3px solid var(--status-red);">
               <div class="holo-panel-header">
-                <span>Real-Time Alerts (Live)</span>
-                <span class="badge-pill crit-pill">LIVE</span>
+                <span>Correlated Alerts</span>
+                <span class="badge-pill crit-pill">3 Active</span>
               </div>
               <div style="display:flex; align-items:baseline; gap:6px;">
                 <span
@@ -603,13 +604,12 @@
             <!-- Right: Dynamic Sparkline & Ingestion Rate -->
             <div class="live-spark-meter-card">
               <div class="d-flex justify-between align-center">
-                <span class="live-pulse-badge"><span class="pulse-dot"></span> LIVE</span>
-                <span style="font-size:0.72rem; color:var(--text-muted);">Real-time Telemetry</span>
+                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">Current Throughput</span>
+                <span class="badge-pill green-pill"><span class="pulse-dot"></span> 18.4K eps</span>
               </div>
               <div class="mt-2">
-                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">Live stream speed:</span>
                 <div style="font-family:var(--font-heading); font-size:1.6rem; font-weight:800; color:var(--text-ink);">
-                  18.4K logs/s</div>
+                  18,420 <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">events / sec</span></div>
               </div>
               <div style="margin-top:10px; width:100%; height:42px;">
                 <canvas id="liveSpeedSparkCanvas" width="220" height="42" style="width:100%; height:42px;"></canvas>
@@ -702,12 +702,11 @@
           <div class="normalizer-hero-banner">
             <div class="norm-banner-top">
               <div>
-                <h2>Log Intelligence &amp; Neural Normalization Engine</h2>
-                <p>Deterministic parsing &amp; zero-shot mapping into Common Log Schema (OCSF 1.1 / Elastic Common
-                  Schema Standard)</p>
+                <h2>Log Normalization &amp; Schema Mapping Engine</h2>
+                <p>Deterministic parsing and field transformation into Open Cybersecurity Schema Framework (OCSF 1.1 / Elastic Standard)</p>
               </div>
               <div class="badge-pill green-pill" id="norm-pipeline-status-badge">
-                <span class="status-dot green-dot"></span> PIPELINE SYNCHRONIZED
+                <span class="status-dot green-dot"></span> Pipeline Active
               </div>
             </div>
 
@@ -722,22 +721,21 @@
                 <span class="norm-stat-val" style="color:var(--status-green);">100%</span>
               </div>
               <div class="norm-stat-tile">
-                <span class="norm-stat-label">Entropy &amp; Noise Filter</span>
-                <span class="norm-stat-val">0.01% loss</span>
+                <span class="norm-stat-label">Noise Filter Loss</span>
+                <span class="norm-stat-val">0.01%</span>
               </div>
               <div class="norm-stat-tile">
-                <span class="norm-stat-label">Zero-Shot Fallback</span>
-                <span class="norm-stat-val" style="color:var(--status-amber);">ARMED</span>
+                <span class="norm-stat-label">Pattern Fallback</span>
+                <span class="norm-stat-val" style="color:var(--status-amber);">Active</span>
               </div>
             </div>
 
-            <!-- 3D Visual Rule Canvas & 60 FPS Particle Refinery (From Reference UI) -->
+            <!-- Ingestion & Transformation Pipeline Canvas -->
             <div class="visual-rule-canvas-box mt-3">
               <div class="d-flex justify-between align-center mb-2">
                 <span
-                  style="font-family:var(--font-heading); font-size:0.75rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">60
-                  FPS Neural Data Refinery Canvas</span>
-                <span class="badge-pill green-pill"><span class="pulse-dot"></span> PIPELINE SYNCHRONIZED</span>
+                  style="font-family:var(--font-heading); font-size:0.75rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Real-Time Normalization Pipeline Flow</span>
+                <span class="badge-pill green-pill"><span class="pulse-dot"></span> 18.4K eps</span>
               </div>
               <div style="width:100%; height:130px; position:relative;">
                 <canvas id="normalizerPipelineCanvas" width="800" height="130"
@@ -946,7 +944,7 @@
                 Possible Brute Force Attack on Server-07
               </h2>
               <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">
-                Autonomous heuristic engine identified exponential authentication failures targeting internal SSH daemon
+                Correlation rule detected exponential authentication failures targeting internal SSH daemon
                 on port 22.
               </p>
             </div>
@@ -967,8 +965,8 @@
               </div>
               <div class="d-flex align-center gap-2">
                 <span class="threat-hud-subtag"><i data-lucide="radio" style="width:12px; color:var(--status-red);"></i>
-                  SQL injection</span>
-                <span class="threat-hud-telemetry-badge"><i data-lucide="activity"></i> ACTIVE INGRESS ATTACK</span>
+                  SSH Auth Burst</span>
+                <span class="threat-hud-telemetry-badge"><i data-lucide="activity"></i> ACTIVE INGRESS INCIDENT</span>
               </div>
             </div>
 
@@ -1041,9 +1039,9 @@
             <div class="card-header-flex">
               <div class="card-heading-group">
                 <h3>Attack Progression Timeline</h3>
-                <p>Granular failure sequence captured by heuristic analyzer</p>
+                <p>Granular chronological failure sequence captured by correlation engine</p>
               </div>
-              <span class="badge-pill gold-pill">Heuristic Event Sequence</span>
+              <span class="badge-pill gold-pill">Correlated Event Sequence</span>
             </div>
 
             <div class="attack-timeline-list">
@@ -1309,38 +1307,37 @@
           <div class="ai-mapper-hero-banner">
             <div>
               <div class="d-flex align-center gap-2 mb-1">
-                <span class="badge-pill cherry-pill"><i data-lucide="sparkles"></i> AI ✦ LOCAL HEURISTIC</span>
+                <span class="badge-pill cherry-pill"><i data-lucide="sparkles"></i> Pattern Engine</span>
                 <span class="badge-pill green-pill" id="ai-inference-status-badge">
-                  <span class="status-dot green-dot"></span> LOCAL HEURISTIC INFERRED
+                  <span class="status-dot green-dot"></span> Schema Inferred
                 </span>
               </div>
               <h2 style="font-family:var(--font-heading); font-size:1.25rem; font-weight:800; color:var(--text-ink);">
-                Unknown Log Intelligence &amp; Zero-Shot Schema Mapping
+                Unparsed Log Discovery &amp; Dynamic Schema Mapping
               </h2>
               <p style="font-size:0.76rem; color:var(--text-muted);">
-                Autonomous heuristic engine infers semantic fields from non-standard, custom, or proprietary log streams
-                into OCSF 1.1.
+                Semantic field extraction and automatic schema normalization for custom, legacy, and proprietary log streams into OCSF 1.1.
               </p>
             </div>
 
             <div class="air-gapped-notice-badge">
               <i data-lucide="lock"></i>
-              <span>AI suggestion generated locally (Air-Gapped / Zero Cloud Leakage)</span>
+              <span>Local On-Premise Execution (Air-Gapped / Zero External Calls)</span>
             </div>
           </div>
 
           <!-- AI Inference Telemetry Ribbon -->
           <div class="ai-telemetry-ribbon">
             <div class="norm-stat-tile">
-              <span class="norm-stat-label">Local Inference Speed</span>
+              <span class="norm-stat-label">Pattern Match Latency</span>
               <span class="norm-stat-val" style="color:var(--cherry-primary);">1.20 ms</span>
             </div>
             <div class="norm-stat-tile">
-              <span class="norm-stat-label">Neural Mapping Confidence</span>
+              <span class="norm-stat-label">Extraction Accuracy</span>
               <span class="norm-stat-val" style="color:var(--status-green);">98.2%</span>
             </div>
             <div class="norm-stat-tile">
-              <span class="norm-stat-label">Air-Gapped Privacy</span>
+              <span class="norm-stat-label">Data Privacy</span>
               <span class="norm-stat-val" style="color:var(--status-green);">100% OFFLINE</span>
             </div>
             <div class="norm-stat-tile">
@@ -1349,13 +1346,12 @@
             </div>
           </div>
 
-          <!-- 60 FPS Neural Synapse Mapping Canvas -->
+          <!-- Interactive Field Extraction Canvas -->
           <div class="neural-mesh-card mt-3">
             <div class="d-flex justify-between align-center mb-2">
               <span
-                style="font-family:var(--font-heading); font-size:0.75rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">60
-                FPS Neural Synapse Field Mapping Mesh</span>
-              <span class="badge-pill green-pill"><span class="pulse-dot"></span> NEURAL SYNAPSES ACTIVE</span>
+                style="font-family:var(--font-heading); font-size:0.75rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Dynamic Field Mapping Graph</span>
+              <span class="badge-pill green-pill"><span class="pulse-dot"></span> MAPPING MATRIX ACTIVE</span>
             </div>
             <div style="width:100%; height:140px;">
               <canvas id="aiNeuralMeshCanvas" width="750" height="140"
@@ -1365,7 +1361,7 @@
 
           <!-- 6 Enterprise Presets Toolbar -->
           <div class="presets-toolbar-3d">
-            <span class="presets-label">Unknown Format Presets:</span>
+            <span class="presets-label">Custom Format Presets:</span>
             <button class="btn-preset-3d active" data-ai-preset="kv_custom">
               <span class="preset-icon-3d">📟</span> Custom Key-Value
             </button>
@@ -1392,7 +1388,7 @@
             <div class="surface-card">
               <div class="card-header-flex">
                 <div class="card-heading-group">
-                  <h3>Unknown Format Detected</h3>
+                  <h3>Unparsed Format Stream</h3>
                   <p>Raw non-standard telemetry payload</p>
                 </div>
               </div>
@@ -1405,14 +1401,14 @@
               <!-- Engine Performance Stats -->
               <div class="detection-meta-box mt-2">
                 <div class="det-meta-item">
-                  <span class="det-meta-label">Overall Confidence</span>
+                  <span class="det-meta-label">Overall Match Rate</span>
                   <div class="det-meta-val">
                     <span class="badge-pill green-pill" id="ai-overall-confidence">96.8%</span>
                   </div>
                 </div>
 
                 <div class="det-meta-item">
-                  <span class="det-meta-label">Local Inference Latency</span>
+                  <span class="det-meta-label">Engine Latency</span>
                   <div class="det-meta-val">
                     <i data-lucide="zap" style="width:14px; color:var(--cherry-primary);"></i>
                     <strong id="ai-engine-latency">1.20 ms</strong>
@@ -1422,11 +1418,11 @@
 
               <!-- Custom Test Input Box -->
               <div class="custom-input-group mt-2">
-                <label>Test Arbitrary Unknown String:</label>
+                <label>Test Sample Log String:</label>
                 <textarea id="ai-raw-input-box" class="clean-textarea" rows="3"
                   placeholder="USR=john ACT=LOGIN RES=FAIL SRC=10.2.4.5..."></textarea>
                 <button class="btn-cherry-primary btn-block mt-2" id="btn-run-ai-inference">
-                  <i data-lucide="sparkles"></i> Run Local AI Inference
+                  <i data-lucide="sparkles"></i> Extract &amp; Map Schema
                 </button>
               </div>
             </div>
@@ -1435,7 +1431,7 @@
             <div class="surface-card">
               <div class="card-header-flex">
                 <div class="card-heading-group">
-                  <h3>AI-Inferred Field Mapping Matrix</h3>
+                  <h3>Inferred Field Mapping Matrix</h3>
                   <p>Deterministic field correspondence with confidence scoring</p>
                 </div>
                 <button class="btn-cream-action btn-sm" id="btn-export-regex" title="Export Regex Pattern">
@@ -1593,7 +1589,7 @@
               <div class="card-header-flex">
                 <div class="card-heading-group">
                   <h3>Top Threat ASN Origins</h3>
-                  <p>Autonomous system IP intelligence feed</p>
+                  <p>Global ASN threat intelligence feed</p>
                 </div>
                 <button class="btn-cream-action btn-sm" id="btn-refresh-asn-feed" title="Refresh Feed">
                   <i data-lucide="rotate-cw"></i>
@@ -1917,10 +1913,10 @@
                 </div>
 
                 <div class="flowchart-node-card"
-                  onclick="Utils.showToast('Local Heuristic AI: 1.20 ms latency | Zero-Shot ONNX')">
+                  onclick="Utils.showToast('Dynamic Schema Mapper: 1.20 ms latency | AST Synthesizer')">
                   <div class="flowchart-node-info">
-                    <span class="flowchart-node-title">AI Zero-Shot</span>
-                    <span class="flowchart-node-sub">Heuristic Mapper</span>
+                    <span class="flowchart-node-title">Dynamic Mapper</span>
+                    <span class="flowchart-node-sub">Pattern Engine</span>
                   </div>
                   <span class="flowchart-node-badge cherry">1.20 ms</span>
                 </div>
@@ -2186,7 +2182,7 @@
                   <option value="ENG-WASM-04">ENG-WASM-04: AWS CloudTrail S3 JSON Parser (0.110 ms)</option>
                   <option value="ENG-CPP-05">ENG-CPP-05: Windows Security EventLog XML (0.088 ms)</option>
                   <option value="ENG-WASM-06">ENG-WASM-06: Suricata EVE IDS Stream (0.062 ms)</option>
-                  <option value="ENG-AI-07">ENG-AI-07: Zero-Shot Heuristic AI Mapper (1.200 ms)</option>
+                  <option value="ENG-AI-07">ENG-DYN-07: Dynamic Pattern &amp; Schema Mapper (1.200 ms)</option>
                 </select>
               </div>
 
@@ -2705,7 +2701,7 @@
           <i data-lucide="shield-check"></i>
         </div>
         <h1 class="login-brand-title">LOGVAULT <span>SOC</span></h1>
-        <p class="login-brand-sub">Universal Log Intelligence &amp; Autonomous Security (SIH26156)</p>
+        <p class="login-brand-sub">Universal Log Intelligence &amp; SOC Platform (SIH26156)</p>
         <div class="login-clearance-pill">
           <span class="live-dot-cherry"></span>
           <span>AIR-GAPPED TELEMETRY &bull; FIPS 140-3 COMPLIANT</span>

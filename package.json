@@ -1,0 +1,19 @@
+{
+  "name": "logvault-sih26156",
+  "version": "1.0.0",
+  "description": "LOGVAULT — Universal Log Intelligence & Autonomous SOC (SIH26156)",
+  "type": "module",
+  "scripts": {
+    "build": "echo Static build ready",
+    "start": "node dev-server.js",
+    "dev": "node dev-server.js"
+  },
+  "keywords": [
+    "sih",
+    "logvault",
+    "soc",
+    "security-analytics"
+  ],
+  "author": "",
+  "license": "ISC"
+}

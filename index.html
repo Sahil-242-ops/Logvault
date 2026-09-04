@@ -118,6 +118,9 @@
       </div>
     </aside>
 
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="Navigation.closeMobileSidebar()"></div>
+
     <!-- ================================================================= -->
     <!-- MAIN WORKSPACE & TOPBAR                                           -->
     <!-- ================================================================= -->
@@ -125,6 +128,11 @@
 
       <!-- Top Header Bar -->
       <header class="top-header">
+        <!-- Mobile Menu Toggle Button -->
+        <button class="mobile-menu-toggle" id="btn-mobile-menu" onclick="Navigation.toggleMobileSidebar()" aria-label="Toggle Navigation Menu">
+          <i data-lucide="menu"></i>
+        </button>
+
         <div class="header-left-greeting">
           <h1>Security Command Center</h1>
           <p>Autonomous Log Ingestion, Normalization &amp; Heuristic Analytics</p>
@@ -158,11 +166,11 @@
           </div>
 
           <!-- Dual Theme Switch Capsule -->
-          <div class="mode-switch-capsule" id="mode-switch-capsule" onclick="App.toggleTheme()">
-            <button class="mode-btn active" id="btn-mode-light" aria-label="Warm Cream &amp; Cherry">
+          <div class="mode-switch-capsule" id="mode-switch-capsule" role="group" aria-label="Theme Switcher">
+            <button type="button" class="mode-btn active" id="btn-mode-light" onclick="event.stopPropagation(); App.setTheme('cream');" aria-label="Warm Cream &amp; Cherry Theme">
               <i data-lucide="sun"></i>
             </button>
-            <button class="mode-btn" id="btn-mode-dark" aria-label="Obsidian Dark">
+            <button type="button" class="mode-btn" id="btn-mode-dark" onclick="event.stopPropagation(); App.setTheme('dark');" aria-label="Obsidian Dark Theme">
               <i data-lucide="moon"></i>
             </button>
           </div>

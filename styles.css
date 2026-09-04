@@ -23,6 +23,8 @@ body.theme-cream {
   /* Primary Accents */
   --cherry-primary: #B4233C;
   /* Vibrant Primary Cherry */
+  --cherry-hover: #9C1A30;
+  /* Darker Interactive Cherry */
   --cherry-dark: #74152A;
   /* Deep Burgundy Cherry */
   --cherry-rose: #E8A0AA;
@@ -87,6 +89,7 @@ body.theme-dark {
   --sidebar-muted: #A89094;
 
   --cherry-primary: #D43853;
+  --cherry-hover: #E53E3E;
   --cherry-dark: #8B1C28;
   --cherry-rose: #E8A0AA;
   --cherry-subtle: rgba(212, 56, 83, 0.15);
@@ -969,10 +972,13 @@ body {
 /* Event Distribution Donut Card (From Reference Screenshot) */
 .event-dist-body-flex {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 16px;
   padding: 8px 4px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .donut-chart-container {
@@ -983,6 +989,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 0 auto;
 }
 
 #eventDonutCanvas {
@@ -1020,10 +1027,11 @@ body {
 }
 
 .event-dist-legend-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 14px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .event-legend-row {
@@ -1032,12 +1040,23 @@ body {
   justify-content: space-between;
   font-size: 0.74rem;
   color: var(--text-body);
+  min-width: 0;
 }
 
 .legend-label-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legend-label-group span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .legend-color-dot {
@@ -1051,6 +1070,8 @@ body {
   font-family: var(--font-mono);
   font-weight: 700;
   color: var(--text-ink);
+  margin-left: 6px;
+  flex-shrink: 0;
 }
 
 .conf-metric-row strong {
@@ -5240,12 +5261,21 @@ body {
   /* All layout grids stack vertically at 100% width */
   .metrics-grid-4,
   .dashboard-main-grid,
+  .dash-middle-grid,
+  .dash-lower-grid,
   .charts-split-grid,
   .normalizer-split-view,
+  .normalizer-split-grid,
   .ai-mapper-workspace-grid,
+  .ai-mapper-split-grid,
   .anomalies-workspace-grid,
   .sources-grid,
+  .sources-benchmarks-grid,
   .parser-grid,
+  .parsers-benchmarks-deck,
+  .parsers-sandbox-deck,
+  .parsers-catalog-grid,
+  .kanban-board-grid,
   .topology-workspace-grid {
     display: flex !important;
     flex-direction: column !important;
@@ -5254,15 +5284,52 @@ body {
     gap: 12px !important;
   }
 
+  /* Event Distribution Donut Card Responsive Fix (Zero Overflow) */
+  .event-dist-body-flex {
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 14px !important;
+    padding: 10px 0 !important;
+    width: 100% !important;
+  }
+
+  .donut-chart-container {
+    width: 150px !important;
+    height: 150px !important;
+    margin: 0 auto !important;
+    flex-shrink: 0 !important;
+  }
+
+  .event-dist-legend-list {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px 12px !important;
+    padding: 0 4px !important;
+    box-sizing: border-box !important;
+  }
+
+  .event-legend-row {
+    font-size: 0.72rem !important;
+  }
+
   /* Cards fill 100% */
   .metric-card-3d,
   .chart-card-spline,
+  .surface-card,
   .normalizer-pane,
   .ai-mapper-pane,
   .source-card,
+  .sources-benchmark-card,
+  .sources-fleet-card,
   .parser-card,
+  .parsers-benchmark-card,
+  .parsers-sandbox-card,
+  .parsers-catalog-deck,
   .incident-queue-card,
-  .topology-details-sidebar {
+  .topology-details-sidebar,
+  .operator-profile-card {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
@@ -5279,6 +5346,7 @@ body {
 
   /* Horizontal Scrolling for Data Tables without breaking screen */
   .table-responsive-container,
+  .table-scroll-container,
   .log-table-container,
   .sources-table-container,
   .parser-table-container,
@@ -5293,16 +5361,18 @@ body {
   }
 
   .log-table,
+  .logvault-table,
   .data-table {
     min-width: 500px;
   }
 
   /* Form & Code Viewers */
   .raw-log-input-box textarea,
+  .clean-textarea,
   .json-syntax-box {
     width: 100% !important;
     box-sizing: border-box !important;
-    min-height: 160px !important;
+    min-height: 120px !important;
   }
 
   .login-card-3d {

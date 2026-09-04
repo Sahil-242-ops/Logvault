@@ -1,6 +1,6 @@
 /**
  * LOGVAULT — Navigation & Screen Router Module
- * Mobile Drawer Support & Screen Lifecycle Router
+ * Handles Desktop Sidebar, Mobile Drawer, and Mobile Bottom Nav
  */
 
 const Navigation = {
@@ -25,6 +25,7 @@ const Navigation = {
       }
     });
 
+    // Handle clicks for all items with data-screen
     document.querySelectorAll('[data-screen]').forEach(el => {
       el.addEventListener('click', (e) => {
         const targetScreen = el.getAttribute('data-screen');
@@ -84,8 +85,8 @@ const Navigation = {
   navigateTo(screenId) {
     this.activeScreen = screenId;
 
-    // Update active nav button
-    document.querySelectorAll('.nav-item').forEach(item => {
+    // Update active nav button in sidebar & mobile bottom nav
+    document.querySelectorAll('.nav-item, .mobile-nav-btn').forEach(item => {
       const match = item.getAttribute('data-screen') === screenId;
       item.classList.toggle('active', match);
     });

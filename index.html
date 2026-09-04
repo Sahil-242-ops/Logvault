@@ -2792,6 +2792,30 @@
     </div>
   </div>
 
+  <!-- Mobile Bottom Navigation Bar (Visible on phones) -->
+  <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+    <button type="button" class="mobile-nav-btn active" data-screen="dashboard" aria-label="Dashboard">
+      <i data-lucide="layout-grid"></i>
+      <span>Dashboard</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-screen="live-logs" aria-label="Live Logs">
+      <i data-lucide="activity"></i>
+      <span>Live Logs</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-screen="anomalies" aria-label="Anomalies">
+      <i data-lucide="alert-triangle"></i>
+      <span>Anomalies</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-screen="settings" aria-label="Settings">
+      <i data-lucide="settings"></i>
+      <span>Settings</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" id="btn-mobile-nav-more" onclick="Navigation.toggleMobileSidebar()" aria-label="All Screens Menu">
+      <i data-lucide="menu"></i>
+      <span>More (11)</span>
+    </button>
+  </nav>
+
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toast-container"></div>
 

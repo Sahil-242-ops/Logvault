@@ -259,7 +259,7 @@ const SourcesModule = {
       { name: 'WASM CEF Parser (Palo Alto)', latency: '0.08 ms', pct: 14, color: '#25855A' },
       { name: 'WASM CloudTrail Parser (AWS)', latency: '0.12 ms', pct: 20, color: '#25855A' },
       { name: 'Windows EventLog XML Parser', latency: '0.09 ms', pct: 16, color: '#25855A' },
-      { name: 'Local Heuristic AI Mapper', latency: '1.20 ms', pct: 85, color: '#B4233C' }
+      { name: 'Dynamic Schema Mapper', latency: '1.20 ms', pct: 85, color: '#B4233C' }
     ];
 
     container.innerHTML = items.map(item => `
@@ -405,7 +405,7 @@ const SourcesModule = {
       { label: 'C++ RFC 5424 (0.04ms)', y: h * 0.20, icon: '' },
       { label: 'WASM CEF v0.1 (0.08ms)', y: h * 0.40, icon: '' },
       { label: 'WASM CloudTrail (0.12ms)', y: h * 0.60, icon: '' },
-      { label: 'Local Heuristic AI (1.2ms)', y: h * 0.80, icon: '' }
+      { label: 'Dynamic Mapper (1.2ms)', y: h * 0.80, icon: '' }
     ];
 
     // Tier 5: Output Sinks (3 Sinks)

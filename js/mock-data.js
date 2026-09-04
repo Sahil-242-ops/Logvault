@@ -249,7 +249,7 @@ const mockParsers = [
   { name: 'CEF (ArcSight)', format: 'CEF v0.1', status: 'Active', events: '1.7M', latency: '0.09 ms', engine: 'Deterministic' },
   { name: 'Apache Combined', format: 'W3C Combined', status: 'Active', events: '921K', latency: '0.11 ms', engine: 'Deterministic' },
   { name: 'SSH PAM Linux', format: 'Linux Auth', status: 'Active', events: '640K', latency: '0.06 ms', engine: 'Deterministic' },
-  { name: 'AI Heuristic Mapper', format: 'Unknown Formats', status: 'AI Active', events: '182K', latency: '1.20 ms', engine: 'Local Heuristic' }
+  { name: 'Dynamic Schema Mapper', format: 'Custom / Legacy Formats', status: 'Active', events: '182K', latency: '1.20 ms', engine: 'Pattern Engine' }
 ];
 
 const mockAnomalies = [
@@ -269,7 +269,7 @@ const mockAnomalies = [
       { time: '10:26', failures: 621, note: 'Multi-threaded worker spray detected' },
       { time: '10:27', failures: 1104, note: 'Root & service accounts specifically targeted' },
       { time: '10:28', failures: 2900, note: 'Burst rate peak reached (85 req/sec)' },
-      { time: '10:31', failures: 4821, note: 'SOC heuristic threshold exceeded; anomaly triggered' }
+      { time: '10:31', failures: 4821, note: 'Threshold exceeded (4,800 events/10min); alert triggered' }
     ]
   }
 ];
@@ -284,7 +284,7 @@ const mockAlerts = [
     state: 'Active',
     eventType: 'Authentication Spray',
     timeAgo: '7 mins ago',
-    desc: 'Correlation heuristic detected 4,821 consecutive authentication failures targeting internal SSH daemon on port 22 within a 7-minute burst window.'
+    desc: 'Correlation rule detected 4,821 consecutive authentication failures targeting internal SSH daemon on port 22 within a 7-minute window.'
   },
   {
     id: 'INC-02',

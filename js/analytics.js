@@ -17,7 +17,7 @@ const AnalyticsModule = {
     const refreshBtn = document.getElementById('btn-refresh-asn-feed');
     if (refreshBtn) {
       refreshBtn.addEventListener('click', () => {
-        Utils.showToast('Autonomous ASN reputation intelligence feed refreshed.', 'success');
+        Utils.showToast('ASN threat reputation feed updated (42,190 indicators).', 'success');
       });
     }
   },

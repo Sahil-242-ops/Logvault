@@ -42,7 +42,7 @@ const App = {
       SettingsModule.loadOperatorProfile();
     }
 
-    console.log('LOGVAULT Core Initialized — Autonomous Normalizer & Heuristic Security Fleet Active');
+    console.log('LOGVAULT SOC Engine Initialized — Ingestion Pipeline & Normalization Fleet Active');
   },
 
   applyTheme(theme) {

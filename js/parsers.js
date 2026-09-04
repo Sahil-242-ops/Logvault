@@ -111,17 +111,17 @@ const ParsersModule = {
     },
     {
       id: 'ENG-AI-07',
-      name: 'Zero-Shot Heuristic AI Mapper',
+      name: 'Dynamic Pattern & Schema Mapper',
       category: 'ai',
-      type: 'LOCAL ONNX / AST Synthesizer',
-      version: 'v4.2 AI',
+      type: 'Pattern Engine / AST Synthesizer',
+      version: 'v4.2 Core',
       throughput: '18,420 logs/s',
       latency: '1.200 ms',
       memory: '1.8 MB',
       ocsfClass: 'Dynamic OCSF 1.1 Inferrer',
       status: 'ACTIVE',
       statusClass: 'cherry',
-      compliance: 'Zero-Shot Cross-Mapping',
+      compliance: 'Pattern Schema Cross-Mapping',
       icon: '',
       sample: '[SCADA_PLC_09] EVT=VALVE_FAIL UNIT=PUMP_WEST PRESS=84.2PSI SRC_IP=172.16.4.18 STATE=CRIT'
     }
@@ -554,7 +554,7 @@ const ParsersModule = {
       { name: 'WASM CloudTrail Parser (AWS)', latency: '0.110 ms', pct: 18, mem: '128 KB', color: '#25855A' },
       { name: 'Windows EventLog XML Parser', latency: '0.088 ms', pct: 14, mem: '112 KB', color: '#25855A' },
       { name: 'WASM Suricata EVE Parser', latency: '0.062 ms', pct: 10, mem: '80 KB', color: '#25855A' },
-      { name: 'Local Heuristic AI Mapper', latency: '1.200 ms', pct: 88, mem: '1.8 MB', color: '#B4233C' }
+      { name: 'Dynamic Schema Mapper', latency: '1.200 ms', pct: 88, mem: '1.8 MB', color: '#B4233C' }
     ];
 
     container.innerHTML = items.map(item => `

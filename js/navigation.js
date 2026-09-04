@@ -1,10 +1,12 @@
 /**
  * LOGVAULT — Navigation & Screen Router Module
+ * Mobile Drawer Support & Screen Lifecycle Router
  */
 
 const Navigation = {
   activeScreen: 'dashboard',
   isSidebarCollapsed: false,
+  isMobileSidebarOpen: false,
 
   init() {
     this.bindEvents();
@@ -29,6 +31,7 @@ const Navigation = {
         if (targetScreen) {
           window.location.hash = targetScreen;
           this.navigateTo(targetScreen);
+          this.closeMobileSidebar();
         }
       });
     });
@@ -36,6 +39,45 @@ const Navigation = {
     const collapseBtn = document.getElementById('sidebar-collapse-btn');
     if (collapseBtn) {
       collapseBtn.addEventListener('click', () => this.toggleSidebarCollapse());
+    }
+
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (window.innerWidth > 768) {
+          this.closeMobileSidebar();
+        }
+        if (this.activeScreen === 'dashboard' && window.Charts) {
+          Charts.renderDashboardSpline();
+          Charts.renderSparklines();
+          Charts.renderEventDistributionDonut();
+        }
+      }, 150);
+    });
+  },
+
+  toggleMobileSidebar() {
+    this.isMobileSidebarOpen = !this.isMobileSidebarOpen;
+    const sidebar = document.getElementById('main-sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (sidebar) {
+      sidebar.classList.toggle('mobile-open', this.isMobileSidebarOpen);
+    }
+    if (backdrop) {
+      backdrop.classList.toggle('active', this.isMobileSidebarOpen);
+    }
+  },
+
+  closeMobileSidebar() {
+    this.isMobileSidebarOpen = false;
+    const sidebar = document.getElementById('main-sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (sidebar) {
+      sidebar.classList.remove('mobile-open');
+    }
+    if (backdrop) {
+      backdrop.classList.remove('active');
     }
   },
 
@@ -124,7 +166,6 @@ const Navigation = {
     if (sidebar) {
       sidebar.classList.toggle('collapsed', this.isSidebarCollapsed);
     }
-    // Re-draw canvas on layout resize
     setTimeout(() => {
       if (window.Charts && this.activeScreen === 'dashboard') {
         Charts.renderDashboardSpline();

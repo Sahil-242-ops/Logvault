@@ -53,22 +53,28 @@ const App = {
 
     const btnLight = document.getElementById('btn-mode-light');
     const btnDark = document.getElementById('btn-mode-dark');
-    if (btnLight && btnDark) {
-      btnLight.classList.toggle('active', theme === 'cream');
-      btnDark.classList.toggle('active', theme === 'dark');
-    }
+    if (btnLight) btnLight.classList.toggle('active', theme === 'cream');
+    if (btnDark) btnDark.classList.toggle('active', theme === 'dark');
 
     setTimeout(() => {
-      if (window.Charts && Navigation.activeScreen === 'dashboard') {
+      if (window.Charts && window.Navigation && Navigation.activeScreen === 'dashboard') {
         Charts.renderDashboardSpline();
+        Charts.renderSparklines();
+        Charts.renderEventDistributionDonut();
       }
-    }, 40);
+    }, 50);
+  },
+
+  setTheme(theme) {
+    this.applyTheme(theme);
+    if (window.Utils && Utils.showToast) {
+      Utils.showToast(`Theme: ${theme === 'cream' ? 'Warm Cream & Cherry' : 'Obsidian Dark'}`);
+    }
   },
 
   toggleTheme() {
     const next = this.theme === 'cream' ? 'dark' : 'cream';
-    this.applyTheme(next);
-    Utils.showToast(`Switched to ${next === 'cream' ? 'Warm Cream & Cherry' : 'Obsidian Dark'} theme`);
+    this.setTheme(next);
   },
 
   startClock() {

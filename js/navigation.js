@@ -114,6 +114,9 @@ const Navigation = {
         Charts.renderSparklines();
         Charts.renderEventDistributionDonut();
       }
+      if (window.App && App.renderDashboardElements) {
+        App.renderDashboardElements();
+      }
     } else if (screenId === 'live-logs') {
       if (window.LogStream) {
         LogStream.onScreenOpen();

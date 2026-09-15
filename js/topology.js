@@ -32,8 +32,8 @@ const TopologyModule = {
       fixedY: 0,
       layerX: 280,
       layerY: 0,
-      w: 196,
-      h: 60,
+      w: 200,
+      h: 58,
       x: 0,
       y: 0,
       protocol: 'OCSF 1.1 In-Memory Ring'
@@ -51,12 +51,12 @@ const TopologyModule = {
       isQuarantined: false,
       color: '#B4233C',
       type: 'firewall',
-      fixedX: -300,
-      fixedY: -140,
-      layerX: -280,
-      layerY: -120,
+      fixedX: -290,
+      fixedY: -95,
+      layerX: -300,
+      layerY: -110,
       w: 156,
-      h: 54,
+      h: 52,
       x: 0,
       y: 0,
       protocol: 'CEF / IPsec'
@@ -75,11 +75,11 @@ const TopologyModule = {
       color: '#C47A16',
       type: 'cloud',
       fixedX: 0,
-      fixedY: -185,
-      layerX: -280,
+      fixedY: -135,
+      layerX: -300,
       layerY: 0,
       w: 165,
-      h: 54,
+      h: 52,
       x: 0,
       y: 0,
       protocol: 'SigV4 HTTPS'
@@ -97,12 +97,12 @@ const TopologyModule = {
       isQuarantined: false,
       color: '#B4233C',
       type: 'vpn',
-      fixedX: 300,
-      fixedY: -140,
-      layerX: -280,
-      layerY: 120,
+      fixedX: 290,
+      fixedY: -95,
+      layerX: -300,
+      layerY: 110,
       w: 160,
-      h: 54,
+      h: 52,
       x: 0,
       y: 0,
       protocol: 'ChaCha20-Poly1305'
@@ -120,12 +120,12 @@ const TopologyModule = {
       isQuarantined: false,
       color: '#25855A',
       type: 'k8s',
-      fixedX: -320,
-      fixedY: 45,
-      layerX: 0,
-      layerY: -100,
+      fixedX: -300,
+      fixedY: 55,
+      layerX: -20,
+      layerY: -135,
       w: 154,
-      h: 54,
+      h: 52,
       x: 0,
       y: 0,
       protocol: 'gRPC mTLS 1.3'
@@ -143,12 +143,12 @@ const TopologyModule = {
       isQuarantined: false,
       color: '#25855A',
       type: 'iam',
-      fixedX: 320,
-      fixedY: 45,
-      layerX: 0,
-      layerY: 100,
+      fixedX: 300,
+      fixedY: 55,
+      layerX: -20,
+      layerY: 135,
       w: 165,
-      h: 54,
+      h: 52,
       x: 0,
       y: 0,
       protocol: 'Kerberos v5'
@@ -166,12 +166,12 @@ const TopologyModule = {
       isQuarantined: false,
       color: '#C47A16',
       type: 'ids',
-      fixedX: -170,
-      fixedY: 175,
-      layerX: 0,
-      layerY: 0,
+      fixedX: -155,
+      fixedY: 150,
+      layerX: -20,
+      layerY: -45,
       w: 154,
-      h: 54,
+      h: 52,
       x: 0,
       y: 0,
       protocol: 'AF_PACKET Zero-Copy'
@@ -189,12 +189,12 @@ const TopologyModule = {
       isQuarantined: false,
       color: '#25855A',
       type: 'ssh',
-      fixedX: 170,
-      fixedY: 175,
-      layerX: 0,
-      layerY: 180,
+      fixedX: 155,
+      fixedY: 150,
+      layerX: -20,
+      layerY: 45,
       w: 154,
-      h: 54,
+      h: 52,
       x: 0,
       y: 0,
       protocol: 'OpenSSH PAM'
@@ -214,19 +214,78 @@ const TopologyModule = {
     { from: 7, to: 0, flow: 'high' }
   ],
 
-  init() {
-    this.computeNodeCoordinates();
-    this.renderBandwidthBars();
-    this.renderForensicsTable();
-    this.startMeshAnimationLoop();
+  async init() {
     this.bindEvents();
+    await this.fetchData();
+    this.startMeshAnimationLoop();
   },
 
-  onScreenOpen() {
+  async onScreenOpen() {
+    await this.fetchData();
+    this.startMeshAnimationLoop();
+  },
+
+  async fetchData() {
+    if (!window.LogVaultAPI) return;
+    
+    const res = await LogVaultAPI.getSources();
+    const realSources = res.sources || [];
+    
+    // Keep CORE-VAULT always.
+    const coreNode = this.nodes.find(n => n.id === 'CORE-VAULT') || this.nodes[0];
+    
+    // Fixed positions for up to 7 sources based on the original symmetrical layout
+    const templateSlots = [
+      { fixedX: -290, fixedY: -95, layerX: -300, layerY: -110 },
+      { fixedX: 0, fixedY: -135, layerX: -300, layerY: 0 },
+      { fixedX: 290, fixedY: -95, layerX: -300, layerY: 110 },
+      { fixedX: -300, fixedY: 55, layerX: -20, layerY: -135 },
+      { fixedX: 300, fixedY: 55, layerX: -20, layerY: 135 },
+      { fixedX: -155, fixedY: 150, layerX: -20, layerY: -45 },
+      { fixedX: 155, fixedY: 150, layerX: -20, layerY: 45 }
+    ];
+    
+    const newNodes = [coreNode];
+    const newConduits = [];
+    
+    for (let i = 0; i < Math.min(realSources.length, templateSlots.length); i++) {
+      const src = realSources[i];
+      const slot = templateSlots[i];
+      const isCritical = src.anomaly_count > 0 || src.max_threat_score >= 70;
+      
+      newNodes.push({
+        id: 'SRC-' + i,
+        label: 'Source Node ' + (i+1),
+        zone: 'INTERNAL',
+        zoneName: 'Observed Network',
+        ip: src.source_ip,
+        throughput: src.event_count + ' events',
+        latency: src.anomaly_count + ' anomalies',
+        status: isCritical ? 'ANOMALOUS' : 'ACTIVE',
+        statusClass: isCritical ? 'cherry' : 'green',
+        isQuarantined: false,
+        color: isCritical ? '#C6283D' : '#25855A',
+        type: 'server',
+        fixedX: slot.fixedX,
+        fixedY: slot.fixedY,
+        layerX: slot.layerX,
+        layerY: slot.layerY,
+        w: 160,
+        h: 52,
+        x: 0,
+        y: 0,
+        protocol: 'Detected'
+      });
+      
+      newConduits.push({ from: i + 1, to: 0, flow: isCritical ? 'high' : 'med' });
+    }
+    
+    this.nodes = newNodes;
+    this.conduits = newConduits;
+    
     this.computeNodeCoordinates();
     this.renderBandwidthBars();
     this.renderForensicsTable();
-    this.startMeshAnimationLoop();
   },
 
   computeNodeCoordinates() {
@@ -550,10 +609,14 @@ const TopologyModule = {
       const n = this.hoveredNode;
       const nx = cx + n.x;
       const ny = cy + n.y;
-      const hudW = 210;
+      const hudW = 220;
       const hudH = 100;
-      const hx = Math.min(cssW - hudW - 14, Math.max(14, nx - hudW / 2));
-      const hy = Math.max(14, ny - hudH - 38);
+      let hx = nx - hudW / 2;
+      let hy = ny - hudH - 20;
+      if (hy < 12) {
+        hy = ny + n.h / 2 + 14;
+      }
+      hx = Math.max(14, Math.min(cssW - hudW - 14, hx));
 
       ctx.save();
       this.drawBox(ctx, hx, hy, hudW, hudH, 8);
@@ -594,25 +657,84 @@ const TopologyModule = {
     }
   },
 
-  // 2. Horizontal Bandwidth & Queue Depth Bars
+  // 2. Active Node Conduits Telemetry Matrix (2-Column SOC Deck)
   renderBandwidthBars() {
     const container = document.getElementById('topologyBandwidthContainer');
     if (!container) return;
 
-    container.innerHTML = this.nodes.map(n => `
-      <div class="latency-bench-item" style="margin-bottom:10px;">
-        <div style="min-width: 190px;">
-          <span style="font-weight:800; color:var(--text-ink); display:block; font-size:0.76rem;">${n.label}</span>
-          <span style="font-size:0.68rem; color:var(--text-muted); font-family:var(--font-mono);">${n.ip} • ${n.zoneName}</span>
-        </div>
-        <div class="latency-bench-bar-track" style="height:9px; background:var(--border-card);">
-          <div class="latency-bench-bar-fill" style="width: ${n.isQuarantined ? 5 : (n.id === 'CORE-VAULT' ? 96 : 68)}%; background-color: ${n.isQuarantined ? '#C6283D' : n.color}; border-radius:4px; box-shadow:0 0 8px ${n.color}44;"></div>
-        </div>
-        <div style="min-width: 90px; text-align:right;">
-          <span style="font-family:var(--font-mono); font-weight:800; color:${n.isQuarantined ? '#C6283D' : n.color}; font-size:0.78rem;">${n.throughput}</span>
-        </div>
+    const getCapacityPct = (n) => {
+      if (n.isQuarantined) return 4;
+      if (n.id === 'CORE-VAULT') return 94;
+      if (n.id === 'NODE-FW01') return 84;
+      if (n.id === 'NODE-K8S') return 76;
+      if (n.id === 'NODE-IDS') return 62;
+      if (n.id === 'NODE-AWS') return 51;
+      if (n.id === 'NODE-VPN') return 38;
+      if (n.id === 'NODE-KERBEROS') return 29;
+      return 18;
+    };
+
+    container.innerHTML = `
+      <div class="node-conduits-matrix">
+        ${this.nodes.map(n => {
+          const pct = getCapacityPct(n);
+          const isCore = n.id === 'CORE-VAULT';
+          const zoneBadgeClass = n.zone === 'CORE' ? 'cherry' : (n.zone === 'DMZ' ? 'warn' : 'green');
+          const iconName = n.type === 'core' ? 'shield-check' : (n.type === 'firewall' ? 'shield-alert' : (n.type === 'cloud' ? 'cloud' : (n.type === 'vpn' ? 'lock' : (n.type === 'k8s' ? 'layers' : (n.type === 'iam' ? 'key' : (n.type === 'ids' ? 'eye' : 'terminal'))))));
+          
+          return `
+            <div class="node-conduit-card ${n.isQuarantined ? 'quarantined' : ''} ${isCore ? 'core-node' : ''}">
+              <div class="node-conduit-top">
+                <div class="d-flex align-center gap-2" style="min-width:0;">
+                  <div class="node-conduit-emblem ${zoneBadgeClass}">
+                    <i data-lucide="${iconName}"></i>
+                  </div>
+                  <div style="min-width:0;">
+                    <strong class="node-conduit-title">${n.label}</strong>
+                    <span class="node-conduit-sub">${n.ip} &bull; ${n.protocol}</span>
+                  </div>
+                </div>
+                <div class="d-flex align-center gap-1" style="flex-shrink:0;">
+                  <span class="badge-pill ${zoneBadgeClass}-pill" style="font-size:0.56rem;">${n.zone}</span>
+                  <span class="badge-pill ${n.statusClass}-pill" style="font-size:0.56rem;"><span class="pulse-dot"></span> ${n.status}</span>
+                </div>
+              </div>
+
+              <div class="node-conduit-meter-box">
+                <div class="d-flex justify-between align-center mb-1">
+                  <span class="node-conduit-meter-label">CONDUIT SATURATION</span>
+                  <span class="node-conduit-meter-pct" style="color:${n.isQuarantined ? '#C6283D' : (isCore ? '#B4233C' : 'var(--status-green)')};">${pct}% LOAD</span>
+                </div>
+                <div class="node-conduit-track">
+                  <div class="node-conduit-fill ${n.isQuarantined ? 'crit' : ''}" style="width: ${pct}%; background-color: ${n.isQuarantined ? '#C6283D' : n.color};"></div>
+                </div>
+              </div>
+
+              <div class="node-conduit-footer">
+                <div class="node-conduit-metrics">
+                  <div>
+                    <span class="node-metric-lbl">THROUGHPUT</span>
+                    <strong class="node-metric-val" style="color:${n.isQuarantined ? '#C6283D' : 'var(--text-ink)'};">${n.throughput}</strong>
+                  </div>
+                  <div>
+                    <span class="node-metric-lbl">LATENCY</span>
+                    <strong class="node-metric-val" style="color:var(--status-green);">${n.latency}</strong>
+                  </div>
+                </div>
+                ${isCore ? '<span class="badge-pill cherry-pill" style="font-size:0.58rem;">PROTECTED CORE</span>' : `
+                  <button class="btn-cream-action btn-sm node-conduit-action-btn" onclick="TopologyModule.toggleQuarantine('${n.id}')" style="font-size:0.65rem; padding:3px 8px; font-weight:700; color:${n.isQuarantined ? 'var(--status-green)' : 'var(--status-red)'};">
+                    <i data-lucide="${n.isQuarantined ? 'shield-check' : 'shield-alert'}"></i>
+                    ${n.isQuarantined ? 'Lift Shield' : 'Drop Forcefield'}
+                  </button>
+                `}
+              </div>
+            </div>
+          `;
+        }).join('')}
       </div>
-    `).join('');
+    `;
+
+    if (window.lucide) lucide.createIcons();
   },
 
   // 3. Forensics Table

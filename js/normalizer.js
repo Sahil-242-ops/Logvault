@@ -50,14 +50,10 @@ const Normalizer = {
 
   init() {
     this.bindEvents();
-    this.loadPreset('ssh');
     this.initCanvas3D();
   },
 
   onScreenOpen() {
-    if (!this.currentData) {
-      this.loadPreset('ssh');
-    }
     this.initCanvas3D();
   },
 
@@ -92,6 +88,35 @@ const Normalizer = {
         } else {
           Utils.showToast('Please enter a raw log string first.', 'warning');
         }
+      });
+    }
+
+    // File Upload Handlers
+    const fileInput = document.getElementById('norm-file-upload');
+    const fileNameDisplay = document.getElementById('norm-file-name');
+    const uploadBtn = document.getElementById('btn-run-upload');
+    let selectedFile = null;
+
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+          selectedFile = e.target.files[0];
+          if (fileNameDisplay) {
+            fileNameDisplay.textContent = `Selected: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)`;
+            fileNameDisplay.style.display = 'block';
+          }
+          if (uploadBtn) {
+            uploadBtn.style.display = 'block';
+          }
+        }
+      });
+    }
+
+    if (uploadBtn) {
+      uploadBtn.addEventListener('click', async () => {
+        if (!selectedFile) return;
+        this.playHapticBlip(680);
+        await this.executeFileUpload(selectedFile);
       });
     }
 
@@ -221,42 +246,142 @@ const Normalizer = {
   async executeCustomPipeline(rawText) {
     this.setPipelineStageLoading(true);
 
-    const parsedResult = await window.LogVaultAPI.normalizeLog(rawText);
+    try {
+      const parsedResult = await window.LogVaultAPI.normalizeLog(rawText);
 
-    const tokens = rawText.split(/[\s,]+/).map(t => {
-      let type = 'generic';
-      let mappedField = null;
-      if (t.includes(':') && !t.startsWith('http')) { type = 'process'; mappedField = 'process'; }
-      if (t.includes('=')) { type = 'keyval'; mappedField = 'metadata'; }
-      if (/\d+\.\d+\.\d+\.\d+/.test(t)) { type = 'src_ip'; mappedField = 'source_ip'; }
-      if (/\d{2}:\d{2}:\d{2}/.test(t)) { type = 'timestamp'; mappedField = 'timestamp'; }
-      return { text: t, type, mappedField };
-    });
+      const tokens = rawText.split(/[\s,]+/).map(t => {
+        let type = 'generic';
+        let mappedField = null;
+        if (t.includes(':') && !t.startsWith('http')) { type = 'process'; mappedField = 'process'; }
+        if (t.includes('=')) { type = 'keyval'; mappedField = 'metadata'; }
+        if (/\d+\.\d+\.\d+\.\d+/.test(t)) { type = 'src_ip'; mappedField = 'source_ip'; }
+        if (/\d{2}:\d{2}:\d{2}/.test(t)) { type = 'timestamp'; mappedField = 'timestamp'; }
+        return { text: t, type, mappedField };
+      });
 
-    const enriched = {
-      name: 'Custom Telemetry Stream',
-      raw: rawText,
-      tokens,
-      ...parsedResult
-    };
+      const enriched = {
+        name: 'Real Log Input',
+        raw: rawText,
+        tokens,
+        ...parsedResult
+      };
 
-    setTimeout(() => {
       this.setPipelineStageLoading(false);
       this.animateAndRenderPipeline(enriched);
-      Utils.showToast('Pipeline execution finished: Schema extracted & verified.', 'success');
-    }, 240);
+      Utils.showToast('✓ Real Log Processed — AI Analysis & OCSF Normalized.', 'success');
+
+      // Refresh real live logs & dashboard stats
+      if (window.LogStream && LogStream.fetchLogs) LogStream.fetchLogs();
+      if (window.App && App.renderDashboardElements) App.renderDashboardElements();
+    } catch (err) {
+      this.setPipelineStageLoading(false);
+      Utils.showToast(`Pipeline execution failed: ${err.message}`, 'error');
+    }
   },
 
-  simulateAiRuleGeneration() {
-    this.playHapticBlip(720);
-    Utils.showToast('Neural Parser scanning log entropy & inferring named capture schema...', 'warning');
-    const input = document.getElementById('norm-custom-raw-input');
-    const text = input ? input.value : '';
+  async executeFileUpload(file) {
+    this.setPipelineStageLoading(true);
 
-    setTimeout(() => {
-      this.executeCustomPipeline(text || '2026-08-28T10:31:12Z firewall-edge-01 kernel: DROP IN=eth0 OUT= SRC=203.0.113.19 DST=10.0.4.92 PROTO=TCP SPT=44921 DPT=22');
-      Utils.showToast('✨ AI Rule Generation Complete: 100% OCSF 1.1 Match!', 'success');
-    }, 450);
+    try {
+      const response = await window.LogVaultAPI.uploadFile(file);
+      
+      // If we got batch results, show the first one in the UI
+      if (response && response.results && response.results.length > 0) {
+        const firstResult = response.results[0];
+        
+        const rawText = firstResult.raw_log || firstResult.message || JSON.stringify(firstResult);
+        
+        let tokens = firstResult.tokens;
+        if (!tokens && rawText && typeof rawText === 'string') {
+          tokens = rawText.split(/[\s,]+/).map(t => {
+            let type = 'generic'; let mappedField = null;
+            if (t.includes(':') && !t.startsWith('http')) { type = 'process'; mappedField = 'process'; }
+            if (t.includes('=')) { type = 'keyval'; mappedField = 'metadata'; }
+            if (/\d+\.\d+\.\d+\.\d+/.test(t)) { type = 'src_ip'; mappedField = 'source_ip'; }
+            if (/\d{2}:\d{2}:\d{2}/.test(t)) { type = 'timestamp'; mappedField = 'timestamp'; }
+            return { text: t, type, mappedField };
+          });
+        }
+        
+        const enriched = {
+          name: `Batch File: ${file.name}`,
+          raw: rawText,
+          tokens: tokens || [],
+          format: firstResult.detected_format || 'Unknown',
+          parser: firstResult.parser_name || 'Backend Parser',
+          parserType: firstResult.parser_type || 'DETERMINISTIC',
+          latency: (firstResult.processing_latency_ms || 0).toFixed(2) + ' ms',
+          confidence: firstResult.parse_confidence || firstResult.detection_confidence || 0,
+          ocsf_class: firstResult.ocsf_class_name || null,
+          ocsf_class_uid: firstResult.ocsf_class_uid || null,
+          anomaly: firstResult.anomaly || null,
+          pii_masked: firstResult.pii_masked || false,
+          ai_provider: firstResult.ai_provider || 'none',
+          ai_model: firstResult.ai_model || 'none',
+          ai_reasoning: firstResult.ai_reasoning || firstResult.ai_threat_reasoning || '',
+          ai_threat_score: firstResult.ai_threat_score !== undefined ? firstResult.ai_threat_score : (firstResult.anomaly?.threat_score || 0),
+          ai_mitre_techniques: firstResult.ai_mitre_techniques || [],
+          ai_is_suspicious: firstResult.ai_is_suspicious || false,
+          schema: {
+            event_type: firstResult.event_type || 'GENERIC_EVENT',
+            user: firstResult.user || 'unknown',
+            status: firstResult.status || firstResult.action || 'RECORDED',
+            source_ip: firstResult.source_ip || null,
+            source_port: firstResult.source_port || null,
+            destination_ip: firstResult.destination_ip || null,
+            destination_port: firstResult.destination_port || null,
+            host: firstResult.host || null,
+            process: firstResult.process || null,
+            protocol: firstResult.protocol || null,
+            timestamp: firstResult.timestamp || new Date().toISOString(),
+            severity: firstResult.severity || 'INFO',
+            category: firstResult.category || 'general_telemetry',
+            message: firstResult.message || null
+          },
+          _raw_backend: firstResult
+        };
+
+        this.setPipelineStageLoading(false);
+        this.animateAndRenderPipeline(enriched);
+        Utils.showToast(`Processed ${response.file.total_lines} real log records from ${file.name}.`, 'success');
+        
+        // Refresh live logs and dashboard
+        if (window.LogStream && LogStream.fetchLogs) LogStream.fetchLogs();
+        if (window.App && App.renderDashboardElements) App.renderDashboardElements();
+
+        // Alert anomalies if found
+        if (response.anomaly_summary && response.anomaly_summary.anomalous > 0) {
+          setTimeout(() => {
+            Utils.showToast(`⚠ Detected ${response.anomaly_summary.anomalous} anomalous events.`, 'warning');
+          }, 1500);
+        }
+      } else {
+        this.setPipelineStageLoading(false);
+        Utils.showToast('No valid logs extracted from file.', 'warning');
+      }
+    } catch (err) {
+      this.setPipelineStageLoading(false);
+      Utils.showToast(`Upload failed: ${err.message}`, 'error');
+    }
+  },
+
+  async simulateAiRuleGeneration() {
+    this.playHapticBlip(720);
+    const input = document.getElementById('norm-custom-raw-input');
+    const text = input ? input.value.trim() : '';
+    if (!text) {
+      Utils.showToast('Please enter a raw log string first to analyze with Ollama AI.', 'warning');
+      return;
+    }
+    Utils.showToast('Querying local Ollama model for log intelligence...', 'info');
+    try {
+      const res = await window.LogVaultAPI.aiAnalyze(text);
+      if (res && res.response) {
+        Utils.showToast(`AI (${res.model || 'Ollama'}): ${res.response.slice(0, 80)}...`, 'success');
+      }
+    } catch (err) {
+      Utils.showToast(`AI analysis error: ${err.message}`, 'error');
+    }
   },
 
   setPipelineStageLoading(isLoading) {
@@ -319,6 +444,79 @@ const Normalizer = {
     // 5. Stage 4: Common Log Schema Output (OCSF 1.1)
     this.renderSchemaOutput(data.schema);
     this.renderAstTree(data);
+
+    // 6. Real Log Result Card
+    this.renderRealLogResultCard(data);
+
+    if (window.lucide) lucide.createIcons();
+  },
+
+  renderRealLogResultCard(data) {
+    const card = document.getElementById('real-log-result-card');
+    if (!card) return;
+
+    card.style.display = 'block';
+
+    const rawEl = document.getElementById('res-raw-log');
+    const fmtEl = document.getElementById('res-detected-format');
+    const parserEl = document.getElementById('res-parser');
+    const ocsfEl = document.getElementById('res-ocsf-class');
+    const eventTypeEl = document.getElementById('res-event-type');
+    const sevEl = document.getElementById('res-severity');
+    const threatScoreEl = document.getElementById('res-threat-score');
+    const modelEl = document.getElementById('res-ai-model');
+    const mitreEl = document.getElementById('res-mitre');
+    const piiEl = document.getElementById('res-pii-status');
+    const analysisEl = document.getElementById('res-ai-analysis');
+    const badgeEl = document.getElementById('res-ollama-badge');
+
+    const raw = data.raw || data.raw_log || '';
+    if (rawEl) rawEl.innerText = raw;
+    if (fmtEl) fmtEl.innerText = (data.format || data.detected_format || 'UNKNOWN').toUpperCase();
+    if (parserEl) parserEl.innerText = data.parser || data.parser_name || 'Generic Parser';
+    if (ocsfEl) {
+      const ocsfLabel = data.ocsf_class || (data.ocsf_class_uid ? 'Class ' + data.ocsf_class_uid : null);
+      ocsfEl.innerText = ocsfLabel && ocsfLabel !== 'Unknown' ? ocsfLabel : '—';
+    }
+    if (eventTypeEl) eventTypeEl.innerText = data.schema?.event_type || data.event_type || 'GENERIC_EVENT';
+    
+    const sev = (data.schema?.severity || data.severity || 'INFO').toUpperCase();
+    if (sevEl) {
+      sevEl.innerText = sev;
+      sevEl.className = 'badge-pill ' + (sev === 'CRITICAL' ? 'crit-pill' : (sev === 'HIGH' ? 'high-pill' : (sev === 'MEDIUM' ? 'warn-pill' : 'green-pill')));
+    }
+
+    const threatScore = data.ai_threat_score !== undefined ? data.ai_threat_score : (data.anomaly?.threat_score || 0);
+    if (threatScoreEl) threatScoreEl.innerText = `${threatScore} / 100`;
+
+    const aiModel = data.ai_model || data._raw_backend?.ai_model || null;
+    const hasModel = aiModel && aiModel !== 'none';
+    if (modelEl) modelEl.innerText = hasModel ? aiModel : '—';
+    if (badgeEl) {
+      badgeEl.innerText = hasModel ? `Ollama: ${aiModel}` : 'No Local AI';
+      badgeEl.className = hasModel ? 'badge-pill green-pill' : 'badge-pill warn-pill';
+    }
+
+    let mitre = 'None';
+    if (data.ai_mitre_techniques && data.ai_mitre_techniques.length > 0 && data.ai_mitre_techniques[0] !== 'null') {
+      mitre = data.ai_mitre_techniques.join(', ');
+    } else if (data.anomaly?.findings) {
+      const f = data.anomaly.findings.find(x => x.mitre_technique);
+      if (f) mitre = f.mitre_technique;
+    }
+    if (mitreEl) {
+      mitreEl.innerText = mitre;
+      mitreEl.className = mitre !== 'None' ? 'badge-pill high-pill' : 'badge-pill';
+    }
+
+    if (piiEl) {
+      const isMasked = data.pii_masked || data._raw_backend?.pii_masked;
+      piiEl.innerText = isMasked ? 'PII Detected & Masked' : 'Clean (No PII)';
+      piiEl.className = isMasked ? 'badge-pill warn-pill' : 'badge-pill green-pill';
+    }
+
+    const aiAnalysis = data.ai_reasoning || data._raw_backend?.ai_threat_reasoning || data.anomaly?.findings?.find(f => f.description)?.description || 'No analysis available.';
+    if (analysisEl) analysisEl.innerText = aiAnalysis;
 
     if (window.lucide) lucide.createIcons();
   },
@@ -438,7 +636,9 @@ const Normalizer = {
         ocsf_class_uid: 'UID_INT'
       };
 
-      const rows = Object.entries(schema).map(([k, v]) => {
+      const rows = Object.entries(schema)
+        .filter(([k, v]) => v !== null && v !== undefined && v !== '')
+        .map(([k, v]) => {
         const displayVal = typeof v === 'object' ? JSON.stringify(v) : String(v);
         let badgeType = 'neutral';
         if (k === 'status') {

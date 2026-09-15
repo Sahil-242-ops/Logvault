@@ -16,28 +16,22 @@ const LogStream = {
     timeRange: '1h',
     searchQuery: ''
   },
-  totalProcessedCount: 1284,
+  totalProcessedCount: 0,
+  sparkHistory: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  lastFetchTime: Date.now(),
+  lastProcessedCount: 0,
+  currentEps: 0,
 
   // Stream generator templates for realistic SIEM telemetry
-  templates: [
-    { source: 'FIREWALL', action: 'BLOCKED', ip: '192.168.1.20', user: 'system', sev: 'HIGH', msg: 'Port scan probe blocked on perimeter interface eth0' },
-    { source: 'SSH', action: 'LOGIN_FAIL', ip: '10.24.8.12', user: 'root', sev: 'MEDIUM', msg: 'Failed password for root via SSH port 58921 (attempt 4/5)' },
-    { source: 'WINDOWS', action: 'PROCESS', ip: '10.0.3.14', user: 'workstation-04', sev: 'LOW', msg: 'Process spawned: powershell.exe -NonInteractive -ExecutionPolicy Bypass' },
-    { source: 'AWS', action: 'AUTH_SUCCESS', ip: '198.51.100.4', user: 'user@company.com', sev: 'INFO', msg: 'ConsoleLogin: MFA verification successful from trusted origin' },
-    { source: 'SSH', action: 'LOGIN_FAIL', ip: '10.24.8.12', user: 'admin', sev: 'MEDIUM', msg: 'Failed password for admin via SSH port 58920 (attempt 3/5)' },
-    { source: 'LINUX', action: 'LOGIN', ip: '192.168.1.20', user: 'john', sev: 'INFO', msg: 'Accepted publickey for john from 192.168.1.20 port 54210 ssh2' },
-    { source: 'APACHE', action: 'HTTP_401', ip: '192.168.1.45', user: 'apache-admin2', sev: 'HIGH', msg: 'POST /api/v1/auth/login returned HTTP 401 Unauthorized (invalid JWT)' },
-    { source: 'OKTA', action: 'SSO_CHALLENGE', ip: '203.0.113.78', user: 'amrita.lead', sev: 'LOW', msg: 'FIDO2 WebAuthn authentication challenge completed' },
-    { source: 'FIREWALL', action: 'DROP', ip: '185.220.101.5', user: 'anonymous', sev: 'CRITICAL', msg: 'ACL Drop: Tor Exit Relay IP attempting ingress on port 3389' },
-    { source: 'SURICATA', action: 'ALERT', ip: '192.168.1.45', user: 'Server01', sev: 'CRITICAL', msg: 'ET SCAN Potential SSH Brute Force Attack detected (4,821 attempts)' },
-    { source: 'KUBERNETES', action: 'POD_EXEC', ip: '10.244.0.15', user: 'kube-admin', sev: 'MEDIUM', msg: 'kubectl exec session opened on pod payment-gateway-7b9f' },
-    { source: 'DNS', action: 'QUERY_DGA', ip: '192.168.1.88', user: 'finance-host', sev: 'HIGH', msg: 'Anomalous high-entropy DNS query: xk92jfnso821b.corp-cdn.net' }
-  ],
+  templates: [],
 
-  init() {
-    this.logs = [...window.initialLiveLogs];
-    this.applyFilters();
+  async init() {
+    this.logs = [];
     this.bindEvents();
+    if (window.LogVaultAPI && LogVaultAPI._backendAvailable === null) {
+      await LogVaultAPI.checkBackend();
+    }
+    await this.fetchRealEvents();
     this.startStreaming();
   },
 
@@ -67,7 +61,7 @@ const LogStream = {
     if (sourceFilter) {
       sourceFilter.addEventListener('change', (e) => {
         this.filters.source = e.target.value;
-        this.applyFilters();
+        this.fetchRealEvents();
       });
     }
 
@@ -76,7 +70,7 @@ const LogStream = {
     if (sevFilter) {
       sevFilter.addEventListener('change', (e) => {
         this.filters.severity = e.target.value;
-        this.applyFilters();
+        this.fetchRealEvents();
       });
     }
 
@@ -85,7 +79,7 @@ const LogStream = {
     if (timeFilter) {
       timeFilter.addEventListener('change', (e) => {
         this.filters.timeRange = e.target.value;
-        this.applyFilters();
+        this.fetchRealEvents();
       });
     }
 
@@ -94,7 +88,7 @@ const LogStream = {
     if (searchInput) {
       searchInput.addEventListener('input', (e) => {
         this.filters.searchQuery = e.target.value.toLowerCase().trim();
-        this.applyFilters();
+        this.fetchRealEvents();
       });
     }
 
@@ -138,9 +132,12 @@ const LogStream = {
 
   startStreaming() {
     this.stopStreaming();
+    this.fetchRealEvents();
+    // Default max speed is 2000ms minimum to not hammer the backend
+    const pollSpeed = Math.max(2000, this.streamSpeed);
     this.timerId = setInterval(() => {
-      this.generateLiveLog();
-    }, this.streamSpeed);
+      this.fetchRealEvents();
+    }, pollSpeed);
   },
 
   stopStreaming() {
@@ -156,33 +153,70 @@ const LogStream = {
     }
   },
 
-  generateLiveLog() {
-    const template = this.templates[Math.floor(Math.random() * this.templates.length)];
-    const now = new Date();
-    const pad = n => String(n).padStart(2, '0');
-    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-
-    const newLog = {
-      id: Date.now() + Math.floor(Math.random() * 100),
-      time: timeStr,
-      source: template.source,
-      action: template.action,
-      ip: template.ip,
-      user: template.user,
-      sev: template.sev,
-      msg: template.msg,
-      isNew: true
-    };
-
-    this.logs.unshift(newLog);
-    this.totalProcessedCount++;
-
-    // Limit buffer to latest 100 logs in memory
-    if (this.logs.length > 100) {
-      this.logs.pop();
+  async fetchRealEvents() {
+    if (!window.LogVaultAPI) return;
+    if (LogVaultAPI._backendAvailable === null) {
+      await LogVaultAPI.checkBackend();
     }
+    if (!LogVaultAPI.isBackendAvailable()) return;
+    
+    const result = await LogVaultAPI.getEvents(100, 0, this.filters.searchQuery, this.filters.severity, this.filters.source);
+    
+    if (result && result.events) {
+      const existingIds = new Set(this.logs.map(l => l.id));
+      let newCount = 0;
+      
+      const mappedEvents = result.events.map(evt => {
+        const isNew = !existingIds.has(evt.id);
+        if (isNew) newCount++;
 
-    this.applyFilters();
+        let formattedTime = new Date().toLocaleTimeString();
+        if (evt.timestamp) {
+          if (evt.timestamp.includes('T')) {
+            const parts = evt.timestamp.split('T');
+            formattedTime = `${parts[0]} ${(parts[1] || '').split('.')[0]}`;
+          } else {
+            formattedTime = evt.timestamp;
+          }
+        }
+
+        return {
+          id: evt.id,
+          time: formattedTime,
+          source: evt.detected_format ? evt.detected_format.toUpperCase() : 'UNKNOWN',
+          action: evt.event_type || 'EVENT',
+          ip: evt.source_ip || evt.destination_ip || 'N/A',
+          user: evt.user || 'N/A',
+          sev: evt.severity || 'INFO',
+          msg: evt.message || evt.raw_log || '',
+          isNew: isNew,
+          raw: evt.raw_log
+        };
+      });
+
+      this.logs = mappedEvents;
+      const newTotal = result.total !== undefined ? result.total : mappedEvents.length;
+
+      // Calculate real throughput (EPS) based on actual events arriving
+      const now = Date.now();
+      const elapsedSec = Math.max(1, (now - this.lastFetchTime) / 1000);
+      const deltaLogs = Math.max(0, newTotal - (this.lastProcessedCount || 0));
+      if (this.lastProcessedCount > 0 && deltaLogs > 0) {
+        this.currentEps = Math.round((deltaLogs / elapsedSec) * 10) / 10;
+      } else if (newTotal === 0) {
+        this.currentEps = 0;
+      }
+
+      this.totalProcessedCount = newTotal;
+      this.lastProcessedCount = newTotal;
+      this.lastFetchTime = now;
+
+      // Push real rate to sparkline history
+      this.sparkHistory.push(this.currentEps);
+      if (this.sparkHistory.length > 12) this.sparkHistory.shift();
+
+      this.applyFilters();
+    }
   },
 
   applyFilters() {
@@ -203,9 +237,58 @@ const LogStream = {
     const tbody = document.getElementById('live-stream-tbody');
     const countEl = document.getElementById('stream-showing-count');
     const totalEl = document.getElementById('stream-total-count');
+    const processedCountEl = document.getElementById('stream-processed-count');
+    const processedLabelEl = document.getElementById('stream-processed-label');
+    const liveEpsValEl = document.getElementById('stream-live-eps-val');
+    const liveEpsBadgeEl = document.getElementById('stream-live-eps-badge');
+    const cardIngestedEl = document.getElementById('stream-card-ingested');
+    const throughputEl = document.getElementById('stream-throughput');
+    const hdrThroughputEl = document.getElementById('hdr-throughput');
 
     if (countEl) countEl.innerText = this.filteredLogs.length;
     if (totalEl) totalEl.innerText = this.totalProcessedCount.toLocaleString();
+
+    // Image 1: Show proper real count of logs processed (no random numbers)
+    if (processedCountEl) {
+      processedCountEl.innerText = this.totalProcessedCount.toLocaleString();
+    }
+    if (processedLabelEl) {
+      processedLabelEl.innerText = this.totalProcessedCount === 1 ? 'log processed' : 'logs processed';
+    }
+
+    const epsStr = this.currentEps > 0 ? this.currentEps.toFixed(1) : '0.0';
+    if (liveEpsValEl) liveEpsValEl.innerText = epsStr;
+    if (liveEpsBadgeEl) {
+      if (this.currentEps > 0) {
+        liveEpsBadgeEl.className = 'badge-pill green-pill';
+        liveEpsBadgeEl.innerHTML = `<span class="pulse-dot"></span> <span>${epsStr}</span> EPS`;
+      } else {
+        liveEpsBadgeEl.className = 'badge-pill';
+        liveEpsBadgeEl.innerHTML = `<span class="paused-dot"></span> <span>0.0</span> EPS`;
+      }
+    }
+
+    // Image 2: update Stream Details card INGESTED metric cleanly
+    if (cardIngestedEl) {
+      cardIngestedEl.innerText = `${this.totalProcessedCount.toLocaleString()} logs (Session)`;
+    }
+
+    if (throughputEl) {
+      throughputEl.innerText = this.currentEps > 0 ? `${epsStr} logs/sec` : `${this.totalProcessedCount} total`;
+    }
+    if (hdrThroughputEl) {
+      hdrThroughputEl.innerText = this.totalProcessedCount > 0 ? `${this.totalProcessedCount} logs` : '0 logs (Idle)';
+    }
+
+    // Correlated alerts badge & count
+    const alertsCountEl = document.getElementById('stream-correlated-alerts-count');
+    const alertsBadgeEl = document.getElementById('stream-correlated-alerts-badge');
+    const critLogs = this.logs.filter(l => l.sev === 'CRITICAL' || l.sev === 'HIGH').length;
+    if (alertsCountEl) alertsCountEl.innerText = critLogs.toString();
+    if (alertsBadgeEl) {
+      alertsBadgeEl.innerText = `${critLogs} Active`;
+      alertsBadgeEl.className = critLogs > 0 ? 'badge-pill crit-pill' : 'badge-pill green-pill';
+    }
 
     if (!tbody) return;
 
@@ -213,9 +296,12 @@ const LogStream = {
       tbody.innerHTML = `
         <tr>
           <td colspan="7" class="empty-table-state">
-            <i data-lucide="filter-x"></i>
-            <p>No log events match your current filter criteria.</p>
-            <button class="btn-sm btn-outline-cherry" onclick="LogStream.resetFilters()">Reset Filters</button>
+            <div class="empty-state-box">
+              <i data-lucide="filter" style="width:28px; height:28px; color:var(--text-muted); margin-bottom:8px;"></i>
+              <div style="font-weight:700; font-size:0.88rem; color:var(--text-ink); margin-bottom:4px;">No Log Events Found</div>
+              <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">No events currently match your filter criteria.</p>
+              <button class="btn-sm btn-outline-cherry" onclick="LogStream.resetFilters()">Reset Filters</button>
+            </div>
           </td>
         </tr>
       `;
@@ -271,55 +357,58 @@ const LogStream = {
       if (['CRITICAL', 'HIGH'].includes(log.sev)) cls = 'error';
       else if (log.sev === 'MEDIUM') cls = 'warn';
       const label = cls === 'error' ? 'Error' : (cls === 'warn' ? 'Warn ' : 'INFO ');
-      return `<div class="term-line ${cls}">${label} | 2026-09-02:${log.time} - ${Utils.escapeHtml(log.source)}:${Utils.escapeHtml(log.action)} from ${Utils.escapeHtml(log.ip)} - ${Utils.escapeHtml(log.msg)}</div>`;
+      return `<div class="term-line ${cls}">${label} | ${log.time} - ${Utils.escapeHtml(log.source)}:${Utils.escapeHtml(log.action)} from ${Utils.escapeHtml(log.ip)} - ${Utils.escapeHtml(log.msg)}</div>`;
     }).join('');
     termBody.innerHTML = lines;
   },
 
   renderLiveSparkline() {
+    const container = document.getElementById('liveSpeedSparkContainer');
     const canvas = document.getElementById('liveSpeedSparkCanvas');
-    if (!canvas) return;
 
+    const history = this.sparkHistory && this.sparkHistory.length > 0 ? this.sparkHistory : [0, 0, 0, 0, 0, 0, 0, 0];
+    const maxVal = Math.max(1, ...history);
+    const hasActivity = maxVal > 0 && history.some(v => v > 0);
+    const w = 240;
+    const h = 42;
+
+    // Map history to Y coordinates
+    const pts = history.map((v, i) => {
+      const x = Math.round((w / Math.max(1, history.length - 1)) * i);
+      const normalized = hasActivity ? Math.min(1, v / maxVal) : 0;
+      const y = Math.round(hasActivity ? ((h - 8) - (normalized * (h - 18))) : (h - 6));
+      return { x, y };
+    });
+
+    const pathD = pts.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ');
+    const areaD = `${pathD} L ${w} ${h} L 0 ${h} Z`;
+    const lastPt = pts[pts.length - 1];
+
+    const strokeColor = hasActivity ? '#B4233C' : '#8A7A7D';
+    const gradStart = hasActivity ? 'rgba(180, 35, 60, 0.35)' : 'rgba(180, 35, 60, 0.08)';
+
+    if (container) {
+      container.innerHTML = `
+        <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%; height:100%; display:block;">
+          <defs>
+            <linearGradient id="liveSpeedSparkGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="${gradStart}" />
+              <stop offset="100%" stop-color="rgba(180, 35, 60, 0.0)" />
+            </linearGradient>
+          </defs>
+          <path d="${areaD}" fill="url(#liveSpeedSparkGrad)" />
+          <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          <circle cx="${lastPt.x - 2}" cy="${lastPt.y}" r="3.5" fill="${strokeColor}" stroke="#FFF8F0" stroke-width="1.5" />
+        </svg>
+      `;
+      return;
+    }
+
+    if (!canvas) return;
     const scaled = Utils.setupHiDPICanvas(canvas, 42);
     if (!scaled) return;
-    const { ctx, width: w, height: h } = scaled;
-
-    ctx.clearRect(0, 0, w, h);
-
-    const pts = [h*0.75, h*0.5, h*0.8, h*0.35, h*0.65, h*0.25, h*0.55, h*0.3, h*0.6, h*0.15];
-    ctx.beginPath();
-    ctx.moveTo(0, pts[0]);
-    pts.forEach((y, i) => {
-      ctx.lineTo((w / (pts.length - 1)) * i, y);
-    });
-    ctx.lineTo(w, h);
-    ctx.lineTo(0, h);
-    ctx.closePath();
-
-    const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, 'rgba(180, 35, 60, 0.35)');
-    grad.addColorStop(1, 'rgba(180, 35, 60, 0.0)');
-    ctx.fillStyle = grad;
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(0, pts[0]);
-    pts.forEach((y, i) => {
-      ctx.lineTo((w / (pts.length - 1)) * i, y);
-    });
-    ctx.strokeStyle = '#B4233C';
-    ctx.lineWidth = 2.2;
-    ctx.stroke();
-
-    const lastX = w - 4;
-    const lastY = pts[pts.length - 1];
-    ctx.beginPath();
-    ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#B4233C';
-    ctx.fill();
-    ctx.strokeStyle = '#FFF8F0';
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
+    const { ctx, width: cw, height: ch } = scaled;
+    ctx.clearRect(0, 0, cw, ch);
   },
 
   selectRow(id) {

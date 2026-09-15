@@ -218,11 +218,11 @@ const Charts = {
     const innerR = size * 0.28;
 
     const segments = [
-      { label: 'Firewall', pct: 0.25, color: isDark ? '#D43853' : '#B4233C' },
-      { label: 'OKTA Auth', pct: 0.31, color: isDark ? '#9C1A30' : '#74152A' },
-      { label: 'Suspicious', pct: 0.24, color: isDark ? '#DD6B20' : '#C47A16' },
-      { label: 'Endpoints', pct: 0.13, color: isDark ? '#8A787B' : '#756568' },
-      { label: 'Cloud Audit', pct: 0.07, color: isDark ? '#E8A0AA' : '#E8A0AA' }
+      { label: 'Syslog RFC 5424', pct: 0.28, color: '#8F1127' },
+      { label: 'Nginx / Apache Web', pct: 0.24, color: '#4A0B18' },
+      { label: 'JSON / CloudTrail', pct: 0.18, color: '#924C00' },
+      { label: 'ArcSight CEF', pct: 0.16, color: '#6E1B3E' },
+      { label: 'Windows Security', pct: 0.14, color: '#3D3537' }
     ];
 
     let currentAngle = -Math.PI / 2;

@@ -42,7 +42,36 @@ const App = {
       SettingsModule.loadOperatorProfile();
     }
 
+    // Probe backend API & Local AI status
+    this.probeBackend();
+
     console.log('LOGVAULT SOC Engine Initialized — Ingestion Pipeline & Normalization Fleet Active');
+  },
+
+  async probeBackend() {
+    if (!window.LogVaultAPI) return;
+
+    const health = await LogVaultAPI.checkBackend();
+    const statusEl = document.getElementById('lv-system-status-badge');
+
+    if (health) {
+      // Update AI status indicator
+      if (statusEl) {
+        const aiMode = health.ai_status_message || 'LOCAL AI OFFLINE';
+        const modelInfo = health.model || 'NONE';
+        statusEl.innerHTML = `<span class="pulse-dot"></span> ${aiMode} · ${modelInfo}`;
+        statusEl.className = health.local_ai ? 'badge-pill green-pill' : 'badge-pill warn-pill';
+        statusEl.title = `Status: ${aiMode} | Provider: ${health.ai_provider || 'NONE'} | Model: ${health.model || 'NONE'} | Network: ${health.network_mode.toUpperCase()}`;
+      }
+      Utils.showToast(`✓ Backend online — ${health.ai_status_message || 'AI OFFLINE'} · Network: AIR-GAPPED`, 'success');
+    } else {
+      if (statusEl) {
+        statusEl.innerHTML = `<span class="pulse-dot"></span> OFFLINE`;
+        statusEl.className = 'badge-pill crit-pill';
+        statusEl.title = 'Python Backend Offline.';
+      }
+      Utils.showToast('⚠ Python Backend Offline. Start FastAPI on port 8000.', 'error');
+    }
   },
 
   applyTheme(theme) {
@@ -109,27 +138,59 @@ const App = {
     setInterval(update, 1000);
   },
 
-  renderDashboardElements() {
-    const tbody = document.getElementById('dashboard-recent-tbody');
-    if (tbody && window.initialLiveLogs) {
-      const top5 = window.initialLiveLogs.slice(0, 5);
-      tbody.innerHTML = top5.map(log => {
-        let sevBadge = `<span class="badge-pill crit-pill">CRITICAL</span>`;
-        if (log.sev === 'HIGH') sevBadge = `<span class="badge-pill high-pill">HIGH</span>`;
-        if (log.sev === 'MEDIUM') sevBadge = `<span class="badge-pill warn-pill">MEDIUM</span>`;
-        if (log.sev === 'LOW' || log.sev === 'INFO') sevBadge = `<span class="badge-pill green-pill">${log.sev}</span>`;
+  async renderDashboardElements() {
+    // 1. Update KPI tiles and Throughput badge from real database summary
+    if (window.LogVaultAPI) {
+      try {
+        const summary = await LogVaultAPI.getDashboardSummary();
+        const logsEl = document.getElementById('kpi-logs-processed');
+        const normRateEl = document.getElementById('kpi-norm-rate');
+        const suspEl = document.getElementById('kpi-suspicious-count');
+        const anomEl = document.getElementById('kpi-anomalies-count');
+        const hdrThroughputEl = document.getElementById('hdr-throughput');
 
-        return `
-          <tr onclick="Navigation.navigateTo('live-logs')">
-            <td class="cell-mono-muted">${log.time}</td>
-            <td><strong>${log.source}</strong></td>
-            <td><code>${log.ip}</code></td>
-            <td class="cell-truncate">${Utils.escapeHtml(log.msg)}</td>
-            <td>${sevBadge}</td>
-          </tr>
-        `;
-      }).join('');
+        if (logsEl) logsEl.innerText = summary.logsProcessed;
+        if (normRateEl) normRateEl.innerText = summary.parsedRate;
+        if (suspEl) suspEl.innerText = summary.suspiciousEvents;
+        if (anomEl) anomEl.innerText = summary.criticalAnomalies;
+        if (hdrThroughputEl) hdrThroughputEl.innerText = summary.throughput;
+      } catch (e) {
+        console.error('Error fetching dashboard summary:', e);
+      }
     }
+
+    // 2. Populate recent events table with real events
+    const tbody = document.getElementById('dashboard-recent-tbody');
+    if (!tbody) return;
+
+    if (window.LogVaultAPI) {
+      try {
+        const res = await LogVaultAPI.getEvents(5, 0);
+        if (res && res.events && res.events.length > 0) {
+          tbody.innerHTML = res.events.map(log => {
+            let sevBadge = `<span class="badge-pill crit-pill">CRITICAL</span>`;
+            const sev = (log.severity || 'INFO').toUpperCase();
+            if (sev === 'HIGH') sevBadge = `<span class="badge-pill high-pill">HIGH</span>`;
+            if (sev === 'MEDIUM') sevBadge = `<span class="badge-pill warn-pill">MEDIUM</span>`;
+            if (sev === 'LOW' || sev === 'INFO') sevBadge = `<span class="badge-pill green-pill">${sev}</span>`;
+
+            return `
+              <tr onclick="Navigation.navigateTo('live-logs')">
+                <td class="cell-mono-muted">${log.timestamp || 'Just now'}</td>
+                <td><strong>${log.parser_name || 'SYSTEM'}</strong></td>
+                <td><code>${log.source_ip || '-'}</code></td>
+                <td class="cell-truncate">${Utils.escapeHtml(log.message || log.raw_log || '')}</td>
+                <td>${sevBadge}</td>
+              </tr>
+            `;
+          }).join('');
+          return;
+        }
+      } catch (e) {
+        console.error('Error fetching recent events:', e);
+      }
+    }
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">No events processed</td></tr>';
   },
 
   bindGlobalEvents() {

@@ -264,7 +264,7 @@ const ParsersModule = {
       { name: 'WASM AWS', val: 96.4, maxVal: 160, color: '#9C1A30', tag: '96K/s', simdW: '128-bit WASM' },
       { name: 'C++ WinLog', val: 88.0, maxVal: 160, color: '#B4233C', tag: '88K/s', simdW: 'FastXML Tree' },
       { name: 'WASM Suricata', val: 105.3, maxVal: 160, color: '#C47A16', tag: '105K/s', simdW: '128-bit WASM' },
-      { name: 'AI Zero-Shot', val: 18.4, maxVal: 160, color: '#E09F3E', tag: '18K/s', simdW: 'ONNX INT8' }
+      { name: 'AI Zero-Shot', val: 0, maxVal: 160, color: '#E09F3E', tag: 'Local AI', simdW: 'ONNX INT8' }
     ];
 
     const barWidth = 36;
@@ -542,35 +542,62 @@ const ParsersModule = {
     ctx.fillText(`JIT CYCLE RATE: 23,840,000 ops/s • ZERO EGRESS`, cx, h - 8);
   },
 
-  // 3. Horizontal Comparative Latency & Memory Bar Graph
+  // 3. 2-Column Comparative Performance Matrix
   renderLatencyBars() {
     const container = document.getElementById('parsersLatencyContainer');
     if (!container) return;
 
     const items = [
-      { name: 'C++ Deterministic (RFC 5424)', latency: '0.038 ms', pct: 6, mem: '48 KB', color: '#25855A' },
-      { name: 'WASM CEF Parser (Palo Alto)', latency: '0.075 ms', pct: 12, mem: '96 KB', color: '#25855A' },
-      { name: 'C++ Nginx/Apache Parser', latency: '0.045 ms', pct: 8, mem: '64 KB', color: '#25855A' },
-      { name: 'WASM CloudTrail Parser (AWS)', latency: '0.110 ms', pct: 18, mem: '128 KB', color: '#25855A' },
-      { name: 'Windows EventLog XML Parser', latency: '0.088 ms', pct: 14, mem: '112 KB', color: '#25855A' },
-      { name: 'WASM Suricata EVE Parser', latency: '0.062 ms', pct: 10, mem: '80 KB', color: '#25855A' },
-      { name: 'Dynamic Schema Mapper', latency: '1.200 ms', pct: 88, mem: '1.8 MB', color: '#B4233C' }
+      { id: 'ENG-CPP-01', name: 'C++ RFC 5424 Syslog', cat: 'NATIVE C++', latency: '0.038 ms', speed: '26.3M ops/s', pct: 96, mem: '48 KB', color: '#25855A', icon: 'zap' },
+      { id: 'ENG-WASM-02', name: 'WASM CEF ArcSight Engine', cat: 'WASM JIT', latency: '0.075 ms', speed: '13.3M ops/s', pct: 84, mem: '96 KB', color: '#25855A', icon: 'cpu' },
+      { id: 'ENG-CPP-03', name: 'C++ Nginx/Apache Access', cat: 'NATIVE C++', latency: '0.045 ms', speed: '22.2M ops/s', pct: 92, mem: '64 KB', color: '#25855A', icon: 'terminal' },
+      { id: 'ENG-WASM-04', name: 'WASM AWS CloudTrail JSON', cat: 'WASM SIMD', latency: '0.110 ms', speed: '9.1M ops/s', pct: 72, mem: '128 KB', color: '#25855A', icon: 'cloud' },
+      { id: 'ENG-CPP-05', name: 'Windows EventLog FastXML', cat: 'NATIVE C++', latency: '0.088 ms', speed: '11.4M ops/s', pct: 80, mem: '112 KB', color: '#25855A', icon: 'server' },
+      { id: 'ENG-WASM-06', name: 'WASM Suricata EVE Stream', cat: 'WASM JIT', latency: '0.062 ms', speed: '16.1M ops/s', pct: 88, mem: '80 KB', color: '#25855A', icon: 'shield-alert' },
+      { id: 'ENG-AI-07', name: 'Dynamic AI Pattern Inferrer', cat: 'AI SYNTH', latency: '1.200 ms', speed: '833K ops/s', pct: 35, mem: '1.8 MB', color: '#B4233C', icon: 'sparkles' }
     ];
 
-    container.innerHTML = items.map(item => `
-      <div class="latency-bench-item" style="margin-bottom:12px;">
-        <div style="min-width: 170px;">
-          <span style="font-weight:800; color:var(--text-ink); display:block; font-size:0.74rem;">${item.name}</span>
-          <span style="font-size:0.65rem; color:var(--text-muted); font-family:var(--font-mono);">Static RAM: ${item.mem}</span>
-        </div>
-        <div class="latency-bench-bar-track" style="height:9px; background:var(--border-card);">
-          <div class="latency-bench-bar-fill" style="width: ${item.pct}%; background-color: ${item.color}; border-radius:4px; box-shadow: 0 0 8px ${item.color}44;"></div>
-        </div>
-        <div style="min-width: 65px; text-align:right;">
-          <span style="font-family:var(--font-mono); font-weight:800; color:${item.color}; font-size:0.78rem;">${item.latency}</span>
-        </div>
+    container.innerHTML = `
+      <div class="parser-bench-matrix">
+        ${items.map(item => `
+          <div class="parser-bench-card">
+            <div class="d-flex justify-between align-center mb-1">
+              <div class="d-flex align-center gap-2">
+                <div class="parser-bench-emblem" style="color:${item.color};">
+                  <i data-lucide="${item.icon}"></i>
+                </div>
+                <div>
+                  <strong class="parser-bench-title">${item.name}</strong>
+                  <span class="parser-bench-sub">${item.cat} &bull; Static Heap: ${item.mem}</span>
+                </div>
+              </div>
+              <div style="text-align:right;">
+                <span class="badge-pill ${item.color === '#B4233C' ? 'cherry' : 'green'}-pill" style="font-size:0.62rem;">${item.latency}</span>
+              </div>
+            </div>
+
+            <div class="parser-bench-meter-row mt-2">
+              <div class="d-flex justify-between align-center mb-1" style="font-size:0.64rem; font-family:var(--font-mono);">
+                <span style="color:var(--text-muted);">SPEED VELOCITY</span>
+                <strong style="color:${item.color};">${item.speed}</strong>
+              </div>
+              <div class="latency-bench-bar-track" style="height:7px; background:var(--border-card);">
+                <div class="latency-bench-bar-fill" style="width: ${item.pct}%; background-color: ${item.color}; border-radius:4px; box-shadow: 0 0 8px ${item.color}44;"></div>
+              </div>
+            </div>
+
+            <div class="d-flex justify-between align-center mt-2 pt-2" style="border-top:1px solid var(--border-subtle);">
+              <span style="font-size:0.62rem; font-family:var(--font-mono); color:var(--text-muted);">${item.id}</span>
+              <button class="btn-cream-action btn-sm" onclick="ParsersModule.testEngine('${item.id}')" style="font-size:0.64rem; padding:2px 8px; font-weight:700;">
+                <i data-lucide="play"></i> Test in Sandbox
+              </button>
+            </div>
+          </div>
+        `).join('')}
       </div>
-    `).join('');
+    `;
+
+    if (window.lucide) lucide.createIcons();
   },
 
   // 4. Interactive Sandbox Testing
@@ -683,11 +710,11 @@ const ParsersModule = {
             ${e.type} • ${e.version}
           </span>
 
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; font-family:var(--font-mono); font-size:0.68rem; margin-bottom:12px; background:var(--bg-app); padding:8px 10px; border-radius:4px; border:1px solid var(--border-subtle);">
-            <div><span style="color:var(--text-muted);">SPEED:</span> <strong style="color:var(--status-green);">${e.throughput}</strong></div>
-            <div><span style="color:var(--text-muted);">LATENCY:</span> <strong style="color:var(--cherry-primary);">${e.latency}</strong></div>
-            <div><span style="color:var(--text-muted);">MEMORY:</span> <strong style="color:var(--text-ink);">${e.memory}</strong></div>
-            <div><span style="color:var(--text-muted);">OCSF:</span> <strong style="color:var(--text-ink);">${e.ocsfClass.split(':')[0]}</strong></div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-family:var(--font-mono); font-size:0.68rem; margin-bottom:12px;">
+            <div style="background:var(--bg-app); padding:6px 8px; border-radius:4px; border:1px solid var(--border-card);"><span style="color:var(--text-muted); font-size:0.60rem; display:block; text-transform:uppercase; font-weight:700;">SPEED</span> <strong style="color:var(--status-green); font-size:0.75rem;">${e.throughput}</strong></div>
+            <div style="background:var(--bg-app); padding:6px 8px; border-radius:4px; border:1px solid var(--border-card);"><span style="color:var(--text-muted); font-size:0.60rem; display:block; text-transform:uppercase; font-weight:700;">LATENCY</span> <strong style="color:var(--cherry-primary); font-size:0.75rem;">${e.latency}</strong></div>
+            <div style="background:var(--bg-app); padding:6px 8px; border-radius:4px; border:1px solid var(--border-card);"><span style="color:var(--text-muted); font-size:0.60rem; display:block; text-transform:uppercase; font-weight:700;">MEMORY</span> <strong style="color:var(--text-ink); font-size:0.75rem;">${e.memory}</strong></div>
+            <div style="background:var(--bg-app); padding:6px 8px; border-radius:4px; border:1px solid var(--border-card);"><span style="color:var(--text-muted); font-size:0.60rem; display:block; text-transform:uppercase; font-weight:700;">OCSF</span> <strong style="color:var(--text-ink); font-size:0.75rem;">${e.ocsfClass.split(':')[0]}</strong></div>
           </div>
         </div>
 

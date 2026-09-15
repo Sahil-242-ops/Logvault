@@ -12,11 +12,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet" />
 
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Lucide Icons (Local) -->
+  <script src="js/lucide.min.js"></script>
 
   <!-- Master Stylesheet -->
   <link rel="stylesheet" href="styles.css" />
@@ -142,11 +142,15 @@
 
         <!-- Topbar Right Controls -->
         <div class="header-right-controls">
+          <button type="button" class="btn-cherry-primary" style="padding: 6px 14px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; border-radius: 4px;" onclick="Navigation.navigateTo('normalizer')">
+            <i data-lucide="upload-cloud" style="width: 15px; height: 15px;"></i> Upload Log File
+          </button>
+
           <!-- System Throughput Badge -->
           <div class="header-status-badge green">
             <span class="badge-dot green"></span>
             <div>
-              <span class="badge-text-primary">18.4K logs/s</span>
+              <span class="badge-text-primary" id="hdr-throughput">Measuring...</span>
               <span class="badge-text-sub">Pipeline Healthy</span>
             </div>
           </div>
@@ -228,9 +232,9 @@
               <div class="kpi-top-row">
                 <div>
                   <span class="kpi-label">Logs Processed</span>
-                  <div class="kpi-big-number">12.4M</div>
+                  <div class="kpi-big-number" id="kpi-logs-processed">0</div>
                   <div class="kpi-trend-caption">
-                    <i data-lucide="trending-up"></i> +12.8% to 12.4M
+                    <i data-lucide="trending-up"></i> Real-time local ingestion
                   </div>
                 </div>
                 <div class="kpi-icon-box">
@@ -247,9 +251,9 @@
               <div class="kpi-top-row">
                 <div>
                   <span class="kpi-label">Parsed &amp; Normalized</span>
-                  <div class="kpi-big-number">99.98%</div>
+                  <div class="kpi-big-number" id="kpi-norm-rate">100%</div>
                   <div class="kpi-trend-caption">
-                    <i data-lucide="check-circle-2"></i> +99.2% reliability
+                    <i data-lucide="check-circle-2"></i> Common Schema Standardized
                   </div>
                 </div>
                 <div class="kpi-icon-box">
@@ -266,9 +270,9 @@
               <div class="kpi-top-row">
                 <div>
                   <span class="kpi-label">Suspicious Events</span>
-                  <div class="kpi-big-number">8,421</div>
+                  <div class="kpi-big-number" id="kpi-suspicious-count">0</div>
                   <div class="kpi-trend-caption">
-                    <i data-lucide="eye"></i> +6.2% in 52,000 assets
+                    <i data-lucide="eye"></i> AI Threat Correlated
                   </div>
                 </div>
                 <div class="kpi-icon-box">
@@ -285,9 +289,9 @@
               <div class="kpi-top-row">
                 <div>
                   <span class="kpi-label">Critical Anomalies</span>
-                  <div class="kpi-big-number">23</div>
+                  <div class="kpi-big-number" id="kpi-anomalies-count">0</div>
                   <div class="kpi-trend-caption red-trend">
-                    <i data-lucide="arrow-up-right"></i> &uarr; 14% from previous 24h
+                    <i data-lucide="arrow-up-right"></i> Multi-layer AI Flagged
                   </div>
                 </div>
                 <div class="kpi-icon-box">
@@ -310,8 +314,8 @@
                   <p>Telemetry flow rate across active collector nodes</p>
                 </div>
                 <div class="d-flex align-center gap-2">
-                  <span class="badge-pill high-pill">Ingested 18.4k/s</span>
-                  <span class="badge-pill green-pill">Normalized 99.98%</span>
+                  <span class="badge-pill high-pill"><span class="badge-dot cherry" style="width:5px;height:5px;"></span>Ingestion Active</span>
+                  <span class="badge-pill green-pill"><span class="badge-dot green" style="width:5px;height:5px;"></span>Normalized 99.98%</span>
                 </div>
               </div>
               <div class="spline-chart-wrap">
@@ -319,65 +323,66 @@
               </div>
             </div>
 
-            <!-- Event Distribution Circular Donut Card (From Reference Image) -->
+            <!-- 5 Log Formats Distribution Donut Card -->
             <div class="surface-card">
               <div class="card-header-flex">
                 <div class="card-heading-group">
-                  <h3>Event Distribution</h3>
-                  <p>Total Telemetry: <strong style="color:var(--text-ink);">82.4K</strong></p>
+                  <h3>Log Format Distribution</h3>
+                  <p>Telemetry Breakdown across <strong style="color:var(--cherry-primary);">5 Enterprise
+                      Formats</strong></p>
                 </div>
               </div>
 
               <div class="event-dist-body-flex">
                 <!-- Circular Donut Canvas Container -->
                 <div class="donut-chart-container">
-                  <canvas id="eventDonutCanvas" width="150" height="150"></canvas>
+                  <canvas id="eventDonutCanvas" width="140" height="140"></canvas>
                   <div class="donut-center-text">
-                    <span class="donut-big-val">82.4K</span>
-                    <span class="donut-sub-label">Total Events</span>
+                    <span class="donut-big-val" id="donut-center-count">5</span>
+                    <span class="donut-sub-label">Log Formats</span>
                   </div>
                 </div>
 
-                <!-- Event Legend List -->
-                <div class="event-dist-legend-list">
-                  <div class="event-legend-row">
+                <!-- 5 Log Formats Legend List -->
+                <div class="event-dist-legend-list" id="format-dist-legend">
+                  <div class="event-legend-row" data-format="syslog">
                     <div class="legend-label-group">
-                      <span class="legend-color-dot" style="background-color: #B4233C;"></span>
-                      <span>Firewall</span>
+                      <span class="legend-color-dot" style="background-color: #8F1127;"></span>
+                      <span>Syslog RFC 5424</span>
                     </div>
-                    <strong>22%</strong>
+                    <strong id="legend-pct-syslog">28%</strong>
                   </div>
 
-                  <div class="event-legend-row">
+                  <div class="event-legend-row" data-format="nginx">
                     <div class="legend-label-group">
-                      <span class="legend-color-dot" style="background-color: #74152A;"></span>
-                      <span>OKTA Auth</span>
+                      <span class="legend-color-dot" style="background-color: #4A0B18;"></span>
+                      <span>Nginx / Apache Web</span>
                     </div>
-                    <strong>27%</strong>
+                    <strong id="legend-pct-nginx">24%</strong>
                   </div>
 
-                  <div class="event-legend-row">
+                  <div class="event-legend-row" data-format="json">
                     <div class="legend-label-group">
-                      <span class="legend-color-dot" style="background-color: #C47A16;"></span>
-                      <span>Suspicious</span>
+                      <span class="legend-color-dot" style="background-color: #924C00;"></span>
+                      <span>JSON / CloudTrail</span>
                     </div>
-                    <strong>21%</strong>
+                    <strong id="legend-pct-json">18%</strong>
                   </div>
 
-                  <div class="event-legend-row">
+                  <div class="event-legend-row" data-format="cef">
                     <div class="legend-label-group">
-                      <span class="legend-color-dot" style="background-color: #756568;"></span>
-                      <span>Endpoints</span>
+                      <span class="legend-color-dot" style="background-color: #6E1B3E;"></span>
+                      <span>ArcSight CEF</span>
                     </div>
-                    <strong>11%</strong>
+                    <strong id="legend-pct-cef">16%</strong>
                   </div>
 
-                  <div class="event-legend-row">
+                  <div class="event-legend-row" data-format="windows">
                     <div class="legend-label-group">
-                      <span class="legend-color-dot" style="background-color: #E8A0AA;"></span>
-                      <span>Cloud Audit</span>
+                      <span class="legend-color-dot" style="background-color: #3D3537;"></span>
+                      <span>Windows Security</span>
                     </div>
-                    <strong>6%</strong>
+                    <strong id="legend-pct-windows">14%</strong>
                   </div>
                 </div>
               </div>
@@ -507,16 +512,16 @@
                 <span>Stream Details</span>
                 <i data-lucide="layers" style="width:14px;"></i>
               </div>
-              <div style="font-size:0.75rem; line-height:1.45;">
+              <div style="font-size:0.75rem; line-height:1.6; margin-top:2px;">
                 <div style="color:var(--text-muted);">ACTIVE NODE: <strong
                     style="color:var(--text-ink);">NODE_WEST_03</strong></div>
                 <div style="color:var(--text-muted);">STREAM SOURCE: <strong style="color:var(--text-ink);">All
                     Collectors</strong></div>
                 <div style="color:var(--text-muted); margin-top:2px;">INGESTED: <strong
-                    style="color:var(--cherry-primary);">18.4K/s</strong></div>
+                    style="color:var(--cherry-primary);" id="stream-card-ingested">0 logs (Session)</strong></div>
               </div>
               <div
-                style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:0.68rem; color:var(--text-muted);">
+                style="display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:8px; font-size:0.68rem; color:var(--text-muted);">
                 <span>Cluster State</span>
                 <span class="badge-pill green-pill">Healthy (0.04ms)</span>
               </div>
@@ -542,7 +547,7 @@
                   <strong style="color:var(--cherry-primary);">Security</strong>
                 </div>
               </div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:0.68rem; color:var(--text-muted);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:6px; font-size:0.68rem; color:var(--text-muted);">
                 <span>Filter Rules</span>
                 <strong style="color:var(--text-ink);">3 Active</strong>
               </div>
@@ -569,18 +574,16 @@
             <div class="holo-panel-card" style="border-left:3px solid var(--status-red);">
               <div class="holo-panel-header">
                 <span>Correlated Alerts</span>
-                <span class="badge-pill crit-pill">3 Active</span>
+                <span class="badge-pill crit-pill" id="stream-correlated-alerts-badge">0 Active</span>
               </div>
               <div style="display:flex; align-items:baseline; gap:6px;">
                 <span
-                  style="font-family:var(--font-heading); font-size:1.6rem; font-weight:800; color:var(--text-ink);">112</span>
-                <span style="font-size:0.72rem; color:var(--cherry-primary); font-weight:700;"><i
-                    data-lucide="trending-up"></i> +5%</span>
+                  style="font-family:var(--font-heading); font-size:1.6rem; font-weight:800; color:var(--text-ink);" id="stream-correlated-alerts-count">0</span>
+                <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700;"><i
+                    data-lucide="activity"></i> Monitored</span>
               </div>
-              <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;">
-                <div>19.1112.12 &bull; (Source: FW)</div>
-                <div>192.128.1100 &bull; (Source: ADS)</div>
-                <div>192.16.6.00 &bull; (Source: KUBE)</div>
+              <div style="font-size:0.68rem; color:var(--text-muted); margin-top:auto; padding-top:4px;">
+                <div>FW Perimeter &bull; ADS Domain &bull; Kube</div>
               </div>
             </div>
           </div>
@@ -605,14 +608,14 @@
             <div class="live-spark-meter-card">
               <div class="d-flex justify-between align-center">
                 <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">Current Throughput</span>
-                <span class="badge-pill green-pill"><span class="pulse-dot"></span> 18.4K eps</span>
+                <span class="badge-pill green-pill" id="stream-live-eps-badge"><span class="pulse-dot"></span> <span id="stream-live-eps-val">0.0</span> EPS</span>
               </div>
               <div class="mt-2">
                 <div style="font-family:var(--font-heading); font-size:1.6rem; font-weight:800; color:var(--text-ink);">
-                  18,420 <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">events / sec</span></div>
+                  <span id="stream-processed-count">0</span> <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);" id="stream-processed-label">logs processed</span></div>
               </div>
-              <div style="margin-top:10px; width:100%; height:42px;">
-                <canvas id="liveSpeedSparkCanvas" width="220" height="42" style="width:100%; height:42px;"></canvas>
+              <div id="liveSpeedSparkContainer" style="margin-top:10px; width:100%; height:42px; overflow:hidden;">
+                <canvas id="liveSpeedSparkCanvas" width="220" height="42" style="width:100%; height:42px; display:block;"></canvas>
               </div>
             </div>
           </div>
@@ -683,10 +686,10 @@
             <div class="table-status-footer">
               <div>
                 Showing <strong id="stream-showing-count">10</strong> events &bull; Total Processed: <strong
-                  id="stream-total-count">1,284</strong>
+                  id="stream-total-count">0</strong>
               </div>
               <div>
-                Ingestion Buffer: <strong>18,420 logs/sec</strong> &bull; Latency: <strong>0.04ms</strong>
+                Ingestion Buffer: <strong id="stream-throughput">Measuring...</strong> &bull; Latency: <strong>0.04ms</strong>
               </div>
             </div>
           </div>
@@ -861,14 +864,138 @@
                 </div>
                 <textarea id="norm-custom-raw-input" class="clean-textarea" rows="3"
                   placeholder="Paste or type any raw log string here..."></textarea>
-                <button class="btn-cherry-primary btn-block mt-2" id="btn-run-normalize-custom">
-                  <i data-lucide="play"></i> Execute Normalization Pipeline
-                </button>
+                
+                <div class="file-upload-zone mt-2" style="border: 2px dashed var(--cherry-primary); border-radius: 6px; padding: 14px; text-align: center; background: var(--bg-surface); cursor: pointer;" onclick="document.getElementById('norm-file-upload').click()">
+                  <i data-lucide="upload-cloud" style="width: 24px; height: 24px; color: var(--cherry-primary); margin-bottom: 6px;"></i>
+                  <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-ink);">Upload Log File</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                    Supports .log, .txt, .json, .jsonl, .csv
+                  </div>
+                  <input type="file" id="norm-file-upload" accept=".log,.txt,.csv,.json,.jsonl" style="display: none;" onclick="event.stopPropagation();" />
+                  <div id="norm-file-name" style="font-size: 0.8rem; font-weight: 600; color: var(--cherry-primary); margin-top: 8px; display: none;"></div>
+                </div>
+
+                <div class="d-flex gap-2 mt-3">
+                  <button class="btn-cherry-primary flex-1" id="btn-run-normalize-custom">
+                    <i data-lucide="play"></i> Ingest &amp; Analyze Log
+                  </button>
+                  <button class="btn-cream-action" id="btn-run-upload" style="display: none; flex: 1;">
+                    <i data-lucide="upload"></i> Process Uploaded File
+                  </button>
+                </div>
               </div>
             </div>
 
             <!-- Right: Common Log Schema Output -->
             <div class="schema-output-card">
+              <!-- REAL LOG PIPELINE RESULT CARD (Redesigned SOC Dossier) -->
+              <div id="real-log-result-card" class="real-log-dossier-card" style="display: none;">
+                <!-- Header with Glassmorphism & Status Badges -->
+                <div class="dossier-header-bar">
+                  <div class="dossier-header-left">
+                    <div class="dossier-emblem-badge">
+                      <i data-lucide="shield-alert"></i>
+                    </div>
+                    <div>
+                      <div class="dossier-title-text">REAL LOG PIPELINE RESULT</div>
+                      <div class="dossier-sub-text">AIR-GAPPED DETERMINISTIC &amp; LOCAL AI INGESTION</div>
+                    </div>
+                  </div>
+                  <div class="dossier-header-right">
+                    <span id="res-ollama-badge" class="badge-pill green-pill">
+                      <span class="pulse-dot"></span> Ollama: llama3.2:1b
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Raw Ingested Log Console Box -->
+                <div class="dossier-raw-terminal">
+                  <div class="dossier-raw-header">
+                    <div class="dossier-term-dots">
+                      <span class="term-dot red"></span>
+                      <span class="term-dot yellow"></span>
+                      <span class="term-dot green"></span>
+                      <span class="dossier-term-title">RAW TELEMETRY INGESTION</span>
+                    </div>
+                    <button type="button" class="btn-micro-copy" id="btn-copy-raw-log" title="Copy Raw Log" onclick="Utils.copyText(document.getElementById('res-raw-log').innerText); Utils.showToast('Raw log copied');">
+                      <i data-lucide="copy" style="width:11px; height:11px;"></i> Copy
+                    </button>
+                  </div>
+                  <pre class="dossier-raw-body" id="res-raw-log">-</pre>
+                </div>
+
+                <!-- SOC Intelligence Attributes Grid -->
+                <div class="dossier-meta-grid">
+                  <!-- Format -->
+                  <div class="dossier-meta-tile">
+                    <span class="meta-tile-label"><i data-lucide="file-code-2" style="width:12px;height:12px;"></i> DETECTED FORMAT</span>
+                    <div class="meta-tile-val"><span id="res-detected-format" class="badge-pill gold-pill">-</span></div>
+                  </div>
+
+                  <!-- Parser -->
+                  <div class="dossier-meta-tile">
+                    <span class="meta-tile-label"><i data-lucide="cpu" style="width:12px;height:12px;"></i> PARSER</span>
+                    <div class="meta-tile-val font-mono" id="res-parser" style="font-weight:600; font-size:0.78rem;">-</div>
+                  </div>
+
+                  <!-- OCSF Class -->
+                  <div class="dossier-meta-tile">
+                    <span class="meta-tile-label"><i data-lucide="layers" style="width:12px;height:12px;"></i> OCSF CLASS</span>
+                    <div class="meta-tile-val" id="res-ocsf-class" style="font-weight:700; font-size:0.80rem;">-</div>
+                  </div>
+
+                  <!-- Event Type -->
+                  <div class="dossier-meta-tile">
+                    <span class="meta-tile-label"><i data-lucide="zap" style="width:12px;height:12px;"></i> EVENT TYPE</span>
+                    <div class="meta-tile-val font-mono" id="res-event-type" style="font-size:0.75rem; color:var(--text-ink);">-</div>
+                  </div>
+
+                  <!-- Severity -->
+                  <div class="dossier-meta-tile">
+                    <span class="meta-tile-label"><i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> SEVERITY</span>
+                    <div class="meta-tile-val"><span id="res-severity" class="badge-pill crit-pill">-</span></div>
+                  </div>
+
+                  <!-- Threat Score -->
+                  <div class="dossier-meta-tile">
+                    <span class="meta-tile-label"><i data-lucide="activity" style="width:12px;height:12px;"></i> THREAT SCORE</span>
+                    <div class="meta-tile-val"><span id="res-threat-score" class="dossier-threat-badge">-</span></div>
+                  </div>
+
+                  <!-- Ollama Model -->
+                  <div class="dossier-meta-tile">
+                    <span class="meta-tile-label"><i data-lucide="bot" style="width:12px;height:12px;"></i> OLLAMA MODEL</span>
+                    <div class="meta-tile-val font-mono" id="res-ai-model" style="font-size:0.76rem;">-</div>
+                  </div>
+
+                  <!-- MITRE Technique -->
+                  <div class="dossier-meta-tile">
+                    <span class="meta-tile-label"><i data-lucide="crosshair" style="width:12px;height:12px;"></i> MITRE TECHNIQUE</span>
+                    <div class="meta-tile-val"><span id="res-mitre" class="badge-pill high-pill">-</span></div>
+                  </div>
+
+                  <!-- PII Status -->
+                  <div class="dossier-meta-tile">
+                    <span class="meta-tile-label"><i data-lucide="shield-check" style="width:12px;height:12px;"></i> PII STATUS</span>
+                    <div class="meta-tile-val"><span id="res-pii-status" class="badge-pill green-pill">-</span></div>
+                  </div>
+                </div>
+
+                <!-- AI Threat & Semantic Reasoning Card -->
+                <div class="dossier-ai-card">
+                  <div class="dossier-ai-header">
+                    <div class="dossier-ai-title">
+                      <i data-lucide="brain" class="dossier-brain-icon"></i>
+                      <span>REAL LOCAL OLLAMA THREAT &amp; SEMANTIC ANALYSIS</span>
+                    </div>
+                    <span class="badge-pill cherry-pill-subtle">LOCAL OLLAMA INFERENCE</span>
+                  </div>
+                  <div class="dossier-ai-body" id="res-ai-analysis">
+                    Waiting for analysis...
+                  </div>
+                </div>
+              </div>
+
               <!-- OCSF 1.1 Compliance Strip -->
               <div class="ocsf-compliance-strip">
                 <div class="ocsf-badge-group">
@@ -1106,24 +1233,20 @@
               </div>
             </div>
 
-            <!-- Recommended Actions Bar -->
-            <div class="d-flex justify-between align-center mt-3 pt-3" style="border-top:1px solid var(--border-card);">
-              <div class="d-flex gap-2">
-                <button class="btn-cherry-primary" id="btn-contain-server">
-                  <i data-lucide="shield-ban"></i> Trigger Automated Containment
-                </button>
-                <button class="btn-outline-cherry" id="btn-block-source-ip">
-                  <i data-lucide="lock"></i> Block IP 192.168.1.45
-                </button>
-              </div>
-              <div class="d-flex gap-2">
-                <button class="btn-cream-action" id="btn-export-dossier">
-                  <i data-lucide="file-text"></i> Export Forensic Dossier JSON
-                </button>
-                <button class="btn-cream-action" onclick="Navigation.navigateTo('live-logs')">
-                  <i data-lucide="activity"></i> View Live Logs
-                </button>
-              </div>
+            <!-- Recommended Actions Bar (Single Line) -->
+            <div class="dossier-actions-single-row" style="display:flex; flex-direction:row; flex-wrap:nowrap; align-items:center; gap:8px; width:100%; overflow-x:auto; border-top:1px solid var(--border-card); padding-top:14px; margin-top:14px;">
+              <button class="btn-cherry-primary" id="btn-contain-server" style="white-space:nowrap; flex-shrink:0; font-size:0.78rem; padding:7px 12px; display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="shield-ban" style="width:14px; height:14px;"></i> Trigger Automated Containment
+              </button>
+              <button class="btn-outline-cherry" id="btn-block-source-ip" style="white-space:nowrap; flex-shrink:0; font-size:0.78rem; padding:7px 12px; display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="lock" style="width:14px; height:14px;"></i> Block IP 192.168.1.45
+              </button>
+              <button class="btn-cream-action" id="btn-export-dossier" style="white-space:nowrap; flex-shrink:0; font-size:0.78rem; padding:7px 12px; display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="file-text" style="width:14px; height:14px;"></i> Export Forensic Dossier JSON
+              </button>
+              <button class="btn-cream-action" onclick="Navigation.navigateTo('live-logs')" style="white-space:nowrap; flex-shrink:0; font-size:0.78rem; padding:7px 12px; display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="activity" style="width:14px; height:14px;"></i> View Live Logs
+              </button>
             </div>
           </div>
         </section>
@@ -1536,7 +1659,7 @@
                 <g transform="translate(675, 230)">
                   <circle r="18" fill="url(#cherryMapGlow)" class="beacon-pulse" />
                   <circle r="5" fill="#C47A16" stroke="#FFF8F0" stroke-width="1.8" />
-                  <text x="12" y="4" fill="var(--text-ink)" font-size="11" font-family="JetBrains Mono"
+                  <text x="14" y="4" text-anchor="start" fill="var(--text-ink)" font-size="11" font-family="JetBrains Mono, monospace"
                     font-weight="bold">Mumbai (10:14 UTC)</text>
                 </g>
 
@@ -1544,7 +1667,7 @@
                 <g transform="translate(495, 105)">
                   <circle r="20" fill="url(#cherryMapGlow)" class="beacon-pulse" />
                   <circle r="6" fill="#B4233C" stroke="#FFF8F0" stroke-width="1.8" />
-                  <text x="-140" y="-6" fill="var(--text-ink)" font-size="11" font-family="JetBrains Mono"
+                  <text x="0" y="-18" text-anchor="middle" fill="var(--text-ink)" font-size="11" font-family="JetBrains Mono, monospace"
                     font-weight="bold">Frankfurt (10:32 UTC)</text>
                 </g>
 
@@ -1552,7 +1675,7 @@
                 <g transform="translate(240, 135)">
                   <circle r="22" fill="url(#cherryMapGlow)" class="beacon-pulse" />
                   <circle r="6" fill="#74152A" stroke="#FFF8F0" stroke-width="1.8" />
-                  <text x="-145" y="16" fill="var(--text-ink)" font-size="11" font-family="JetBrains Mono"
+                  <text x="-16" y="4" text-anchor="end" fill="var(--text-ink)" font-size="11" font-family="JetBrains Mono, monospace"
                     font-weight="bold">New York (10:48 UTC)</text>
                 </g>
               </svg>
@@ -1704,53 +1827,57 @@
             </div>
           </div>
 
-          <!-- Top Row 3 Metric Cards (from Reference UI Design) -->
-          <div class="anom-centre-top-grid">
+          <!-- Top Row 3 Telemetry Cards -->
+          <div class="sources-telemetry-deck mb-3">
             <!-- Card 1: Throughput Spline -->
-            <div class="anom-rate-card">
-              <div class="anom-card-header-label">Ingestion Throughput (Last 60m)</div>
-              <div class="anom-rate-sub-flex">
-                <span>Current Rate: <strong style="color:var(--cherry-primary);">18.4K EPS</strong></span>
-                <span>Historical Avg: <strong>14.2K</strong></span>
+            <div class="sources-telemetry-card">
+              <div class="d-flex justify-between align-center mb-1">
+                <span class="kpi-label">Ingestion Throughput (Last 60m)</span>
+                <span class="badge-pill green-pill" style="font-size:0.6rem;"><span class="pulse-dot"></span> LIVE</span>
               </div>
-              <div style="width:100%; height:80px; position:relative; margin-top:8px;">
-                <canvas id="sourcesThroughputCanvas" width="320" height="80"
-                  style="width:100%; height:80px; display:block;"></canvas>
+              <div class="d-flex align-baseline gap-2 mb-1">
+                <span style="font-family:var(--font-heading); font-size:1.3rem; font-weight:800; color:var(--cherry-primary);">18.4K EPS</span>
+                <span style="font-size:0.70rem; color:var(--text-muted); font-family:var(--font-mono);">Avg: 14.2K</span>
+              </div>
+              <div style="width:100%; height:75px; position:relative; margin-top:4px;">
+                <canvas id="sourcesThroughputCanvas" width="320" height="75"
+                  style="width:100%; height:75px; display:block;"></canvas>
               </div>
             </div>
 
             <!-- Card 2: Protocol Donut -->
-            <div class="anom-donut-card">
-              <div class="anom-card-header-label">Protocol Ingestion Share</div>
+            <div class="sources-telemetry-card">
+              <div class="d-flex justify-between align-center mb-1">
+                <span class="kpi-label">Protocol Ingestion Share</span>
+                <span class="badge-pill cherry-pill" style="font-size:0.6rem;">4 FORMATS</span>
+              </div>
               <div style="display:flex; align-items:center; gap:14px; margin-top:4px;">
-                <div style="width:85px; height:85px; flex-shrink:0;">
-                  <canvas id="sourcesProtocolDonutCanvas" width="85" height="85"
-                    style="width:85px; height:85px;"></canvas>
+                <div style="width:75px; height:75px; flex-shrink:0;">
+                  <canvas id="sourcesProtocolDonutCanvas" width="75" height="75"
+                    style="width:75px; height:75px;"></canvas>
                 </div>
-                <div style="font-family:var(--font-mono); font-size:0.68rem; line-height:1.55;">
+                <div style="font-family:var(--font-mono); font-size:0.66rem; line-height:1.5;">
                   <div><span style="color:#74152A; font-weight:800;">●</span> SYSLOG RFC 5424 (38%)</div>
-                  <div><span style="color:#9C1A30; font-weight:800;">●</span> CEF / ARCSIGHT (26%)</div>
-                  <div><span style="color:#C47A16; font-weight:800;">●</span> AWS CLOUDTRAIL (18%)</div>
-                  <div><span style="color:#E09F3E; font-weight:800;">●</span> WINDOWS EVENT (12%)</div>
+                  <div><span style="color:#9C1A30; font-weight:800;">●</span> CEF ArcSight (26%)</div>
+                  <div><span style="color:#C47A16; font-weight:800;">●</span> AWS CloudTrail (18%)</div>
+                  <div><span style="color:#E09F3E; font-weight:800;">●</span> WinEvent XML (12%)</div>
                 </div>
               </div>
             </div>
 
             <!-- Card 3: EPS Bars by Source -->
-            <div class="anom-score-card">
-              <div class="d-flex justify-between align-center">
-                <div class="anom-card-header-label">EPS Throughput by Source</div>
-                <span style="font-size:0.72rem; color:var(--text-muted);">Max: 702 EPS</span>
+            <div class="sources-telemetry-card">
+              <div class="d-flex justify-between align-center mb-1">
+                <span class="kpi-label">EPS Throughput by Source</span>
+                <span style="font-size:0.68rem; color:var(--text-muted); font-family:var(--font-mono);">Max: 702 EPS</span>
               </div>
-              <div style="display:flex; align-items:baseline; gap:6px;">
-                <span
-                  style="font-family:var(--font-heading); font-size:1.4rem; font-weight:800; color:var(--text-ink);">702</span>
-                <span style="font-size:0.74rem; color:var(--cherry-primary); font-weight:700;"><i
-                    data-lucide="trending-up"></i> Peak FW</span>
+              <div class="d-flex align-baseline gap-2 mb-1">
+                <span style="font-family:var(--font-heading); font-size:1.3rem; font-weight:800; color:var(--text-ink);">702</span>
+                <span style="font-size:0.72rem; color:var(--cherry-primary); font-weight:700;"><i data-lucide="trending-up"></i> Peak FW</span>
               </div>
-              <div style="width:100%; height:65px; position:relative; margin-top:4px;">
-                <canvas id="sourcesEpsBarsCanvas" width="300" height="65"
-                  style="width:100%; height:65px; display:block;"></canvas>
+              <div style="width:100%; height:75px; position:relative; margin-top:4px;">
+                <canvas id="sourcesEpsBarsCanvas" width="300" height="75"
+                  style="width:100%; height:75px; display:block;"></canvas>
               </div>
             </div>
           </div>
@@ -1851,7 +1978,7 @@
                   <div style="font-size:1.6rem; color:var(--cherry-primary);"><i data-lucide="layers"></i></div>
                   <div class="flowchart-node-title" style="justify-content:center; margin-top:8px;">FIFO Memory Queue
                   </div>
-                  <div class="flowchart-node-sub" style="margin-top:4px;">18,420 logs/sec throughput</div>
+                  <div class="flowchart-node-sub" style="margin-top:4px;">Measuring...</div>
                   <div class="flowchart-node-sub" style="color:var(--status-green); font-weight:700; margin-top:6px;">
                     0.00% Packet Loss</div>
                   <div
@@ -2057,7 +2184,7 @@
             <div class="kpi-card">
               <div class="kpi-icon-wrap"><i data-lucide="zap"></i></div>
               <span class="kpi-label">Peak Compilation Throughput</span>
-              <span class="kpi-value">142.5K <small style="font-size:0.75rem;">logs/s</small></span>
+              <span class="kpi-value" id="kpi-total-throughput">Measuring...</span>
               <span class="kpi-trend positive"><i data-lucide="trending-up"></i> +14.2% SIMD Acceleration</span>
             </div>
 
@@ -2249,7 +2376,7 @@
                 </div>
                 <div class="d-flex gap-2">
                   <span class="badge-pill green-pill" id="sandbox-speed-val">0.038 ms</span>
-                  <span class="badge-pill cherry-pill" id="sandbox-ops-val">26.3M logs/s</span>
+                  <span class="badge-pill cherry-pill" id="sandbox-ops-val">Measuring...</span>
                 </div>
               </div>
 
@@ -2351,33 +2478,67 @@
             </div>
           </div>
 
-          <!-- 60 FPS Volumetric Flow Mesh Canvas -->
-          <div class="isometric-topology-wrapper mb-3">
-            <div class="topology-hud-controls">
+          <!-- Zone Health Telemetry Strip -->
+          <div class="topology-zones-grid">
+            <div class="topology-zone-card">
+              <div>
+                <span class="badge-pill cherry-pill" style="font-size:0.58rem;">CORE-01</span>
+                <strong style="display:block; font-size:0.78rem; color:var(--text-ink); margin-top:2px;">Singularity Vault</strong>
+              </div>
+              <span class="badge-pill green-pill">SECURE</span>
+            </div>
+            <div class="topology-zone-card">
+              <div>
+                <span class="badge-pill warn-pill" style="font-size:0.58rem;">DMZ-02</span>
+                <strong style="display:block; font-size:0.78rem; color:var(--text-ink); margin-top:2px;">Gateway Firewalls</strong>
+              </div>
+              <span class="badge-pill green-pill">702 EPS</span>
+            </div>
+            <div class="topology-zone-card">
+              <div>
+                <span class="badge-pill green-pill" style="font-size:0.58rem;">LAN-03</span>
+                <strong style="display:block; font-size:0.78rem; color:var(--text-ink); margin-top:2px;">Internal Endpoints</strong>
+              </div>
+              <span class="badge-pill green-pill">304 EPS</span>
+            </div>
+            <div class="topology-zone-card">
+              <div>
+                <span class="badge-pill blue-pill" style="font-size:0.58rem;">CLOUD-04</span>
+                <strong style="display:block; font-size:0.78rem; color:var(--text-ink); margin-top:2px;">AWS CloudTrail</strong>
+              </div>
+              <span class="badge-pill green-pill">140 EPS</span>
+            </div>
+          </div>
+
+          <!-- 60 FPS Volumetric Flow Mesh Canvas Card -->
+          <div class="topology-mesh-card mb-3">
+            <div class="topology-hud-bar">
               <div class="d-flex align-center gap-2">
                 <span class="badge-pill green-pill"><span class="pulse-dot"></span> 60 FPS RADAR MESH</span>
                 <button class="btn-cream-action btn-sm topology-view-btn active" data-view="orbital"
-                  style="font-size:0.68rem; padding:3px 8px;">
+                  style="font-size:0.68rem; padding:4px 10px; font-weight:700;">
                   <i data-lucide="radio"></i> Orbital Radar
                 </button>
                 <button class="btn-cream-action btn-sm topology-view-btn" data-view="layered"
-                  style="font-size:0.68rem; padding:3px 8px;">
+                  style="font-size:0.68rem; padding:4px 10px; font-weight:700;">
                   <i data-lucide="git-merge"></i> Layered Tree
                 </button>
               </div>
 
               <div class="d-flex align-center gap-2">
                 <button class="btn-cherry-primary btn-sm" id="btn-topology-packet-burst"
-                  style="font-size:0.68rem; padding:3px 10px;">
+                  style="font-size:0.68rem; padding:4px 12px; font-weight:700;">
                   <i data-lucide="zap"></i> Trigger Packet Burst
                 </button>
                 <button class="btn-cream-action btn-sm" id="btn-topology-reset-isolation"
-                  style="font-size:0.68rem; padding:3px 10px;">
+                  style="font-size:0.68rem; padding:4px 12px; font-weight:700;">
                   <i data-lucide="shield-check"></i> Reset Shields
                 </button>
               </div>
             </div>
-            <canvas id="networkTopologyFlowCanvas" width="1000" height="520"></canvas>
+            <div class="isometric-topology-wrapper">
+              <canvas id="networkTopologyFlowCanvas" width="1000" height="500"></canvas>
+            </div>
           </div>
 
           <!-- Subnet Bandwidth Saturation Bar Graph Deck -->
@@ -2480,207 +2641,210 @@
             </div>
           </div>
 
-          <!-- Operator Profile & SOC Credentials Editor Card -->
-          <div class="operator-profile-card mb-3">
-            <div class="d-flex justify-between align-center mb-3">
-              <div>
-                <h3 class="parsers-benchmark-title">
-                  <i data-lucide="user-check" style="color:var(--cherry-primary);"></i>
-                  Operator Identity &amp; SOC Security Clearance
-                </h3>
-                <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Customize your operator
-                  call-sign, designation, and air-gapped forensic authority</p>
-              </div>
-              <span class="badge-pill green-pill"><span class="pulse-dot"></span> IDENTITY VERIFIED</span>
-            </div>
-
-            <div class="operator-profile-layout">
-              <!-- Avatar Preview -->
-              <div class="operator-avatar-showcase">
-                <div class="operator-avatar-large" id="operator-large-avatar">AA</div>
-                <strong id="operator-preview-name"
-                  style="font-size:0.85rem; color:var(--text-ink); margin-bottom:2px;">Agent Amrita</strong>
-                <span id="operator-preview-role"
-                  style="font-size:0.68rem; color:var(--text-muted); font-family:var(--font-mono);">Tier-3 SOC
-                  Lead</span>
-              </div>
-
-              <!-- Form Inputs -->
-              <div>
-                <div class="operator-form-grid mb-3">
-                  <div class="operator-input-group">
-                    <label>Operator Full Name</label>
-                    <input type="text" id="operator-input-name" placeholder="Enter operator name..."
-                      value="Agent Amrita" />
-                  </div>
-
-                  <div class="operator-input-group">
-                    <label>Call-Sign / Badge ID</label>
-                    <input type="text" id="operator-input-callsign" placeholder="e.g. SOC-OP-9042"
-                      value="SOC-OP-9042" />
-                  </div>
-
-                  <div class="operator-input-group">
-                    <label>Designation / SOC Role</label>
-                    <input type="text" id="operator-input-role" placeholder="e.g. Lead SOC Analyst"
-                      value="Tier-3 SOC Lead" />
-                  </div>
-
-                  <div class="operator-input-group">
-                    <label>Security Clearance Tier</label>
-                    <select id="operator-select-tier">
-                      <option value="Tier-3 Senior Lead">Tier-3 Senior Incident Commander</option>
-                      <option value="Tier-2 Threat Hunter">Tier-2 Threat Hunter &amp; Forensics</option>
-                      <option value="Tier-1 Triage Analyst">Tier-1 Ingestion Triage Analyst</option>
-                      <option value="CISO Strategic Director">CISO Strategic Operations Director</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="d-flex justify-between align-center">
-                  <div class="operator-input-group" style="flex:1; margin-right:14px;">
-                    <label>Organization / Defense Cell</label>
-                    <input type="text" id="operator-input-org" placeholder="e.g. Cyber Defense Command"
-                      value="Cyber Defense Operations Command" />
-                  </div>
-                  <button class="btn-cherry-primary" id="btn-save-operator-profile"
-                    style="margin-top:16px; padding:9px 18px; font-weight:700;">
-                    <i data-lucide="save"></i> Save Operator Profile
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Dual Storage & Memory Bar Graphs Deck -->
-          <div class="parsers-benchmarks-deck mb-3">
-            <!-- Storage Breakdown Bar Graph -->
-            <div class="parsers-benchmark-card">
-              <div class="parsers-benchmark-header">
-                <div>
-                  <h3 class="parsers-benchmark-title">
-                    <i data-lucide="pie-chart" style="color:var(--cherry-primary);"></i>
-                    Local IndexedDB / SQLite Table Storage
-                  </h3>
-                  <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Allocation by raw log
-                    telemetry, normalized OCSF, and vector embeddings</p>
-                </div>
-                <span class="badge-pill green-pill" style="font-size:0.6rem;">INDEXEDDB</span>
-              </div>
-              <div id="settingsStorageBreakdownContainer"
-                style="display:flex; flex-direction:column; justify-content:center; flex:1;">
-                <!-- Populated dynamically by SettingsModule.renderStorageBars() -->
-              </div>
-            </div>
-
-            <!-- In-Browser RAM Memory Allocation Bar Graph -->
-            <div class="parsers-benchmark-card">
-              <div class="parsers-benchmark-header">
-                <div>
-                  <h3 class="parsers-benchmark-title">
-                    <i data-lucide="cpu" style="color:var(--cherry-primary);"></i>
-                    Runtime Heap &amp; Tensor Cache
-                  </h3>
-                  <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">WASM memory buffers, ONNX
-                    runtime tensor weights, and queue queues</p>
-                </div>
-                <span class="badge-pill cherry-pill" style="font-size:0.6rem;">WASM HEAP</span>
-              </div>
-              <div id="settingsMemoryContainer"
-                style="display:flex; flex-direction:column; justify-content:center; flex:1;">
-                <!-- Populated dynamically by SettingsModule.renderMemoryBars() -->
-              </div>
-            </div>
-          </div>
-
-          <!-- Security Switches & Air-Gapped Controls Deck -->
-          <div class="parsers-sandbox-deck mb-3">
-            <!-- Air-Gapped Isolation Security Switches -->
-            <div class="parsers-sandbox-card">
-              <h3 class="parsers-benchmark-title mb-2">
-                <i data-lucide="shield-alert" style="color:var(--cherry-primary);"></i>
-                Air-Gapped Security Enforcement
-              </h3>
-              <p style="font-size:0.72rem; color:var(--text-muted); margin-bottom:14px;">Hardened system policies
-                guaranteeing absolute zero-egress compliance</p>
-
-              <div style="display:flex; flex-direction:column; gap:12px;">
-                <div class="d-flex justify-between align-center"
-                  style="padding:10px 12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
+          <!-- Executive 2-Column Settings Grid -->
+          <div class="settings-executive-grid">
+            <!-- Left Column: Identity & Security Hardening -->
+            <div class="d-flex flex-column gap-3">
+              <!-- Operator Profile Card -->
+              <div class="operator-profile-card">
+                <div class="d-flex justify-between align-center mb-3">
                   <div>
-                    <strong style="font-size:0.78rem; color:var(--text-ink); display:block;">Strict Air-Gapped Network
-                      Lock</strong>
-                    <span style="font-size:0.68rem; color:var(--text-muted);">Enforce zero outbound fetch, WebSocket,
-                      and telemetry calls</span>
+                    <h3 class="parsers-benchmark-title">
+                      <i data-lucide="user-check" style="color:var(--cherry-primary);"></i>
+                      Operator Identity &amp; Clearance
+                    </h3>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Air-gapped forensic identity &amp; clearance credentials</p>
+                  </div>
+                  <span class="badge-pill green-pill"><span class="pulse-dot"></span> VERIFIED</span>
+                </div>
+
+                <div class="operator-profile-layout">
+                  <!-- Avatar Preview -->
+                  <div class="operator-avatar-showcase">
+                    <div class="operator-avatar-large" id="operator-large-avatar">AA</div>
+                    <strong id="operator-preview-name" style="font-size:0.85rem; color:var(--text-ink); margin-bottom:2px;">Agent Amrita</strong>
+                    <span id="operator-preview-role" style="font-size:0.66rem; color:var(--text-muted); font-family:var(--font-mono);">Tier-3 SOC Lead</span>
+                  </div>
+
+                  <!-- Form Inputs -->
+                  <div>
+                    <div class="operator-form-grid mb-3">
+                      <div class="operator-input-group">
+                        <label>Operator Name</label>
+                        <input type="text" id="operator-input-name" placeholder="Enter operator name..." value="Agent Amrita" />
+                      </div>
+
+                      <div class="operator-input-group">
+                        <label>Call-Sign / Badge</label>
+                        <input type="text" id="operator-input-callsign" placeholder="e.g. SOC-OP-9042" value="SOC-OP-9042" />
+                      </div>
+
+                      <div class="operator-input-group">
+                        <label>SOC Role</label>
+                        <input type="text" id="operator-input-role" placeholder="e.g. Lead SOC Analyst" value="Tier-3 SOC Lead" />
+                      </div>
+
+                      <div class="operator-input-group">
+                        <label>Clearance Tier</label>
+                        <select id="operator-select-tier">
+                          <option value="Tier-3 Senior Lead">Tier-3 Senior Incident Commander</option>
+                          <option value="Tier-2 Threat Hunter">Tier-2 Threat Hunter &amp; Forensics</option>
+                          <option value="Tier-1 Triage Analyst">Tier-1 Ingestion Triage Analyst</option>
+                          <option value="CISO Strategic Director">CISO Strategic Operations Director</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="d-flex justify-between align-center">
+                      <div class="operator-input-group" style="flex:1; margin-right:12px;">
+                        <label>Organization / Defense Cell</label>
+                        <input type="text" id="operator-input-org" placeholder="e.g. Cyber Defense Command" value="Cyber Defense Operations Command" />
+                      </div>
+                      <button class="btn-cherry-primary" id="btn-save-operator-profile" style="margin-top:14px; padding:8px 16px; font-weight:700;">
+                        <i data-lucide="save"></i> Save Profile
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Air-Gapped Security Enforcement Card -->
+              <div class="settings-card">
+                <div class="d-flex justify-between align-center mb-2">
+                  <div>
+                    <h3 class="parsers-benchmark-title">
+                      <i data-lucide="shield-alert" style="color:var(--cherry-primary);"></i>
+                      Air-Gapped Security Policies
+                    </h3>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Hardened system policies guaranteeing absolute zero-egress compliance</p>
+                  </div>
+                  <span class="badge-pill green-pill">AIR-GAP ACTIVE</span>
+                </div>
+
+                <div class="settings-policy-item">
+                  <div>
+                    <strong style="font-size:0.78rem; color:var(--text-ink); display:block;">Strict Air-Gapped Network Lock</strong>
+                    <span style="font-size:0.68rem; color:var(--text-muted);">Enforce zero outbound fetch, WebSocket, and telemetry calls</span>
                   </div>
                   <span class="badge-pill green-pill">ENFORCED</span>
                 </div>
 
-                <div class="d-flex justify-between align-center"
-                  style="padding:10px 12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
+                <div class="settings-policy-item">
                   <div>
-                    <strong style="font-size:0.78rem; color:var(--text-ink); display:block;">Zero-Copy WASM Heap
-                      Isolation</strong>
-                    <span style="font-size:0.68rem; color:var(--text-muted);">Sandboxed memory pointers to prevent
-                      buffer overruns</span>
+                    <strong style="font-size:0.78rem; color:var(--text-ink); display:block;">Zero-Copy WASM Heap Isolation</strong>
+                    <span style="font-size:0.68rem; color:var(--text-muted);">Sandboxed memory pointers to prevent buffer overruns</span>
                   </div>
                   <span class="badge-pill green-pill">ACTIVE</span>
                 </div>
 
-                <div class="d-flex justify-between align-center"
-                  style="padding:10px 12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
+                <div class="settings-policy-item">
                   <div>
-                    <strong style="font-size:0.78rem; color:var(--text-ink); display:block;">Local ONNX AI Model
-                      In-Browser Cache</strong>
-                    <span style="font-size:0.68rem; color:var(--text-muted);">Deterministic zero-shot schema inference
-                      without cloud APIs</span>
+                    <strong style="font-size:0.78rem; color:var(--text-ink); display:block;">Local ONNX AI Model In-Browser Cache</strong>
+                    <span style="font-size:0.68rem; color:var(--text-muted);">Deterministic zero-shot schema inference without cloud APIs</span>
                   </div>
                   <span class="badge-pill green-pill">LOADED</span>
                 </div>
 
-                <div
-                  style="padding:10px 12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
-                  <div class="d-flex justify-between align-center mb-1">
-                    <strong style="font-size:0.78rem; color:var(--text-ink);">Rolling Retention Window Pruning</strong>
-                    <span id="settings-retention-val"
-                      style="font-family:var(--font-mono); font-size:0.72rem; font-weight:800; color:var(--cherry-primary);">90
-                      Days</span>
+                <div class="settings-policy-item">
+                  <div>
+                    <strong style="font-size:0.78rem; color:var(--text-ink); display:block;">FIPS 140-3 Cryptographic Integrity Chain</strong>
+                    <span style="font-size:0.68rem; color:var(--text-muted);">SHA-256 Merkle root hashing of all ingested log batches</span>
                   </div>
-                  <input type="range" id="settings-retention-slider" min="7" max="180" value="90"
-                    style="width:100%; accent-color:var(--cherry-primary);" />
+                  <span class="badge-pill green-pill">VERIFIED</span>
+                </div>
+
+                <div class="settings-policy-item" style="flex-direction:column; align-items:stretch; gap:6px;">
+                  <div class="d-flex justify-between align-center">
+                    <strong style="font-size:0.78rem; color:var(--text-ink);">Rolling Retention Window Pruning</strong>
+                    <span id="settings-retention-val" style="font-family:var(--font-mono); font-size:0.72rem; font-weight:800; color:var(--cherry-primary);">90 Days</span>
+                  </div>
+                  <input type="range" id="settings-retention-slider" min="7" max="180" value="90" style="width:100%; accent-color:var(--cherry-primary);" />
                 </div>
               </div>
             </div>
 
-            <!-- Forensic Evidence Archive & Database Operations -->
-            <div class="parsers-sandbox-card">
-              <h3 class="parsers-benchmark-title mb-2">
-                <i data-lucide="archive" style="color:var(--cherry-primary);"></i>
-                Forensic Operations &amp; Database Maintenance
-              </h3>
-              <p style="font-size:0.72rem; color:var(--text-muted); margin-bottom:14px;">Cryptographically sealed export
-                and local storage defragmentation</p>
+            <!-- Right Column: Storage Architecture & Forensic Operations -->
+            <div class="d-flex flex-column gap-3">
+              <!-- Storage Architecture Breakdown Card -->
+              <div class="settings-card">
+                <div class="d-flex justify-between align-center mb-2">
+                  <div>
+                    <h3 class="parsers-benchmark-title">
+                      <i data-lucide="database" style="color:var(--cherry-primary);"></i>
+                      Local Storage &amp; Runtime Heap Breakdown
+                    </h3>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Allocation by raw log telemetry, normalized OCSF, and vector embeddings</p>
+                  </div>
+                  <span class="badge-pill green-pill" style="font-size:0.6rem;">INDEXEDDB</span>
+                </div>
+                <div id="settingsStorageBreakdownContainer" style="display:flex; flex-direction:column; justify-content:center; flex:1;">
+                  <!-- Populated dynamically by SettingsModule.renderStorageBars() -->
+                </div>
+                
+                <div class="d-flex justify-between align-center mt-3 pt-2" style="border-top:1px solid var(--border-subtle);">
+                  <span style="font-family:var(--font-mono); font-size:0.68rem; font-weight:700; color:var(--text-muted);">RUNTIME WASM HEAP POOL:</span>
+                  <span class="badge-pill cherry-pill" style="font-size:0.58rem;">512 MB QUOTA</span>
+                </div>
+                <div id="settingsMemoryContainer" style="display:flex; flex-direction:column; justify-content:center; margin-top:8px;">
+                  <!-- Populated dynamically by SettingsModule.renderMemoryBars() -->
+                </div>
+              </div>
 
-              <div style="display:flex; flex-direction:column; gap:10px;">
-                <button class="btn-cherry-primary" id="btn-export-forensic-bundle"
-                  style="justify-content:center; padding:10px 16px;">
-                  <i data-lucide="download"></i> Export Encrypted Forensic Bundle (.lvault)
-                </button>
+              <!-- Forensic Operations & Maintenance Card -->
+              <div class="settings-card">
+                <div class="d-flex justify-between align-center mb-2">
+                  <div>
+                    <h3 class="parsers-benchmark-title">
+                      <i data-lucide="archive" style="color:var(--cherry-primary);"></i>
+                      Forensic Maintenance Operations
+                    </h3>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Cryptographically sealed export and local storage maintenance</p>
+                  </div>
+                  <span class="badge-pill green-pill">MAINTENANCE</span>
+                </div>
 
-                <button class="btn-cream-action" id="btn-download-ocsf-defs"
-                  style="justify-content:center; padding:10px 16px;">
-                  <i data-lucide="file-text"></i> Download OCSF v1.1 Schema Definitions
-                </button>
+                <div class="d-flex flex-column gap-2 mt-2">
+                  <div class="settings-op-btn-card" id="btn-export-forensic-bundle">
+                    <div>
+                      <strong style="font-size:0.78rem; color:var(--text-ink); display:block;"><i data-lucide="download" style="vertical-align:middle; margin-right:4px;"></i> Export Encrypted Forensic Bundle (.lvault)</strong>
+                      <span style="font-size:0.66rem; color:var(--text-muted);">AES-256 encrypted package with SHA-256 Merkle chain verification</span>
+                    </div>
+                    <span class="badge-pill cherry-pill" style="font-size:0.6rem;">EXPORT</span>
+                  </div>
 
-                <button class="btn-cream-action" id="btn-vacuum-database"
-                  style="justify-content:center; padding:10px 16px;">
-                  <i data-lucide="zap"></i> Vacuum &amp; Re-Index SQLite Tables
-                </button>
+                  <div class="settings-op-btn-card" id="btn-download-ocsf-defs">
+                    <div>
+                      <strong style="font-size:0.78rem; color:var(--text-ink); display:block;"><i data-lucide="file-text" style="vertical-align:middle; margin-right:4px;"></i> Download OCSF v1.1 Schema Definitions</strong>
+                      <span style="font-size:0.66rem; color:var(--text-muted);">Standardized JSON schema matrices for Class 3002, 4001, 2001</span>
+                    </div>
+                    <span class="badge-pill green-pill" style="font-size:0.6rem;">DOWNLOAD</span>
+                  </div>
 
-                <button class="btn-cream-action" id="btn-purge-buffers"
-                  style="justify-content:center; padding:10px 16px; color:var(--status-amber);">
-                  <i data-lucide="trash-2"></i> Flush Transient Ring Memory Queues
-                </button>
+                  <div class="settings-op-btn-card" id="btn-vacuum-database">
+                    <div>
+                      <strong style="font-size:0.78rem; color:var(--text-ink); display:block;"><i data-lucide="zap" style="vertical-align:middle; margin-right:4px;"></i> Vacuum &amp; Re-Index SQLite Tables</strong>
+                      <span style="font-size:0.66rem; color:var(--text-muted);">Defragment B-Tree indexes and reclaim unallocated space</span>
+                    </div>
+                    <span class="badge-pill green-pill" style="font-size:0.6rem;">OPTIMIZE</span>
+                  </div>
+
+                  <div class="settings-op-btn-card" id="btn-purge-buffers">
+                    <div>
+                      <strong style="font-size:0.78rem; color:var(--status-amber); display:block;"><i data-lucide="trash-2" style="vertical-align:middle; margin-right:4px;"></i> Flush Transient Ring Memory Queues</strong>
+                      <span style="font-size:0.66rem; color:var(--text-muted);">Clear volatile FIFO queues without touching historical storage</span>
+                    </div>
+                    <span class="badge-pill gold-pill" style="font-size:0.6rem;">FLUSH</span>
+                  </div>
+                </div>
+
+                <!-- Cryptographic Audit Seal -->
+                <div class="settings-audit-seal-card">
+                  <div class="d-flex justify-between align-center">
+                    <span style="font-family:var(--font-mono); font-size:0.66rem; font-weight:800; color:var(--text-ink);"><i data-lucide="shield-check" style="vertical-align:middle; margin-right:4px; color:var(--status-green);"></i> AIR-GAP CRYPTOGRAPHIC MERKLE ROOT</span>
+                    <span class="badge-pill green-pill" style="font-size:0.56rem;">FIPS 140-3</span>
+                  </div>
+                  <code class="settings-audit-seal-hash">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code>
+                </div>
               </div>
             </div>
           </div>
@@ -2708,6 +2872,25 @@
         </div>
       </div>
 
+      <!-- Quick Clearance Preset Switcher -->
+      <div class="login-presets-wrap">
+        <span class="login-presets-label">QUICK OPERATOR CLEARANCE:</span>
+        <div class="login-presets-grid">
+          <button type="button" class="login-preset-chip active" data-preset="amrita">
+            <i data-lucide="crown"></i> Tier-3 Lead
+          </button>
+          <button type="button" class="login-preset-chip" data-preset="vikram">
+            <i data-lucide="search"></i> Threat Hunter
+          </button>
+          <button type="button" class="login-preset-chip" data-preset="rajesh">
+            <i data-lucide="shield-alert"></i> Commander
+          </button>
+          <button type="button" class="login-preset-chip" data-preset="sneha">
+            <i data-lucide="activity"></i> Triage Analyst
+          </button>
+        </div>
+      </div>
+
       <form class="login-card-body" id="logvault-login-form">
         <div class="login-input-group">
           <label for="login-operator-email">OPERATOR IDENTITY</label>
@@ -2724,6 +2907,7 @@
             <i data-lucide="lock" class="login-field-icon"></i>
             <input type="password" id="login-operator-pwd" required value="CyberSecurity2026!"
               placeholder="••••••••••••" autocomplete="current-password" />
+            <i data-lucide="eye" class="login-field-icon-right" id="login-toggle-pwd" title="Toggle visibility"></i>
           </div>
         </div>
 
@@ -2757,7 +2941,7 @@
         </button>
 
         <div class="login-demo-divider">
-          <span>OR QUICK ACCESS FOR EVALUATION</span>
+          <span>OR INSTANT EVALUATION ACCESS</span>
         </div>
 
         <button type="button" class="btn-login-demo" id="btn-instant-demo-login">
@@ -2771,6 +2955,8 @@
           <span><i data-lucide="lock"></i> Zero-Trust RBAC</span>
           <span>&bull;</span>
           <span><i data-lucide="cpu"></i> Local WASM Engine</span>
+          <span>&bull;</span>
+          <span><i data-lucide="shield"></i> FIPS 140-3</span>
         </div>
       </div>
     </div>

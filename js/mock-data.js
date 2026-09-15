@@ -221,27 +221,7 @@ const mockNormalizerPresets = {
   }
 };
 
-const initialLiveLogs = [
-  { id: 101, time: '10:31:09', source: 'FIREWALL', action: 'BLOCKED', ip: '192.168.1.20', user: 'system', sev: 'HIGH', msg: 'Port scan probe detected on perimeter interface eth0 (ports 22, 80, 443, 8080)' },
-  { id: 102, time: '10:31:08', source: 'SSH', action: 'LOGIN_FAIL', ip: '10.24.8.12', user: 'root', sev: 'MEDIUM', msg: 'Failed password for root via SSH from 10.24.8.12 port 58921 (attempt 4/5)' },
-  { id: 103, time: '10:31:07', source: 'WINDOWS', action: 'PROCESS', ip: '10.0.3.14', user: 'workstation-04', sev: 'LOW', msg: 'Process spawned: powershell.exe -NonInteractive -ExecutionPolicy Bypass' },
-  { id: 104, time: '10:31:05', source: 'AWS', action: 'AUTH_SUCCESS', ip: '198.51.100.4', user: 'user@company.com', sev: 'INFO', msg: 'ConsoleLogin: MFA verification successful from trusted origin' },
-  { id: 105, time: '10:31:04', source: 'SSH', action: 'LOGIN_FAIL', ip: '10.24.8.12', user: 'admin', sev: 'MEDIUM', msg: 'Failed password for admin via SSH from 10.24.8.12 port 58920 (attempt 3/5)' },
-  { id: 106, time: '10:31:02', source: 'LINUX', action: 'LOGIN', ip: '192.168.1.20', user: 'john', sev: 'INFO', msg: 'Accepted publickey for john from 192.168.1.20 port 54210 ssh2: RSA SHA256:4a8f...' },
-  { id: 107, time: '10:30:59', source: 'APACHE', action: 'HTTP_401', ip: '192.168.1.45', user: 'apache-admin2', sev: 'HIGH', msg: 'POST /api/v1/auth/login returned HTTP 401 Unauthorized (invalid JWT signature)' },
-  { id: 108, time: '10:30:57', source: 'OKTA', action: 'SSO_CHALLENGE', ip: '203.0.113.78', user: 'amrita.lead', sev: 'LOW', msg: 'FIDO2 WebAuthn authentication completed successfully' },
-  { id: 109, time: '10:30:54', source: 'FIREWALL', action: 'DROP', ip: '185.220.101.5', user: 'anonymous', sev: 'CRITICAL', msg: 'ACL Drop: Known Tor Exit Relay IP attempting ingress connection on port 3389' },
-  { id: 110, time: '10:30:50', source: 'SURICATA', action: 'ALERT', ip: '192.168.1.45', user: 'Server01', sev: 'CRITICAL', msg: 'ET SCAN Potential SSH Brute Force Attack detected (4,821 attempts in 7 mins)' }
-];
 
-const mockSources = [
-  { id: 'src-1', name: 'server-01', type: 'Linux SSH', rate: '18.2K logs/min', status: 'HEALTHY', lastSeen: '2s ago', eps: 304, reliability: '100%' },
-  { id: 'src-2', name: 'firewall-01', type: 'CEF / Palo Alto', rate: '42.1K logs/min', status: 'HEALTHY', lastSeen: '1s ago', eps: 702, reliability: '99.99%' },
-  { id: 'src-3', name: 'aws-prod', type: 'AWS CloudTrail', rate: '8.4K logs/min', status: 'HEALTHY', lastSeen: '4s ago', eps: 140, reliability: '100%' },
-  { id: 'src-4', name: 'win-domain-01', type: 'Windows EventLog', rate: '12.8K logs/min', status: 'HEALTHY', lastSeen: '3s ago', eps: 213, reliability: '99.95%' },
-  { id: 'src-5', name: 'vpn-gateway', type: 'Syslog RFC 5424', rate: '2.1K logs/min', status: 'DELAYED', lastSeen: '28s ago', eps: 35, reliability: '94.20%' },
-  { id: 'src-6', name: 'backup-storage-02', type: 'Syslog Storage', rate: '0 logs/min', status: 'OFFLINE', lastSeen: '14m ago', eps: 0, reliability: '0%' }
-];
 
 const mockParsers = [
   { name: 'JSON / OCSF Native', format: 'JSON / OCSF 1.1', status: 'Active', events: '4.2M', latency: '0.04 ms', engine: 'Deterministic' },
@@ -252,216 +232,271 @@ const mockParsers = [
   { name: 'Dynamic Schema Mapper', format: 'Custom / Legacy Formats', status: 'Active', events: '182K', latency: '1.20 ms', engine: 'Pattern Engine' }
 ];
 
-const mockAnomalies = [
-  {
-    id: 'ANOM-01',
-    title: 'Possible Brute Force Attack',
-    detectedAgo: '7 minutes ago',
-    severity: 'CRITICAL',
-    confidence: 97,
-    sourceIp: '192.168.1.45',
-    target: 'server-07',
-    failedAttempts: 4821,
-    duration: '7 minutes',
-    timeline: [
-      { time: '10:24', failures: 12, note: 'Initial probe and port scan on port 22' },
-      { time: '10:25', failures: 184, note: 'Dictionary wordlist spray initiated' },
-      { time: '10:26', failures: 621, note: 'Multi-threaded worker spray detected' },
-      { time: '10:27', failures: 1104, note: 'Root & service accounts specifically targeted' },
-      { time: '10:28', failures: 2900, note: 'Burst rate peak reached (85 req/sec)' },
-      { time: '10:31', failures: 4821, note: 'Threshold exceeded (4,800 events/10min); alert triggered' }
-    ]
-  }
-];
 
-const mockAlerts = [
-  {
-    id: 'INC-01',
-    title: 'Critical: Possible Brute Force Attack on Server-07',
-    srcIp: '192.168.1.45',
-    targetIp: 'server-07 (DB Gateway)',
-    sev: 'CRITICAL',
-    state: 'Active',
-    eventType: 'Authentication Spray',
-    timeAgo: '7 mins ago',
-    desc: 'Correlation rule detected 4,821 consecutive authentication failures targeting internal SSH daemon on port 22 within a 7-minute window.'
-  },
-  {
-    id: 'INC-02',
-    title: 'Geographic Impossible Travel Anomaly',
-    srcIp: '203.0.113.78',
-    targetIp: 'OKTA SSO Portal',
-    sev: 'HIGH',
-    state: 'Active',
-    eventType: 'Impossible Travel',
-    timeAgo: '18 mins ago',
-    desc: 'Simultaneous credential sessions authenticated from Mumbai (10:14 UTC), Frankfurt (10:32 UTC), and New York (10:48 UTC) exceeding maximum physical velocity.'
-  },
-  {
-    id: 'INC-03',
-    title: 'Tor Exit Relay Ingress & Probe Vector',
-    srcIp: '185.220.101.5',
-    targetIp: 'VPN Gateway eth0',
-    sev: 'CRITICAL',
-    state: 'Active',
-    eventType: 'Tor Ingress Probe',
-    timeAgo: '11 mins ago',
-    desc: 'Verified Tor exit node attempted high-volume ingress connection on RDP/SSH ports. Perimeter ACL drop rule automatically engaged.'
-  },
-  {
-    id: 'INC-04',
-    title: 'Anomalous DGA Query Handshake',
-    srcIp: '192.168.1.88',
-    targetIp: 'Core DNS Resolver',
-    sev: 'MEDIUM',
-    state: 'Investigating',
-    eventType: 'DNS Beaconing',
-    timeAgo: '42 mins ago',
-    desc: 'High-entropy algorithmic domain queries detected from internal finance workstation. Packet capture tagged for forensic review.'
-  },
-  {
-    id: 'INC-05',
-    title: 'Kubernetes Pod Privilege Escalation Exec',
-    srcIp: '10.244.0.15',
-    targetIp: 'payment-gateway-7b9f',
-    sev: 'MEDIUM',
-    state: 'Investigating',
-    eventType: 'K8s Exec Session',
-    timeAgo: '1 hour ago',
-    desc: 'Interactive container exec session spawned with root privileges on payment cluster pod. SOC lead investigating user authorization.'
-  },
-  {
-    id: 'INC-06',
-    title: 'Perimeter Firewall Automated ACL Drop',
-    srcIp: '198.51.100.23',
-    targetIp: 'Perimeter NGFW',
-    sev: 'LOW',
-    state: 'Resolved',
-    eventType: 'Firewall Block',
-    timeAgo: '2 hours ago',
-    desc: 'Automated rate-limiting drop rule engaged on perimeter gateway. Source IP contained and quarantined successfully.'
-  }
-];
 
-// Service Layer Abstraction (Ready for FastAPI integration)
+// Service Layer Abstraction — Real Python FastAPI Backend
 const LogVaultAPI = {
+  _backendAvailable: null,
+  _aiStatus: null,
+  _baseURL: 'http://127.0.0.1:8000',
+
+  // Check if backend API is reachable
+  async checkBackend() {
+    try {
+      const res = await fetch(`${this._baseURL}/api/health`, { signal: AbortSignal.timeout(2000) });
+      if (res.ok) {
+        const data = await res.json();
+        this._backendAvailable = true;
+        this._aiStatus = { mode: data.local_ai ? 'LOCAL AI' : 'FALLBACK', available: data.local_ai, model: data.model, provider: data.ai_provider };
+        return data;
+      }
+    } catch { 
+      // Backend unavailable
+    }
+    this._backendAvailable = false;
+    return null;
+  },
+
+  isBackendAvailable() {
+    return this._backendAvailable === true;
+  },
+
+  getAIStatus() {
+    return this._aiStatus || { mode: 'UNKNOWN', available: false };
+  },
+
   async getDashboardSummary() {
+    let logsCount = 'No events processed';
+    let anomaliesCount = '0';
+    let throughput = 'No events processed';
+    let parsedRate = '0%';
+    
+    try {
+        const [eventsRes, anomaliesRes] = await Promise.all([
+            fetch(`${this._baseURL}/api/events?limit=1`),
+            fetch(`${this._baseURL}/api/anomalies?limit=1`)
+        ]);
+        
+        if (eventsRes.ok && anomaliesRes.ok) {
+            const eventsData = await eventsRes.json();
+            const anomaliesData = await anomaliesRes.json();
+            
+            if (eventsData.total === 0) {
+                logsCount = 'No events processed';
+                anomaliesCount = '0';
+                throughput = 'No events processed';
+                parsedRate = '0%';
+            } else {
+                logsCount = eventsData.total.toLocaleString();
+                anomaliesCount = anomaliesData.total.toLocaleString();
+                throughput = `${eventsData.total} logs processed`;
+                parsedRate = '100%';
+            }
+        }
+    } catch {}
+
     return {
-      logsProcessed: '12.4M',
-      logsTrend: '+12.8% from previous 24h',
-      parsedRate: '99.98%',
-      parsedReliability: '+99.2% parser accuracy',
-      suspiciousEvents: '8,421',
-      suspiciousTrend: '+6.2% across 52,000 assets',
-      criticalAnomalies: 23,
-      criticalTrend: '↑ 14% from previous 24h',
-      throughput: '18,420 logs/sec',
+      logsProcessed: logsCount,
+      logsTrend: 'Current Session',
+      parsedRate: parsedRate,
+      parsedReliability: 'Real-time Deterministic',
+      suspiciousEvents: anomaliesCount,
+      suspiciousTrend: 'Current Session',
+      criticalAnomalies: anomaliesCount,
+      criticalTrend: 'Current Session',
+      throughput: throughput,
       systemConfidence: {
-        normalization: 99.8,
+        normalization: 100,
         parser: 100,
-        schemaMapping: 99,
+        schemaMapping: 100,
         fieldExtraction: 100
       }
     };
   },
 
-  async getLiveLogs() {
-    return [...initialLiveLogs];
-  },
+
 
   async getSources() {
-    return [...mockSources];
+    try {
+      const res = await fetch(`${this._baseURL}/api/sources`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {
+       // Silently fail for polling
+    }
+    return { sources: [], total: 0 };
   },
 
   async getParsers() {
     return [...mockParsers];
   },
 
-  async getAnomalies() {
-    return [...mockAnomalies];
+  async getAnomalies(limit = 100, offset = 0, search = '', severity = 'ALL') {
+    try {
+      let url = `${this._baseURL}/api/anomalies?limit=${limit}&offset=${offset}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      if (severity && severity !== 'ALL') url += `&severity=${encodeURIComponent(severity)}`;
+      
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {
+       // Silently fail for polling
+    }
+    return { anomalies: [], total: 0 };
   },
 
+  async getAlerts(limit = 100, offset = 0, status = 'ALL') {
+    try {
+      let url = `${this._baseURL}/api/alerts?limit=${limit}&offset=${offset}`;
+      if (status && status !== 'ALL') url += `&status=${encodeURIComponent(status)}`;
+      
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {
+       // Silently fail for polling
+    }
+    return { alerts: [], total: 0 };
+  },
+
+  async getEvents(limit = 100, offset = 0, search = '', severity = 'ALL', source = 'ALL') {
+    try {
+      let url = `${this._baseURL}/api/events?limit=${limit}&offset=${offset}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      if (severity && severity !== 'ALL') url += `&severity=${encodeURIComponent(severity)}`;
+      // Map frontend 'source' filter to backend 'detected_format' or similar if needed. For now just pass it as event_type if it's not ALL
+      if (source && source !== 'ALL') url += `&event_type=${encodeURIComponent(source)}`;
+
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {
+       // Silently fail for polling so we don't spam toasts
+    }
+    return { events: [], total: 0 };
+  },
+
+  // --- Real Backend API Calls ---
+
   async normalizeLog(rawInput) {
-    // Stage 1 Deterministic / Local Heuristic Parser Engine
-    const trimmed = rawInput.trim();
-
-    // Check for SSH preset pattern
-    if (trimmed.includes('sshd') || trimmed.includes('Accepted password') || trimmed.includes('Failed password')) {
-      const isAccepted = trimmed.includes('Accepted');
-      const userMatch = trimmed.match(/for\s+([a-zA-Z0-9_\-\.]+)/);
-      const ipMatch = trimmed.match(/from\s+([0-9\.]+)/);
-      const portMatch = trimmed.match(/port\s+(\d+)/);
-
-      return {
-        format: 'Linux / SSH Syslog (RFC 5424)',
-        parser: 'SSH PAM Deterministic Parser (Deterministic)',
-        parserType: 'DETERMINISTIC',
-        latency: '0.04 ms',
-        confidence: 1.0,
-        schema: {
-          event_type: 'AUTHENTICATION',
-          user: userMatch ? userMatch[1] : 'john',
-          status: isAccepted ? 'SUCCESS' : 'FAILURE',
-          source_ip: ipMatch ? ipMatch[1] : '192.168.1.20',
-          source_port: portMatch ? parseInt(portMatch[1]) : 54210,
-          host: 'server01',
-          process: 'sshd',
-          timestamp: new Date().toISOString(),
-          severity: isAccepted ? 'INFO' : 'HIGH',
-          category: 'identity_access'
-        }
-      };
-    }
-
-    // Check for CEF pattern
-    if (trimmed.startsWith('CEF:') || trimmed.includes('PaloAlto')) {
-      return mockNormalizerPresets.cef;
-    }
-
-    // Check for Apache pattern
-    if (trimmed.includes('HTTP/1.') || trimmed.includes('"GET ') || trimmed.includes('"POST ')) {
-      return mockNormalizerPresets.apache;
-    }
-
-    // Check for CloudTrail JSON
-    if (trimmed.startsWith('{') && (trimmed.includes('eventSource') || trimmed.includes('userIdentity'))) {
-      return mockNormalizerPresets.cloudtrail;
-    }
-
-    // Fallback: Generic Key-Value parser
-    const kvPairs = {};
-    const tokens = trimmed.split(/[\s,]+/);
-    tokens.forEach(tok => {
-      const parts = tok.split('=');
-      if (parts.length === 2) {
-        kvPairs[parts[0].toLowerCase()] = parts[1];
+    try {
+      const res = await fetch(`${this._baseURL}/api/normalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw: rawInput }),
+        signal: AbortSignal.timeout(30000)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        this._backendAvailable = true;
+        // Map backend response to UI format
+        return {
+          raw_log: data.raw_log || rawInput,
+          format: data.detected_format || 'Unknown',
+          parser: data.parser_name || 'Backend Parser',
+          parserType: data.parser_type || 'DETERMINISTIC',
+          latency: (data.processing_latency_ms || 0).toFixed(2) + ' ms',
+          confidence: data.parse_confidence || data.detection_confidence || 0,
+          ocsf_class: data.ocsf_class_name || null,
+          ocsf_class_uid: data.ocsf_class_uid || null,
+          anomaly: data.anomaly || null,
+          pii_masked: data.pii_masked || false,
+          ai_provider: data.ai_provider || 'none',
+          ai_model: data.ai_model || 'none',
+          ai_reasoning: data.ai_reasoning || '',
+          ai_threat_score: data.ai_threat_score !== undefined ? data.ai_threat_score : (data.anomaly ? data.anomaly.threat_score : 0),
+          ai_mitre_techniques: data.ai_mitre_techniques || [],
+          ai_is_suspicious: data.ai_is_suspicious || false,
+          schema: {
+            event_type: data.event_type || 'GENERIC_EVENT',
+            user: data.user || 'unknown',
+            status: data.status || data.action || 'RECORDED',
+            source_ip: data.source_ip || null,
+            source_port: data.source_port || null,
+            destination_ip: data.destination_ip || null,
+            destination_port: data.destination_port || null,
+            host: data.host || null,
+            process: data.process || null,
+            protocol: data.protocol || null,
+            timestamp: data.timestamp || new Date().toISOString(),
+            severity: data.severity || 'INFO',
+            category: data.category || 'general_telemetry',
+            message: data.message || null
+          },
+          tokens: data.tokens || [],
+          _raw_backend: data
+        };
+      } else {
+         throw new Error(`Server returned ${res.status}`);
       }
-    });
-
-    return {
-      format: 'Generic Key-Value Telemetry',
-      parser: 'Key-Value Delimited Engine (Deterministic)',
-      parserType: 'DETERMINISTIC',
-      latency: '0.09 ms',
-      confidence: 0.94,
-      schema: {
-        event_type: kvPairs.act || kvPairs.action || kvPairs.event || 'GENERIC_EVENT',
-        user: kvPairs.usr || kvPairs.user || kvPairs.username || 'unknown',
-        status: kvPairs.res || kvPairs.status || kvPairs.result || 'RECORDED',
-        source_ip: kvPairs.src || kvPairs.ip || kvPairs.src_ip || '127.0.0.1',
-        raw_attributes: kvPairs,
-        timestamp: new Date().toISOString(),
-        severity: 'INFO',
-        category: 'general_telemetry'
+    } catch (err) {
+      this._backendAvailable = false;
+      if (window.Utils) {
+        window.Utils.showToast('Python backend unavailable. Please start the FastAPI server on port 8000.', 'error');
       }
-    };
+      throw new Error('Python backend unavailable. Please start the FastAPI server on port 8000.');
+    }
+  },
+
+  async detectFormat(rawInput) {
+    try {
+      const res = await fetch(`${this._baseURL}/api/detect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw: rawInput }),
+        signal: AbortSignal.timeout(5000)
+      });
+      if (res.ok) return await res.json();
+    } catch (err) {
+      if (window.Utils) {
+        window.Utils.showToast('Python backend unavailable. Please start the FastAPI server on port 8000.', 'error');
+      }
+    }
+    return { format: 'unknown', confidence: 0 };
+  },
+
+  async uploadFile(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch(`${this._baseURL}/api/upload`, {
+        method: 'POST',
+        body: formData,
+        signal: AbortSignal.timeout(60000)
+      });
+      if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      if (window.Utils) {
+        window.Utils.showToast('Python backend unavailable. Please start the FastAPI server on port 8000.', 'error');
+      }
+      throw err;
+    }
+  },
+
+  async aiAnalyze(rawInput, task = 'analyze') {
+    try {
+      const res = await fetch(`${this._baseURL}/api/ai/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw: rawInput, task }),
+        signal: AbortSignal.timeout(30000)
+      });
+      if (res.ok) return await res.json();
+    } catch (err) { 
+      if (window.Utils) {
+        window.Utils.showToast('Python backend unavailable. Please start the FastAPI server on port 8000.', 'error');
+      }
+    }
+    return { success: false, source: 'unavailable', result: null };
   }
 };
 
 window.mockNormalizerPresets = mockNormalizerPresets;
-window.initialLiveLogs = initialLiveLogs;
-window.mockSources = mockSources;
-window.mockParsers = mockParsers;
-window.mockAnomalies = mockAnomalies;
-window.mockAlerts = mockAlerts;
+
 window.LogVaultAPI = LogVaultAPI;

@@ -55,21 +55,45 @@ const AnomalyModule = {
     opacity: 0.04 + Math.random() * 0.08
   })),
 
-  init() {
+  alerts: [],
+  anomalies: [],
+
+  async init() {
     this.bindEvents();
-    this.renderAlertCenterQueue();
-    this.renderKanbanBoard();
-    this.loadIncidentDossier('INC-01');
+    await this.fetchData();
     this.startThreatGraphLoop();
   },
 
-  onScreenOpen(screenId) {
-    if (screenId === 'alerts') {
-      this.renderAlertCenterQueue();
-      this.renderKanbanBoard();
-      this.loadIncidentDossier(this.activeIncidentId);
-    } else if (screenId === 'anomalies') {
+  async onScreenOpen(screenId) {
+    if (screenId === 'alerts' || screenId === 'anomalies') {
+      await this.fetchData();
+    }
+    if (screenId === 'anomalies') {
       this.startThreatGraphLoop();
+    }
+  },
+
+  async fetchData() {
+    if (!window.LogVaultAPI) return;
+    
+    // Fetch alerts using the current workflow filter
+    const alertFilter = this.workflowFilter === 'ALL' ? 'ALL' : this.workflowFilter;
+    const alertRes = await LogVaultAPI.getAlerts(100, 0, alertFilter);
+    this.alerts = (alertRes && alertRes.alerts) ? alertRes.alerts : [];
+    
+    const anomalyRes = await LogVaultAPI.getAnomalies();
+    this.anomalies = (anomalyRes && anomalyRes.anomalies) ? anomalyRes.anomalies : [];
+    
+    this.renderAlertCenterQueue();
+    this.renderKanbanBoard();
+    
+    if (this.alerts.length > 0) {
+      if (!this.alerts.find(a => a.id === this.activeIncidentId)) {
+        this.activeIncidentId = this.alerts[0].id;
+      }
+      this.loadIncidentDossier(this.activeIncidentId);
+    } else {
+      this.clearIncidentDossier();
     }
   },
 
@@ -148,7 +172,7 @@ const AnomalyModule = {
     document.querySelectorAll('[data-wf-filter]').forEach(btn => {
       btn.classList.toggle('active', btn.getAttribute('data-wf-filter') === status);
     });
-    this.renderAlertCenterQueue();
+    this.fetchData();
   },
 
   toggleScrubPlay() {
@@ -383,6 +407,14 @@ const AnomalyModule = {
     }
 
     // 6. Draw Remaining 3D Node Spheres with Gradient Highlights
+    if (this.anomalies.length === 0) {
+      ctx.fillStyle = isDark ? '#E8A0AA' : '#756568';
+      ctx.font = '600 14px JetBrains Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('No anomalies detected.', w / 2, h / 2);
+      return; // Skip drawing nodes if no anomalies
+    }
+
     Object.values(nodeMap).forEach(n => {
       if (n.type === 'target') return;
 
@@ -493,7 +525,7 @@ const AnomalyModule = {
       Resolved: document.getElementById('kanban-col-resolved')
     };
 
-    if (!columns.Active || !window.mockAlerts) return;
+    if (!columns.Active) return;
 
     Object.entries(columns).forEach(([state, col]) => {
       if (!col) return;
@@ -516,14 +548,19 @@ const AnomalyModule = {
       };
     });
 
-    window.mockAlerts.forEach(inc => {
-      const targetCol = columns[inc.state] || columns.Active;
+    if (this.alerts.length === 0) {
+      columns.Active.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">No active alerts.</div>';
+      return;
+    }
+
+    this.alerts.forEach(inc => {
+      const targetCol = columns[inc.status === 'OPEN' ? 'Active' : inc.status] || columns.Active;
       let pClass = 'high';
       if (inc.sev === 'MEDIUM') pClass = 'medium';
       if (inc.sev === 'LOW') pClass = 'low';
 
-      const nextState = inc.state === 'Active' ? 'Investigating' : (inc.state === 'Investigating' ? 'Resolved' : 'Active');
-      const nextLabel = inc.state === 'Active' ? 'Investigate &rarr;' : (inc.state === 'Investigating' ? 'Resolve &check;' : 'Reopen');
+      const nextState = inc.status === 'OPEN' ? 'Investigating' : (inc.status === 'Investigating' ? 'Resolved' : 'OPEN');
+      const nextLabel = inc.status === 'OPEN' ? 'Investigate &rarr;' : (inc.status === 'Investigating' ? 'Resolve &check;' : 'Reopen');
 
       const card = document.createElement('div');
       card.className = 'kanban-item-card';
@@ -532,8 +569,8 @@ const AnomalyModule = {
 
       card.innerHTML = `
         <div class="k-card-top">
-          <span class="k-priority-pill ${pClass}">Priority ${inc.sev}</span>
-          <span style="font-size:0.68rem; color:var(--text-muted);"><code>${inc.id}</code></span>
+          <span class="k-priority-pill ${pClass}">Priority ${inc.severity}</span>
+          <span style="font-size:0.68rem; color:var(--text-muted);"><code>${inc.id.substring(0,8)}</code></span>
         </div>
         <div class="k-card-title">${Utils.escapeHtml(inc.title)}</div>
         <div class="k-card-footer">
@@ -564,10 +601,13 @@ const AnomalyModule = {
     if (window.lucide) lucide.createIcons();
   },
 
-  moveKanbanCard(id, newState) {
-    const inc = window.mockAlerts.find(i => i.id === id);
+  async moveKanbanCard(id, newState) {
+    const inc = this.alerts.find(i => i.id === id);
     if (!inc) return;
-    inc.state = newState;
+    inc.status = newState;
+    
+    // In a real app we'd call an API here to update the status.
+    
     this.renderKanbanBoard();
     this.renderAlertCenterQueue();
     this.loadIncidentDossier(id);
@@ -591,11 +631,17 @@ const AnomalyModule = {
 
   renderAlertCenterQueue() {
     const container = document.getElementById('incident-card-stack');
-    if (!container || !window.mockAlerts) return;
+    if (!container) return;
+    
+    if (this.alerts.length === 0) {
+      container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">No active alerts.</div>';
+      return;
+    }
 
-    const filtered = window.mockAlerts.filter(inc => {
+    const filtered = this.alerts.filter(inc => {
       if (this.workflowFilter === 'ALL') return true;
-      return inc.state === this.workflowFilter;
+      const statusMap = { 'Active': 'OPEN', 'Investigating': 'Investigating', 'Resolved': 'Resolved' };
+      return inc.status === (statusMap[this.workflowFilter] || this.workflowFilter);
     });
 
     container.innerHTML = filtered.map(inc => {
@@ -608,14 +654,14 @@ const AnomalyModule = {
       return `
         <div class="incident-queue-card ${isSelected ? 'selected' : ''}" onclick="AnomalyModule.loadIncidentDossier('${inc.id}')">
           <div class="inc-q-head">
-            <span class="inc-id-tag"><code>${inc.id}</code></span>
-            <span class="badge-pill ${badgeClass}">${inc.sev}</span>
+            <span class="inc-id-tag"><code>${inc.id.substring(0,8)}</code></span>
+            <span class="badge-pill ${badgeClass}">${inc.severity}</span>
           </div>
           <div class="inc-q-title">${Utils.escapeHtml(inc.title)}</div>
-          <div class="inc-q-sub">Origin: <code>${inc.srcIp}</code> &bull; Target: <code>${inc.targetIp}</code></div>
+          <div class="inc-q-sub">Origin: <code>${inc.source_ip || 'N/A'}</code> &bull; Target: <code>${inc.host || 'N/A'}</code></div>
           <div class="inc-q-meta">
-            <span><i data-lucide="clock" style="width:12px;"></i> ${inc.timeAgo}</span>
-            <span class="inc-state-pill state-${inc.state.toLowerCase()}">${inc.state}</span>
+            <span><i data-lucide="clock" style="width:12px;"></i> ${new Date(inc.timestamp || Date.now()).toLocaleTimeString()}</span>
+            <span class="inc-state-pill state-${(inc.status === 'OPEN' ? 'active' : inc.status).toLowerCase()}">${inc.status === 'OPEN' ? 'Active' : inc.status}</span>
           </div>
         </div>
       `;
@@ -626,8 +672,8 @@ const AnomalyModule = {
 
   loadIncidentDossier(id) {
     this.activeIncidentId = id;
-    if (!window.mockAlerts) return;
-    const inc = window.mockAlerts.find(i => i.id === id) || window.mockAlerts[0];
+    const inc = this.alerts.find(i => i.id === id);
+    if (!inc) return this.clearIncidentDossier();
 
     // Update queue highlight
     document.querySelectorAll('.incident-queue-card').forEach(c => {
@@ -644,17 +690,24 @@ const AnomalyModule = {
     const statusEl = document.getElementById('dossier-status-pill');
 
     if (titleEl) titleEl.innerText = inc.title;
-    if (srcEl) srcEl.innerText = inc.srcIp;
-    if (targetEl) targetEl.innerText = inc.targetIp;
-    if (typeEl) typeEl.innerText = inc.eventType;
-    if (timeEl) timeEl.innerText = inc.timeAgo;
-    if (descEl) descEl.innerText = inc.desc;
+    if (srcEl) srcEl.innerText = inc.source_ip || 'N/A';
+    if (targetEl) targetEl.innerText = inc.host || 'N/A';
+    if (typeEl) typeEl.innerText = inc.mitre_technique || 'Anomaly Detected';
+    if (timeEl) timeEl.innerText = new Date(inc.timestamp || Date.now()).toLocaleString();
+    if (descEl) descEl.innerText = inc.description;
     if (statusEl) {
-      statusEl.innerText = inc.state;
-      statusEl.className = `badge-pill state-${inc.state.toLowerCase()}`;
+      statusEl.innerText = inc.status === 'OPEN' ? 'Active' : inc.status;
+      statusEl.className = `badge-pill state-${(inc.status === 'OPEN' ? 'active' : inc.status).toLowerCase()}`;
     }
 
     if (window.lucide) lucide.createIcons();
+  },
+
+  clearIncidentDossier() {
+    const titleEl = document.getElementById('dossier-main-title');
+    const descEl = document.getElementById('dossier-desc-text');
+    if (titleEl) titleEl.innerText = 'No Incident Selected';
+    if (descEl) descEl.innerText = 'Select an incident from the queue to view details.';
   },
 
   triggerContainment() {

@@ -397,7 +397,7 @@ const SourcesModule = {
     ];
 
     // Tier 2: Ring Buffer Nodes
-    const bufferNode = { x: stages[1].x, y: h * 0.50, label: 'Lock-Free FIFO Ring Buffer (18.4K/s)' };
+    const bufferNode = { x: stages[1].x, y: h * 0.50, label: 'Lock-Free FIFO Ring Buffer' };
 
     // Tier 3: Ingestion Singularity / Fast Dispatcher Core
     const coreNode = { x: stages[2].x, y: h * 0.50, label: 'INGESTION SINGULARITY' };

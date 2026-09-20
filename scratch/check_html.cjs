@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const html = fs.readFileSync('c:\\Users\\malik\\Desktop\\Sih\\index.html', 'utf-8');
+const html = fs.readFileSync('d:\\SIH Final\\Log_Vault\\Sih\\index.html', 'utf-8');
 
 // Find all screen IDs
 const screenMatches = [...html.matchAll(/<section[^>]+id="([^"]+)"[^>]*>/g)];

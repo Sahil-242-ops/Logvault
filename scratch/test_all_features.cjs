@@ -84,7 +84,7 @@ const modules = [
 ];
 
 modules.forEach(m => {
-  const code = fs.readFileSync(path.join('c:\\Users\\malik\\Desktop\\Sih\\js', m), 'utf-8');
+  const code = fs.readFileSync(path.join('d:\\SIH Final\\Log_Vault\\Sih\\js', m), 'utf-8');
   try {
     eval(code);
     console.log(`✓ Module Loaded: ${m}`);
@@ -95,13 +95,13 @@ modules.forEach(m => {
 
 console.log('\n--- 1. Testing Auth & Clearance Presets ---');
 console.log('Presets available:', Object.keys(AuthModule.presets));
-AuthModule.loginSuccess('Agent Amrita', 'Tier-3 SOC Lead');
+AuthModule.loginSuccess('Agent Sahil', 'Tier-3 SOC Lead');
 console.log('Auth status after loginSuccess:', AuthModule.isAuthenticated);
 console.log('Persisted Op Name:', localStorage.getItem('logvault_op_name'));
 console.log('Persisted Op Role:', localStorage.getItem('logvault_op_role'));
 AuthModule.logout();
 console.log('Auth status after logout:', AuthModule.isAuthenticated);
-AuthModule.loginSuccess('Agent Amrita', 'Tier-3 SOC Lead');
+AuthModule.loginSuccess('Agent Sahil', 'Tier-3 SOC Lead');
 
 console.log('\n--- 2. Testing Network Topology Conduits Matrix ---');
 console.log(`Nodes count: ${TopologyModule.nodes.length}`);

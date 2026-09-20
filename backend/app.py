@@ -1,7 +1,12 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from .api import router
 from .db import db
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 app = FastAPI(title="LogVault Air-Gapped Backend", version="1.0.0")
 
@@ -14,6 +19,30 @@ app.add_middleware(
 )
 
 app.include_router(router)
+
+# Mount frontend assets so accessing http://127.0.0.1:8000 loads the full UI
+js_dir = os.path.join(BASE_DIR, "js")
+if os.path.exists(js_dir):
+    app.mount("/js", StaticFiles(directory=js_dir), name="js")
+
+screenshots_dir = os.path.join(BASE_DIR, "ui-ux-screenshots")
+if os.path.exists(screenshots_dir):
+    app.mount("/ui-ux-screenshots", StaticFiles(directory=screenshots_dir), name="screenshots")
+
+@app.get("/")
+async def serve_index():
+    index_path = os.path.join(BASE_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"message": "LogVault Backend Online", "docs": "/docs", "health": "/api/health"}
+
+@app.get("/styles.css")
+async def serve_styles():
+    css_path = os.path.join(BASE_DIR, "styles.css")
+    if os.path.exists(css_path):
+        return FileResponse(css_path, media_type="text/css")
+    return {"error": "styles.css not found"}
+
 
 import uuid
 import asyncio

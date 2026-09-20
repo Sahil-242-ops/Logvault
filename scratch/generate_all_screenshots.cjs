@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const chromePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-const rootDir = "c:\\Users\\malik\\Desktop\\Sih";
+const rootDir = "d:\\SIH Final\\Log_Vault\\Sih";
 const lightDir = path.join(rootDir, 'ui-ux-screenshots', 'light-mode');
 const darkDir = path.join(rootDir, 'ui-ux-screenshots', 'dark-mode');
 

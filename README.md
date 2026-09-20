@@ -44,7 +44,7 @@
 ## ⚡ Quick Start
 
 ### 1. Open Directly in Browser
-Simply open [`index.html`](file:///c:/Users/malik/Desktop/Sih/index.html) in any modern web browser.
+Simply open [`index.html`](index.html) in any modern web browser.
 
 ### 2. Or Run with a Local Static Server
 ```bash
@@ -104,22 +104,22 @@ npm start
 
 ## 📸 UI/UX Screenshots Gallery
 
-All 24 high-resolution UI/UX captures covering all 11 SOC platform screens plus the Operator Authentication Portal are cataloged in [`ui-ux-screenshots/`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots):
+All 24 high-resolution UI/UX captures covering all 11 SOC platform screens plus the Operator Authentication Portal are cataloged in [`ui-ux-screenshots/`](ui-ux-screenshots):
 
 | # | Screen / Module | Light Mode (Warm Cream) | Dark Mode (Obsidian) |
 | :-: | :--- | :--- | :--- |
-| `00` | **Operator Authentication Portal** | [`light-mode/00_login_portal.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/light-mode/00_login_portal.png) | [`dark-mode/00_login_portal.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/dark-mode/00_login_portal.png) |
-| `01` | **SOC Dashboard Home** | [`light-mode/01_dashboard.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/light-mode/01_dashboard.png) | [`dark-mode/01_dashboard.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/dark-mode/01_dashboard.png) |
-| `02` | **Live Log Stream** | [`light-mode/02_live_logs.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/light-mode/02_live_logs.png) | [`dark-mode/02_live_logs.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/dark-mode/02_live_logs.png) |
-| `03` | **Log Normalizer & Hex Dump** | [`light-mode/03_log_normalizer.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/light-mode/03_log_normalizer.png) | [`dark-mode/03_log_normalizer.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/dark-mode/03_log_normalizer.png) |
-| `04` | **AI Schema Inference Mapper** | [`light-mode/04_unknown_logs_ai.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/light-mode/04_unknown_logs_ai.png) | [`dark-mode/04_unknown_logs_ai.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/dark-mode/04_unknown_logs_ai.png) |
-| `05` | **3D Anomaly Threat Graph** | [`light-mode/05_anomalies_3d.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/light-mode/05_anomalies_3d.png) | [`dark-mode/05_anomalies_3d.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/dark-mode/05_anomalies_3d.png) |
-| `06` | **Alert Center & Kanban Board** | [`light-mode/06_alert_center.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/light-mode/06_alert_center.png) | [`dark-mode/06_alert_center.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/dark-mode/06_alert_center.png) |
-| `07` | **SOC Event Analytics** | [`light-mode/07_event_analytics.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/light-mode/07_event_analytics.png) | [`dark-mode/07_event_analytics.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/dark-mode/07_event_analytics.png) |
-| `08` | **Sources Health & Collector Fleet** | [`light-mode/08_sources_topology.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/light-mode/08_sources_topology.png) | [`dark-mode/08_sources_topology.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/dark-mode/08_sources_topology.png) |
-| `09` | **Parser Registry & WASM Chamber** | [`light-mode/09_parser_registry.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/light-mode/09_parser_registry.png) | [`dark-mode/09_parser_registry.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/dark-mode/09_parser_registry.png) |
-| `10` | **Network Conduits Topology** | [`light-mode/10_network_topology.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/light-mode/10_network_topology.png) | [`dark-mode/10_network_topology.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/dark-mode/10_network_topology.png) |
-| `11` | **Platform Settings & Storage** | [`light-mode/11_platform_settings.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/light-mode/11_platform_settings.png) | [`dark-mode/11_platform_settings.png`](file:///c:/Users/malik/Desktop/Sih/ui-ux-screenshots/dark-mode/11_platform_settings.png) |
+| `00` | **Operator Authentication Portal** | [`light-mode/00_login_portal.png`](ui-ux-screenshots/light-mode/00_login_portal.png) | [`dark-mode/00_login_portal.png`](ui-ux-screenshots/dark-mode/00_login_portal.png) |
+| `01` | **SOC Dashboard Home** | [`light-mode/01_dashboard.png`](ui-ux-screenshots/light-mode/01_dashboard.png) | [`dark-mode/01_dashboard.png`](ui-ux-screenshots/dark-mode/01_dashboard.png) |
+| `02` | **Live Log Stream** | [`light-mode/02_live_logs.png`](ui-ux-screenshots/light-mode/02_live_logs.png) | [`dark-mode/02_live_logs.png`](ui-ux-screenshots/dark-mode/02_live_logs.png) |
+| `03` | **Log Normalizer & Hex Dump** | [`light-mode/03_log_normalizer.png`](ui-ux-screenshots/light-mode/03_log_normalizer.png) | [`dark-mode/03_log_normalizer.png`](ui-ux-screenshots/dark-mode/03_log_normalizer.png) |
+| `04` | **AI Schema Inference Mapper** | [`light-mode/04_unknown_logs_ai.png`](ui-ux-screenshots/light-mode/04_unknown_logs_ai.png) | [`dark-mode/04_unknown_logs_ai.png`](ui-ux-screenshots/dark-mode/04_unknown_logs_ai.png) |
+| `05` | **3D Anomaly Threat Graph** | [`light-mode/05_anomalies_3d.png`](ui-ux-screenshots/light-mode/05_anomalies_3d.png) | [`dark-mode/05_anomalies_3d.png`](ui-ux-screenshots/dark-mode/05_anomalies_3d.png) |
+| `06` | **Alert Center & Kanban Board** | [`light-mode/06_alert_center.png`](ui-ux-screenshots/light-mode/06_alert_center.png) | [`dark-mode/06_alert_center.png`](ui-ux-screenshots/dark-mode/06_alert_center.png) |
+| `07` | **SOC Event Analytics** | [`light-mode/07_event_analytics.png`](ui-ux-screenshots/light-mode/07_event_analytics.png) | [`dark-mode/07_event_analytics.png`](ui-ux-screenshots/dark-mode/07_event_analytics.png) |
+| `08` | **Sources Health & Collector Fleet** | [`light-mode/08_sources_topology.png`](ui-ux-screenshots/light-mode/08_sources_topology.png) | [`dark-mode/08_sources_topology.png`](ui-ux-screenshots/dark-mode/08_sources_topology.png) |
+| `09` | **Parser Registry & WASM Chamber** | [`light-mode/09_parser_registry.png`](ui-ux-screenshots/light-mode/09_parser_registry.png) | [`dark-mode/09_parser_registry.png`](ui-ux-screenshots/dark-mode/09_parser_registry.png) |
+| `10` | **Network Conduits Topology** | [`light-mode/10_network_topology.png`](ui-ux-screenshots/light-mode/10_network_topology.png) | [`dark-mode/10_network_topology.png`](ui-ux-screenshots/dark-mode/10_network_topology.png) |
+| `11` | **Platform Settings & Storage** | [`light-mode/11_platform_settings.png`](ui-ux-screenshots/light-mode/11_platform_settings.png) | [`dark-mode/11_platform_settings.png`](ui-ux-screenshots/dark-mode/11_platform_settings.png) |
 
 ---
 

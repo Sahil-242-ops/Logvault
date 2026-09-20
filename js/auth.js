@@ -7,9 +7,9 @@ const AuthModule = {
   isAuthenticated: false,
 
   presets: {
-    'amrita': {
-      name: 'Agent Amrita',
-      email: 'amrita.soc@logvault.sih',
+    'sahil': {
+      name: 'Agent Sahil',
+      email: 'sahil.soc@logvault.sih',
       role: 'Tier-3 SOC Lead',
       tier: 'Tier-3 SOC Lead (Full Command Authority)',
       pass: 'CyberSecurity2026!'
@@ -45,7 +45,7 @@ const AuthModule = {
     if (authParam === '1' || authParam === 'true' || authParam === 'demo') {
       this.isAuthenticated = true;
       localStorage.setItem('logvault_authenticated', 'true');
-      localStorage.setItem('logvault_op_name', 'Agent Amrita');
+      localStorage.setItem('logvault_op_name', 'Agent Sahil');
       localStorage.setItem('logvault_op_role', 'Tier-3 SOC Lead');
     } else if (authParam === '0' || authParam === 'login') {
       this.isAuthenticated = false;
@@ -149,7 +149,7 @@ const AuthModule = {
     const roleSelect = document.getElementById('login-operator-tier');
     const btn = document.getElementById('btn-submit-login');
 
-    const email = emailInput ? emailInput.value.trim() : 'amrita.soc@logvault.sih';
+    const email = emailInput ? emailInput.value.trim() : 'sahil.soc@logvault.sih';
     const role = roleSelect ? roleSelect.value : 'Tier-3 SOC Lead';
     const name = email.split('@')[0].replace('.', ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
 
@@ -174,7 +174,7 @@ const AuthModule = {
     }
 
     setTimeout(() => {
-      this.loginSuccess('Agent Amrita', 'Tier-3 SOC Lead');
+      this.loginSuccess('Agent Sahil', 'Tier-3 SOC Lead');
       if (demoBtn) {
         demoBtn.innerHTML = `⚡ Instant Demo Access (Tier-3 SOC Lead)`;
       }

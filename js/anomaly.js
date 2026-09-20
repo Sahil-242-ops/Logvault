@@ -574,7 +574,7 @@ const AnomalyModule = {
         </div>
         <div class="k-card-title">${Utils.escapeHtml(inc.title)}</div>
         <div class="k-card-footer">
-          <span><i data-lucide="bell" style="width:12px;"></i> Agent Amrita</span>
+          <span><i data-lucide="bell" style="width:12px;"></i> Agent Sahil</span>
           <div class="k-move-actions">
             <button class="k-move-btn" onclick="event.stopPropagation(); AnomalyModule.moveKanbanCard('${inc.id}', '${nextState}')">${nextLabel}</button>
           </div>
@@ -721,7 +721,7 @@ const AnomalyModule = {
   exportDossier() {
     const data = {
       incident_id: this.activeIncidentId,
-      analyst_assigned: 'Agent Amrita (Tier-3 Lead)',
+      analyst_assigned: 'Agent Sahil (Tier-3 Lead)',
       generated_at: new Date().toISOString()
     };
     navigator.clipboard.writeText(JSON.stringify(data, null, 2))

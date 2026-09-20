@@ -3,7 +3,7 @@ const path = require('path');
 
 console.log('--- LOGVAULT INTEGRITY & CODE QUALITY VERIFICATION ---');
 
-const rootDir = 'c:\\Users\\malik\\Desktop\\Sih';
+const rootDir = 'd:\SIH Final\Log_Vault\Sih';
 const htmlPath = path.join(rootDir, 'index.html');
 const cssPath = path.join(rootDir, 'styles.css');
 const jsDir = path.join(rootDir, 'js');

@@ -31,7 +31,7 @@ const SettingsModule = {
   },
 
   loadOperatorProfile() {
-    const name = localStorage.getItem('logvault_op_name') || 'Agent Amrita';
+    const name = localStorage.getItem('logvault_op_name') || 'Agent Sahil';
     const callsign = localStorage.getItem('logvault_op_callsign') || 'SOC-OP-9042';
     const role = localStorage.getItem('logvault_op_role') || 'Tier-3 SOC Lead';
     const tier = localStorage.getItem('logvault_op_tier') || 'Tier-3 Senior Lead';
@@ -59,7 +59,7 @@ const SettingsModule = {
     const selectTier = document.getElementById('operator-select-tier');
     const inputOrg = document.getElementById('operator-input-org');
 
-    const name = inputName ? inputName.value.trim() : 'Agent Amrita';
+    const name = inputName ? inputName.value.trim() : 'Agent Sahil';
     const callsign = inputCallsign ? inputCallsign.value.trim() : 'SOC-OP-9042';
     const role = inputRole ? inputRole.value.trim() : 'Tier-3 SOC Lead';
     const tier = selectTier ? selectTier.value : 'Tier-3 Senior Lead';

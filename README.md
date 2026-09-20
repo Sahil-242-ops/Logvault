@@ -16,7 +16,7 @@
 </div>
 ---
  
-## 📌 Problem Statement
+##  Problem Statement
  
 Modern Security Operations Centers ingest logs from a sprawl of heterogeneous sources — firewalls, web servers, cloud platforms, operating systems, and custom IoT/SCADA telemetry — each speaking a different, often proprietary format. Before any meaningful threat-hunting can begin, analysts burn hours reconciling this data by hand, and most existing tooling only makes it worse by locking that work behind expensive, cloud-hosted SIEM backends.
  
@@ -24,7 +24,7 @@ Modern Security Operations Centers ingest logs from a sprawl of heterogeneous so
  
 ---
  
-## 🚀 Overview
+##  Overview
  
 **LOGVAULT** is a high-performance cybersecurity command center and log-normalization engine built for **Smart India Hackathon (SIH26156)**. It runs entirely client-side, with no backend server and no cloud service in the loop — making it lightweight, portable, deployable in air-gapped environments, and inherently resistant to data exfiltration.
  
@@ -55,7 +55,7 @@ Modern Security Operations Centers ingest logs from a sprawl of heterogeneous so
  
 ---
  
-## 📂 Supported Log Formats
+##  Supported Log Formats
  
 | Format | Specification / Standard | Sample Sources |
 | :--- | :--- | :--- |
@@ -68,7 +68,7 @@ Modern Security Operations Centers ingest logs from a sprawl of heterogeneous so
  
 ---
  
-## 🛡️ Key Features
+##  Key Features
  
 ### 1. Multi-Format Normalizer
 A real-time pipeline that maps raw, heterogeneous logs onto the OCSF/ECS schema as they arrive. An interactive tokenizer, hex-stream view, and Shannon entropy analyzer make it easy to inspect exactly what each payload contains before and after normalization.
@@ -90,7 +90,7 @@ Everything runs client-side — no backend server, no external API calls, and no
  
 ---
  
-## 🏗️ Architecture
+##  Architecture
  
 LOGVAULT is built as a modular, vanilla-JS single-page application. Each pipeline stage — ingestion, format detection, parsing, normalization, anomaly detection, and visualization — is isolated into its own module for maintainability and easy extension with new log formats or detection rules.
  
@@ -105,7 +105,7 @@ LOGVAULT is built as a modular, vanilla-JS single-page application. Each pipelin
  
 ---
  
-## ⚡ Quick Start
+##  Quick Start
  
 ### Option 1 — Open Directly in Browser
 Simply open [`index.html`](index.html) in any modern web browser. No build step, no install required.
@@ -120,7 +120,7 @@ Then navigate to the local server address printed in your terminal.
  
 ---
  
-## 📁 Project Structure
+##  Project Structure
  
 ```text
 ├── js/
@@ -149,7 +149,7 @@ Then navigate to the local server address printed in your terminal.
  
 ---
  
-## 📸 UI/UX Screenshots Gallery
+##  UI/UX Screenshots Gallery
  
 All 24 high-resolution UI/UX captures covering all 11 SOC platform screens plus the Operator Authentication Portal are cataloged in [`ui-ux-screenshots/`](ui-ux-screenshots):
  
@@ -170,7 +170,7 @@ All 24 high-resolution UI/UX captures covering all 11 SOC platform screens plus 
  
 ---
  
-## 🧭 Roadmap
+##  Roadmap
  
 - [ ] WASM-accelerated parsing for very high-throughput log ingestion
 - [ ] Pluggable rule packs for community-contributed detection signatures
@@ -178,11 +178,11 @@ All 24 high-resolution UI/UX captures covering all 11 SOC platform screens plus 
 - [ ] Offline PWA support for fully air-gapped deployments
 ---
  
-## 🤝 Contributing
+##  Contributing
  
 Contributions, issue reports, and feature requests are welcome. Please open an issue to discuss significant changes before submitting a pull request.
  
-## 📄 License
+##  License
  
 This project is licensed under the MIT License — see the `LICENSE` file for details.
  

@@ -1,6 +1,6 @@
 <div align="center">
-# 🛡️ LOGVAULT
-### Universal Log Intelligence, Multi-Format Normalization & Autonomous SOC Analytics Platform
+ LOGVAULT
+ Universal Log Intelligence, Multi-Format Normalization & Autonomous SOC Analytics Platform
  
 **Smart India Hackathon 2026 — Problem Statement ID: SIH26156**
  

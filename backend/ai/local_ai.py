@@ -6,7 +6,6 @@ import time
 from collections import OrderedDict
 from typing import Dict, Any
 from .ollama_adapter import OllamaAdapter
-from .fallback import DeterministicFallback
 
 # Short prompt with a concrete example (small models copy placeholder text like
 # "event type" verbatim, so the schema is shown by example, not by placeholders).
@@ -89,7 +88,6 @@ class LRUCache:
 class LocalAI:
     def __init__(self):
         self.ollama = OllamaAdapter()
-        self.fallback = DeterministicFallback()
         self._cached_status = None
         self._last_status_check = 0.0
         self._response_cache = LRUCache(max_size=200)

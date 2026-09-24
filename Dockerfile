@@ -14,8 +14,7 @@ RUN pip install -r backend/requirements.txt
 
 # Application: backend package + frontend assets served by backend/app.py
 COPY backend/ backend/
-COPY js/ js/
-COPY index.html styles.css ./
+COPY frontend/ frontend/
 # Offline GeoIP database (scripts/download_geoip.py); baked in so nothing is fetched at runtime
 COPY geoip/ geoip/
 

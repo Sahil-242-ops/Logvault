@@ -1,18 +1,18 @@
 """
-One-time generator for js/world-map-data.js (offline world map outlines).
+One-time generator for frontend/js/world-map-data.js (offline world map outlines).
 
 Run on an internet-connected machine only when the map needs regenerating:
     python scripts/build_world_map.py
 
 Source: Natural Earth 110m countries (public domain) via the world-atlas package.
-Projection must match AnalyticsModule.project() in js/analytics.js.
+Projection must match AnalyticsModule.project() in frontend/js/analytics.js.
 """
 import json
 import os
 import urllib.request
 
 SRC = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
-OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "js", "world-map-data.js")
+OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "js", "world-map-data.js")
 
 # Equirectangular, cropped to exclude Antarctica
 W, H = 1000, 440

@@ -1,0 +1,14 @@
+Sep 24 02:10:00 bastion01 sshd[330]: Failed password for admin from 185.220.101.5 port 50211 ssh2
+Sep 24 02:11:01 bastion01 sshd[331]: Failed password for admin from 185.220.101.5 port 51211 ssh2
+Sep 24 02:12:02 bastion01 sshd[332]: Failed password for admin from 185.220.101.5 port 52211 ssh2
+Sep 24 02:13:03 bastion01 sshd[333]: Failed password for admin from 185.220.101.5 port 53211 ssh2
+Sep 24 02:14:04 bastion01 sshd[334]: Failed password for admin from 185.220.101.5 port 54211 ssh2
+Sep 24 02:15:05 bastion01 sshd[335]: Failed password for admin from 185.220.101.5 port 55211 ssh2
+103.251.167.22 - - [24/Sep/2026:03:02:11 +0000] "GET /products.php?id=1%27%20OR%201=1--%20UNION%20SELECT%20username,password%20FROM%20users HTTP/1.1" 200 5120 "-" "sqlmap/1.7"
+10.0.4.23 - - [24/Sep/2026:14:20:45 +0000] "GET /download?file=../../../../etc/passwd HTTP/1.1" 403 210 "-" "curl/8.1"
+8.8.8.8 - - [24/Sep/2026:09:10:00 +0000] "GET /index.html HTTP/1.1" 200 1024 "-" "Mozilla/5.0"
+8.8.8.8 - - [24/Sep/2026:09:11:00 +0000] "GET /index.html HTTP/1.1" 200 1024 "-" "Mozilla/5.0"
+8.8.8.8 - - [24/Sep/2026:09:12:00 +0000] "GET /about.html HTTP/1.1" 200 2048 "-" "Mozilla/5.0"
+49.36.0.1 - - [24/Sep/2026:11:45:00 +0000] "GET /search?q=<script>alert(1)</script> HTTP/1.1" 200 800 "-" "Mozilla/5.0"
+CEF:0|Fortinet|FortiGate|7.0|13|Port scan|8|src=10.0.0.5 dst=10.0.0.20 dpt=445 act=blocked
+EventID=4625 AccountName=bob Workstation=WIN-PC01 SourceIP=10.10.10.1 Status=0xC000006D

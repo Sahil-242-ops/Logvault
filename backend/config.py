@@ -13,7 +13,6 @@ class Config:
     # Local AI settings
     OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
     OLLAMA_DEFAULT_MODEL = os.getenv("OLLAMA_DEFAULT_MODEL", "llama3.2")
-    LLAMACPP_HOST = os.getenv("LLAMACPP_HOST", "http://127.0.0.1:8080")
     # Records per uploaded file analysed by local AI during the upload itself. Default 0:
     # uploads return instantly and the UI asks for AI on the record being viewed.
     BATCH_AI_LINES = int(os.getenv("BATCH_AI_LINES", "0"))

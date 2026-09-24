@@ -1,19 +1,23 @@
-node_modules/
-.vercel/
-.DS_Store
-*.log
-.env
-.idea/
-.vscode/
+# Python
 __pycache__/
 *.py[cod]
 .pytest_cache/
-scratch/
 
-# Runtime data (SQLite DB, uploads) — lives in data/ locally or the Docker volume
-data/*.db
-data/*.db-journal
-data/uploads/
+# Environment & editors
+.env
+.idea/
+.vscode/
+.DS_Store
+*.log
+!samples/*.log
 
-# Offline GeoIP database (121 MB) - fetch with scripts/download_geoip.py
+# Runtime data (SQLite DB, uploads) — lives in data/ locally or in the Docker volume
+data/
+
+# Offline GeoIP database (~120 MB) — fetch with: python scripts/download_geoip.py
 geoip/*.mmdb
+
+# Local-only material (old UI captures, scratch work)
+ui-ux-screenshots/
+scratch/
+node_modules/

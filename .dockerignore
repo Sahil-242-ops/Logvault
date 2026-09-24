@@ -1,30 +1,24 @@
+# Only backend/, frontend/ and geoip/ go into the image (see Dockerfile)
 .git
 .gitignore
 .vscode
 .idea
-.vercel
 .env
 *.log
 **/__pycache__
 **/*.py[cod]
 .pytest_cache
-node_modules
-scratch
 
 # Runtime data lives in a volume, never baked into the image
 data/
 
-# Not used by the FastAPI deployment
-server/
-dev-server.js
-package.json
-package-lock.json
-ui-ux-screenshots/
+# Not needed at runtime
 backend/tests/
+samples/
+scripts/
+ui-ux-screenshots/
 *.md
+LICENSE
 Dockerfile
 docker-compose.yml
 .dockerignore
-
-# One-time download/generator scripts (not needed at runtime)
-scripts/

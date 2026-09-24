@@ -3,6 +3,7 @@ import uuid
 from typing import Dict, Any, List
 from .parsers.detector import detector
 from .ai.local_ai import local_ai
+from .config import config
 from .pii_masker import PIIMasker
 from .anomaly_detector import anomaly_detector
 from .schema.ocsf import get_ocsf_class_uid, OCSF_CATEGORIES
@@ -11,19 +12,29 @@ class Normalizer:
     def __init__(self):
         self.pii_masker = PIIMasker()
 
-    async def normalize(self, raw_log: str) -> Dict[str, Any]:
+    async def normalize(self, raw_log: str, use_ai: bool = True) -> Dict[str, Any]:
         start_time = time.time()
-        
+
         # 1. Format Detection & Parsing
         fmt, parsed, confidence = detector.detect_and_parse(raw_log)
         parser_type = "DETERMINISTIC"
-        
+
         if not parsed:
             parsed = {}
             fmt = "unknown"
 
         # 2. Genuine AI Intelligence Enrichment
-        ai_intelligence = await local_ai.analyze(raw_log)
+        if use_ai:
+            ai_intelligence = await local_ai.analyze(raw_log)
+        else:
+            ai_intelligence = {
+                "ai_provider": "none",
+                "ai_model": "none",
+                "threat_score": 0,
+                "is_suspicious": False,
+                "reasoning": "AI skipped for bulk upload line (deterministic parsing and rules applied).",
+                "mitre_techniques": []
+            }
         
         parsed["ai_provider"] = ai_intelligence.get("ai_provider", "none")
         parsed["ai_model"] = ai_intelligence.get("ai_model", "none")
@@ -126,10 +137,13 @@ class Normalizer:
         return result
 
     async def batch_normalize(self, raw_logs: List[str]) -> List[Dict[str, Any]]:
+        # Local LLM inference takes seconds per line, so only the first few lines of a
+        # file get AI enrichment; the rest use deterministic parsing + anomaly rules.
         results = []
         for log in raw_logs:
             if log.strip():
-                results.append(await self.normalize(log.strip()))
+                use_ai = len(results) < config.BATCH_AI_LINES
+                results.append(await self.normalize(log.strip(), use_ai=use_ai))
         return results
 
 normalizer = Normalizer()

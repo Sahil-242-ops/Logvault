@@ -9,3 +9,8 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 scratch/
+
+# Runtime data (SQLite DB, uploads) — lives in data/ locally or the Docker volume
+data/*.db
+data/*.db-journal
+data/uploads/

@@ -48,8 +48,9 @@ const App = {
     console.log('LOGVAULT SOC Engine Initialized — Ingestion Pipeline & Normalization Fleet Active');
   },
 
-  async probeBackend() {
+  async probeBackend(retriesLeft = 24) {
     if (!window.LogVaultAPI) return;
+    const isRetry = retriesLeft < 24;
 
     const health = await LogVaultAPI.checkBackend();
     const statusEl = document.getElementById('lv-system-status-badge');
@@ -63,7 +64,15 @@ const App = {
         statusEl.className = health.local_ai ? 'badge-pill green-pill' : 'badge-pill warn-pill';
         statusEl.title = `Status: ${aiMode} | Provider: ${health.ai_provider || 'NONE'} | Model: ${health.model || 'NONE'} | Network: ${health.network_mode.toUpperCase()}`;
       }
-      Utils.showToast(`✓ Backend online — ${health.ai_status_message || 'AI OFFLINE'} · Network: AIR-GAPPED`, 'success');
+      if (!isRetry || health.local_ai) {
+        Utils.showToast(`✓ Backend online — ${health.ai_status_message || 'AI OFFLINE'} · Network: AIR-GAPPED`, 'success');
+      }
+      // Model warms up in the background; keep re-checking (every 5s, ~2 min) until it's ready
+      if (!health.local_ai && retriesLeft > 0) {
+        setTimeout(() => this.probeBackend(retriesLeft - 1), 5000);
+      }
+    } else if (isRetry) {
+      return;
     } else {
       if (statusEl) {
         statusEl.innerHTML = `<span class="pulse-dot"></span> OFFLINE`;

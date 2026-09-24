@@ -14,6 +14,8 @@ class Config:
     OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
     OLLAMA_DEFAULT_MODEL = os.getenv("OLLAMA_DEFAULT_MODEL", "llama3.2")
     LLAMACPP_HOST = os.getenv("LLAMACPP_HOST", "http://127.0.0.1:8080")
+    # Lines per uploaded file that get local AI enrichment (the rest are deterministic)
+    BATCH_AI_LINES = int(os.getenv("BATCH_AI_LINES", "3"))
     
     # Init
     os.makedirs(UPLOAD_DIR, exist_ok=True)

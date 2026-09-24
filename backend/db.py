@@ -1,6 +1,6 @@
 import sqlite3
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from .config import config
 
 class DatabaseManager:
@@ -76,7 +76,7 @@ class DatabaseManager:
         ''', (
             event_dict.get("id"),
             event_dict.get("timestamp"),
-            datetime.utcnow().isoformat() + "Z",
+            datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             event_dict.get("detected_format"),
             event_dict.get("parser_name"),
             event_dict.get("parser_type"),

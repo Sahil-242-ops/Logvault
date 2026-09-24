@@ -1,0 +1,32 @@
+services:
+  logvault:
+    build: .
+    image: logvault:latest
+    container_name: logvault
+    restart: unless-stopped
+    ports:
+      # Frontend calls http://127.0.0.1:8000, so keep the host port at 8000
+      - "${LOGVAULT_PORT:-8000}:8000"
+    environment:
+      # Default: Ollama running on the Docker host. Use http://ollama:11434 with the "ollama" profile.
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      OLLAMA_DEFAULT_MODEL: ${OLLAMA_DEFAULT_MODEL:-llama3.2}
+      LLAMACPP_HOST: ${LLAMACPP_HOST:-http://host.docker.internal:8080}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - logvault-data:/app/data
+
+  # Optional local LLM (air-gapped: pre-load the image and models before deployment).
+  # Start with: docker compose --profile ollama up -d  (and set OLLAMA_HOST=http://ollama:11434)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: logvault-ollama
+    profiles: ["ollama"]
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+
+volumes:
+  logvault-data:
+  ollama-models:

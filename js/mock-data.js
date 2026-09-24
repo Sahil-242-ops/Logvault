@@ -467,12 +467,18 @@ const LogVaultAPI = {
       const res = await fetch(`${this._baseURL}/api/upload`, {
         method: 'POST',
         body: formData,
-        signal: AbortSignal.timeout(60000)
+        signal: AbortSignal.timeout(180000)
       });
-      if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `HTTP ${res.status}`);
+      }
       return await res.json();
     } catch (err) {
-      if (window.Utils) {
+      if (err.name === 'TimeoutError') {
+        throw new Error('processing timed out (file too large for one request)');
+      }
+      if (err instanceof TypeError && window.Utils) {
         window.Utils.showToast('Python backend unavailable. Please start the FastAPI server on port 8000.', 'error');
       }
       throw err;

@@ -117,6 +117,8 @@ const Normalizer = {
         if (!selectedFile) return;
         this.playHapticBlip(680);
         await this.executeFileUpload(selectedFile);
+        // Allow re-selecting the same file (otherwise 'change' won't fire again)
+        if (fileInput) fileInput.value = '';
       });
     }
 

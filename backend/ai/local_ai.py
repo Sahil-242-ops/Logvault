@@ -1,3 +1,4 @@
+import asyncio
 import json
 import hashlib
 import time
@@ -47,9 +48,21 @@ class LocalAI:
 
     async def get_status(self) -> Dict[str, Any]:
         now = time.time()
-        if self._cached_status and (now - self._last_status_check < 30.0):
+        # While the model is still warming up (or offline), recheck more often
+        # (5s) so we pick up "ready" quickly. Once ready, cache longer (30s)
+        # since we don't need to hammer Ollama on every request.
+        is_ready = bool(self._cached_status and self._cached_status.get("available"))
+        cache_ttl = 30.0 if is_ready else 5.0
+        if self._cached_status and (now - self._last_status_check < cache_ttl):
             return self._cached_status
-        status = await self.ollama.check_status()
+
+        # Hard backstop: no matter what happens inside the adapter, this
+        # request will get an answer within 5 seconds.
+        try:
+            status = await asyncio.wait_for(self.ollama.check_status(), timeout=5.0)
+        except asyncio.TimeoutError:
+            status = {"status": "LOCAL AI OFFLINE", "available": False, "provider": None, "model": None}
+
         self._cached_status = status
         self._last_status_check = now
         return status
@@ -67,7 +80,10 @@ class LocalAI:
         # Real Ollama inference
         if status.get("available") and status.get("status") == "LOCAL AI READY":
             prompt = PARSE_PROMPT.replace("{raw_log}", raw_log[:400].strip())  # Truncate very long logs
-            response = await self.ollama.analyze(status["model"], prompt)
+            try:
+                response = await asyncio.wait_for(self.ollama.analyze(status["model"], prompt), timeout=20.0)
+            except asyncio.TimeoutError:
+                response = None
                 
             if response:
                 try:

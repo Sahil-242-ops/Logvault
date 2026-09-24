@@ -9,6 +9,8 @@ from contextlib import asynccontextmanager
 from .api import router
 from .db import db
 from .ai.local_ai import local_ai
+from .ai.investigator import investigation_worker
+from .config import config
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -23,7 +25,11 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(local_ai.get_status())
     except Exception as e:
         print(f"[BOOT] AI warm-up notice: {e}")
+    # Background AI investigation of new alerts (proposals still need analyst approval)
+    worker = asyncio.create_task(investigation_worker()) if config.AUTO_INVESTIGATE else None
     yield
+    if worker:
+        worker.cancel()
 
 app = FastAPI(title="LogVault Air-Gapped Backend", version="1.0.0", lifespan=lifespan)
 

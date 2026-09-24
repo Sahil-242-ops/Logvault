@@ -16,6 +16,8 @@ RUN pip install -r backend/requirements.txt
 COPY backend/ backend/
 COPY js/ js/
 COPY index.html styles.css ./
+# Offline GeoIP database (scripts/download_geoip.py); baked in so nothing is fetched at runtime
+COPY geoip/ geoip/
 
 # Non-root runtime user; /app/data holds SQLite DB + uploads (mount a volume here)
 RUN useradd --create-home --uid 1000 logvault \

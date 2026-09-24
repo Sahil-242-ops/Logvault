@@ -363,6 +363,56 @@ const LogVaultAPI = {
     return { alerts: [], total: 0 };
   },
 
+  // --- Alert triage workflow (AI investigation + analyst approval) ---
+  async _postJSON(path, body, timeoutMs = 10000) {
+    const res = await fetch(`${this._baseURL}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}),
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    return data;
+  },
+
+  investigateAlert(id) {
+    return this._postJSON(`/api/alerts/${encodeURIComponent(id)}/investigate`, {}, 120000);
+  },
+
+  approveAlert(id, analyst, note, includeRelated = false) {
+    return this._postJSON(`/api/alerts/${encodeURIComponent(id)}/approve`, { analyst, note, include_related: includeRelated });
+  },
+
+  rejectAlert(id, analyst, note) {
+    return this._postJSON(`/api/alerts/${encodeURIComponent(id)}/reject`, { analyst, note });
+  },
+
+  setAlertStatus(id, status, analyst) {
+    return this._postJSON(`/api/alerts/${encodeURIComponent(id)}/status`, { status, analyst });
+  },
+
+  // --- Event analytics (offline GeoIP + time-of-day heatmap) ---
+  async getGeoAnalytics() {
+    try {
+      const res = await fetch(`${this._baseURL}/api/analytics/geo`, { signal: AbortSignal.timeout(10000) });
+      if (res.ok) return await res.json();
+    } catch {
+      // Backend offline: caller renders empty state
+    }
+    return null;
+  },
+
+  async getHeatmap() {
+    try {
+      const res = await fetch(`${this._baseURL}/api/analytics/heatmap`, { signal: AbortSignal.timeout(10000) });
+      if (res.ok) return await res.json();
+    } catch {
+      // Backend offline: caller renders empty state
+    }
+    return null;
+  },
+
   async getEvents(limit = 100, offset = 0, search = '', severity = 'ALL', source = 'ALL') {
     try {
       let url = `${this._baseURL}/api/events?limit=${limit}&offset=${offset}`;

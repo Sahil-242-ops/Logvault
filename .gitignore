@@ -14,3 +14,6 @@ scratch/
 data/*.db
 data/*.db-journal
 data/uploads/
+
+# Offline GeoIP database (121 MB) - fetch with scripts/download_geoip.py
+geoip/*.mmdb

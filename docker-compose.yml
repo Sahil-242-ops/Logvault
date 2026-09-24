@@ -12,6 +12,9 @@ services:
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
       OLLAMA_DEFAULT_MODEL: ${OLLAMA_DEFAULT_MODEL:-llama3.2}
       LLAMACPP_HOST: ${LLAMACPP_HOST:-http://host.docker.internal:8080}
+      BATCH_AI_LINES: ${BATCH_AI_LINES:-3}
+      AUTO_INVESTIGATE: ${AUTO_INVESTIGATE:-true}
+      INVESTIGATE_INTERVAL: ${INVESTIGATE_INTERVAL:-5}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

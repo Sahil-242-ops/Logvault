@@ -1264,17 +1264,26 @@
             </div>
 
             <div class="wf-filter-group">
-              <button class="wf-pill-btn active" data-wf-filter="Active">
-                <span class="status-dot red-dot"></span> Active (3)
+              <button class="wf-pill-btn" data-wf-filter="Active">
+                <span class="status-dot red-dot"></span> Active (<span id="wf-count-active">0</span>)
+              </button>
+              <button class="wf-pill-btn" data-wf-filter="Awaiting Approval">
+                <span class="status-dot" style="background-color:var(--cherry-primary);"></span> Awaiting Approval (<span id="wf-count-awaiting">0</span>)
               </button>
               <button class="wf-pill-btn" data-wf-filter="Investigating">
-                <span class="status-dot" style="background-color:var(--status-amber);"></span> Investigating (2)
+                <span class="status-dot" style="background-color:var(--status-amber);"></span> Investigating (<span id="wf-count-investigating">0</span>)
               </button>
               <button class="wf-pill-btn" data-wf-filter="Resolved">
-                <span class="status-dot green-dot"></span> Resolved (1)
+                <span class="status-dot green-dot"></span> Resolved (<span id="wf-count-resolved">0</span>)
               </button>
-              <button class="wf-pill-btn" data-wf-filter="ALL">All (6)</button>
+              <button class="wf-pill-btn active" data-wf-filter="ALL">All (<span id="wf-count-all">0</span>)</button>
             </div>
+          </div>
+
+          <!-- AI Auto-Triage Status Strip -->
+          <div class="ai-triage-strip" id="ai-triage-strip">
+            <span class="ai-triage-icon"><i data-lucide="bot"></i></span>
+            <span id="ai-triage-strip-text">AI auto-investigation: checking status&hellip;</span>
           </div>
 
           <!-- Triage Kanban Board (From Reference UI) -->
@@ -1282,30 +1291,41 @@
             <!-- Col 1: New / Active -->
             <div class="kanban-column">
               <div class="kanban-column-header">
-                <span class="kanban-col-title">New / Active</span>
-                <span class="badge-pill crit-pill">3</span>
+                <span class="kanban-col-title">New / AI Triage</span>
+                <span class="badge-pill crit-pill" id="kanban-count-new">0</span>
               </div>
               <div class="kanban-drop-zone" id="kanban-col-new">
                 <!-- Rendered dynamically by AnomalyModule.renderKanbanBoard() -->
               </div>
             </div>
 
-            <!-- Col 2: Investigating -->
+            <!-- Col 2: AI finished, waiting for a human decision -->
+            <div class="kanban-column">
+              <div class="kanban-column-header">
+                <span class="kanban-col-title">Awaiting Approval</span>
+                <span class="badge-pill cherry-pill" id="kanban-count-awaiting">0</span>
+              </div>
+              <div class="kanban-drop-zone" id="kanban-col-awaiting">
+                <!-- Rendered dynamically by AnomalyModule.renderKanbanBoard() -->
+              </div>
+            </div>
+
+            <!-- Col 3: Manual investigation -->
             <div class="kanban-column">
               <div class="kanban-column-header">
                 <span class="kanban-col-title">Investigating</span>
-                <span class="badge-pill gold-pill">2</span>
+                <span class="badge-pill gold-pill" id="kanban-count-investigating">0</span>
               </div>
               <div class="kanban-drop-zone" id="kanban-col-investigating">
                 <!-- Rendered dynamically by AnomalyModule.renderKanbanBoard() -->
               </div>
             </div>
 
-            <!-- Col 3: Resolved -->
+            <!-- Col 4: Resolved -->
             <div class="kanban-column">
               <div class="kanban-column-header">
                 <span class="kanban-col-title">Resolved</span>
-                <span class="badge-pill green-pill">1</span>
+                <span class="badge-pill green-pill" id="kanban-count-resolved">0</span>
               </div>
               <div class="kanban-drop-zone" id="kanban-col-resolved">
                 <!-- Rendered dynamically by AnomalyModule.renderKanbanBoard() -->
@@ -1356,68 +1376,63 @@
 
               <!-- Dossier Tabs -->
               <div class="dossier-tabs-bar">
-                <button class="dossier-tab-btn active">Incident Details</button>
-                <button class="dossier-tab-btn">Forensic Timeline</button>
-                <button class="dossier-tab-btn">Affected Assets</button>
-                <button class="dossier-tab-btn">Assigned Analyst</button>
+                <button class="dossier-tab-btn active" data-dossier-tab="details">AI Investigation</button>
+                <button class="dossier-tab-btn" data-dossier-tab="timeline">Forensic Timeline</button>
+                <button class="dossier-tab-btn" data-dossier-tab="assets">Affected Assets</button>
+                <button class="dossier-tab-btn" data-dossier-tab="analyst">Analyst Decision</button>
               </div>
 
-              <!-- Forensics Key-Value Table -->
-              <table class="forensic-table">
-                <tbody>
-                  <tr>
-                    <td>Source IP</td>
-                    <td><strong id="dossier-src-ip"
-                        style="color:var(--cherry-primary); font-family:var(--font-mono);">192.168.1.45</strong></td>
-                  </tr>
-                  <tr>
-                    <td>Target System</td>
-                    <td><strong id="dossier-target-ip" style="font-family:var(--font-mono);">server-07 (DB
-                        Gateway)</strong></td>
-                  </tr>
-                  <tr>
-                    <td>Event Type</td>
-                    <td><span id="dossier-event-type">Authentication Spray</span></td>
-                  </tr>
-                  <tr>
-                    <td>Automated Containment</td>
-                    <td><span class="badge-pill green-pill">Rule Armed &amp; Verified</span></td>
-                  </tr>
-                </tbody>
-              </table>
+              <!-- Tab: Incident details + AI investigation -->
+              <div class="dossier-tab-panel" data-dossier-panel="details">
+                <table class="forensic-table">
+                  <tbody>
+                    <tr>
+                      <td>Source IP</td>
+                      <td><strong id="dossier-src-ip" style="color:var(--cherry-primary); font-family:var(--font-mono);">&mdash;</strong>
+                        <span id="dossier-src-location" class="dossier-muted"></span></td>
+                    </tr>
+                    <tr>
+                      <td>Target System</td>
+                      <td><strong id="dossier-target-ip" style="font-family:var(--font-mono);">&mdash;</strong></td>
+                    </tr>
+                    <tr>
+                      <td>Technique</td>
+                      <td><span id="dossier-event-type">&mdash;</span></td>
+                    </tr>
+                    <tr>
+                      <td>Threat Score</td>
+                      <td><strong id="dossier-threat-score">&mdash;</strong></td>
+                    </tr>
+                  </tbody>
+                </table>
 
-              <!-- Alert Explanation Banner -->
-              <div class="air-gapped-notice-badge"
-                style="background-color:var(--bg-card-subtle); color:var(--text-body); border-color:var(--border-card);">
-                <i data-lucide="info" style="color:var(--cherry-primary); flex-shrink:0;"></i>
-                <span id="dossier-desc-text">Correlation heuristic detected 4,821 consecutive authentication failures
-                  targeting internal SSH daemon on port 22 within a 7-minute burst window.</span>
-              </div>
-
-              <!-- Assigned Analyst Box -->
-              <div>
-                <span
-                  style="font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Assigned
-                  Lead Analyst</span>
-                <div class="assigned-analyst-card mt-1">
-                  <div class="avatar-circle">AS</div>
-                  <div>
-                    <strong style="font-size:0.8rem; color:var(--text-ink);">Agent Sahil</strong>
-                    <div style="font-size:0.68rem; color:var(--text-muted);">Lead SOC Coordinator &bull; Tier-3 Incident
-                      Response</div>
-                  </div>
+                <div class="air-gapped-notice-badge mt-2"
+                  style="background-color:var(--bg-card-subtle); color:var(--text-body); border-color:var(--border-card);">
+                  <i data-lucide="info" style="color:var(--cherry-primary); flex-shrink:0;"></i>
+                  <span id="dossier-desc-text">Select an incident from the queue to view details.</span>
                 </div>
+
+                <!-- Rendered by AnomalyModule.renderInvestigation() -->
+                <div id="ai-investigation-card" class="ai-inv-card mt-2"></div>
               </div>
 
-              <!-- Containment Action Footer -->
-              <div class="d-flex justify-between align-center pt-2" style="border-top:1px solid var(--border-card);">
-                <button class="btn-cherry-primary" onclick="AnomalyModule.triggerContainment()">
-                  <i data-lucide="shield-ban"></i> Apply Quarantine Rule
-                </button>
-                <button class="btn-outline-cherry" onclick="Navigation.navigateTo('anomalies')">
-                  View Full Anomaly Dossier &rarr;
-                </button>
+              <!-- Tab: Forensic timeline of correlated events -->
+              <div class="dossier-tab-panel" data-dossier-panel="timeline" hidden>
+                <div id="dossier-timeline" class="inv-timeline"></div>
               </div>
+
+              <!-- Tab: Affected assets -->
+              <div class="dossier-tab-panel" data-dossier-panel="assets" hidden>
+                <div id="dossier-assets"></div>
+              </div>
+
+              <!-- Tab: Analyst decision record -->
+              <div class="dossier-tab-panel" data-dossier-panel="analyst" hidden>
+                <div id="dossier-analyst"></div>
+              </div>
+
+              <!-- Human approval step: rendered by AnomalyModule.renderDossierActions() -->
+              <div class="dossier-action-bar" id="dossier-actions"></div>
             </div>
           </div>
         </section>
@@ -1598,101 +1613,68 @@
           <div class="hero-greeting-banner">
             <div class="banner-left">
               <h2>Security Analytics &amp; Global Threat Radar</h2>
-              <p>Impossible travel vectors, 24-hour ingestion clusters, and origin ASN telemetry</p>
+              <p>Where anomalous traffic originates, when activity happens, and which sources generate the most alerts</p>
             </div>
             <div class="banner-right">
-              <span class="header-status-badge green">
+              <span class="header-status-badge green" id="geo-db-badge">
                 <span class="badge-dot green"></span>
-                <span>Threat Intel Synced</span>
+                <span id="geo-db-badge-text">Offline GeoIP</span>
               </span>
+              <button class="btn-cream-action btn-sm" id="btn-refresh-analytics" title="Refresh analytics">
+                <i data-lucide="rotate-cw"></i> Refresh
+              </button>
             </div>
           </div>
 
-          <!-- Impossible Travel Vector World Map -->
+          <!-- Threat Origin Map (offline GeoIP) -->
           <div class="surface-card">
             <div class="card-header-flex">
               <div class="d-flex align-center gap-2">
-                <span class="badge-pill crit-pill"><i data-lucide="alert-triangle"></i> GEOGRAPHIC ANOMALY</span>
-                <h3 class="card-title">Impossible Travel Vector: Mumbai &rarr; Frankfurt &rarr; New York</h3>
+                <span class="badge-pill crit-pill"><i data-lucide="globe"></i> GEOGRAPHIC ANOMALY MAP</span>
+                <h3 class="card-title" id="geo-map-title">Threat Origins</h3>
               </div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">
-                Delta: <strong style="color:var(--status-red);">34 mins</strong> (Velocity: 14,200 km/h &bull;
-                Physically Impossible)
+              <div class="geo-map-legend">
+                <span><i class="geo-dot geo-dot-crit"></i> Anomalous source</span>
+                <span><i class="geo-dot geo-dot-clean"></i> Clean traffic</span>
+                <span><i class="geo-swatch"></i> Country with anomalies</span>
               </div>
             </div>
 
-            <!-- SVG World Map with Flight Paths & Beacons -->
-            <div class="world-svg-box">
-              <svg viewBox="0 0 1000 440" preserveAspectRatio="xMidYMid meet">
+            <div class="geo-stat-row" id="geo-stat-row">
+              <!-- Rendered by AnalyticsModule.renderGeoStats() -->
+            </div>
+
+            <div class="world-svg-box" id="geo-map-box">
+              <svg id="geo-map-svg" viewBox="0 0 1000 440" preserveAspectRatio="xMidYMid meet" role="img"
+                aria-label="World map of anomalous source IP locations">
                 <defs>
                   <radialGradient id="cherryMapGlow" cx="50%" cy="50%" r="50%">
                     <stop offset="0%" stop-color="#B4233C" stop-opacity="0.8" />
                     <stop offset="100%" stop-color="#B4233C" stop-opacity="0" />
                   </radialGradient>
-                  <linearGradient id="cherryVectorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stop-color="#C47A16" />
-                    <stop offset="50%" stop-color="#B4233C" />
-                    <stop offset="100%" stop-color="#74152A" />
-                  </linearGradient>
                 </defs>
-
-                <!-- Continents Shapes -->
-                <g class="continents-shapes" fill="rgba(116, 21, 42, 0.08)" stroke="rgba(116, 21, 42, 0.2)"
-                  stroke-width="1.2">
-                  <path d="M120 70 L250 60 L290 120 L270 170 L220 200 L180 230 L160 270 L140 250 L110 180 L90 120 Z" />
-                  <path d="M220 250 L310 270 L340 330 L310 420 L260 450 L230 380 L200 300 Z" />
-                  <path d="M460 70 L540 60 L570 110 L520 160 L460 140 L440 100 Z" />
-                  <path d="M460 170 L560 170 L590 250 L560 360 L510 400 L460 330 L430 240 Z" />
-                  <path d="M570 70 L830 80 L880 150 L840 240 L760 250 L710 200 L640 220 L580 160 Z" />
-                  <path d="M660 180 L720 200 L700 270 L660 280 L640 220 Z" fill="rgba(180, 35, 60, 0.16)"
-                    stroke="var(--cherry-primary)" stroke-width="1.6" />
-                  <path d="M780 300 L870 300 L890 370 L820 410 L760 360 Z" />
-                </g>
-
-                <!-- Flight Paths -->
-                <path d="M675 230 Q570 130 495 105" fill="none" stroke="url(#cherryVectorGrad)" stroke-width="2.6"
-                  stroke-dasharray="6,6" />
-                <path d="M495 105 Q360 75 240 135" fill="none" stroke="url(#cherryVectorGrad)" stroke-width="2.6"
-                  stroke-dasharray="6,6" />
-
-                <!-- Location 1: Mumbai -->
-                <g transform="translate(675, 230)">
-                  <circle r="18" fill="url(#cherryMapGlow)" class="beacon-pulse" />
-                  <circle r="5" fill="#C47A16" stroke="#FFF8F0" stroke-width="1.8" />
-                  <text x="14" y="4" text-anchor="start" fill="var(--text-ink)" font-size="11" font-family="JetBrains Mono, monospace"
-                    font-weight="bold">Mumbai (10:14 UTC)</text>
-                </g>
-
-                <!-- Location 2: Frankfurt -->
-                <g transform="translate(495, 105)">
-                  <circle r="20" fill="url(#cherryMapGlow)" class="beacon-pulse" />
-                  <circle r="6" fill="#B4233C" stroke="#FFF8F0" stroke-width="1.8" />
-                  <text x="0" y="-18" text-anchor="middle" fill="var(--text-ink)" font-size="11" font-family="JetBrains Mono, monospace"
-                    font-weight="bold">Frankfurt (10:32 UTC)</text>
-                </g>
-
-                <!-- Location 3: New York -->
-                <g transform="translate(240, 135)">
-                  <circle r="22" fill="url(#cherryMapGlow)" class="beacon-pulse" />
-                  <circle r="6" fill="#74152A" stroke="#FFF8F0" stroke-width="1.8" />
-                  <text x="-16" y="4" text-anchor="end" fill="var(--text-ink)" font-size="11" font-family="JetBrains Mono, monospace"
-                    font-weight="bold">New York (10:48 UTC)</text>
-                </g>
+                <g id="geo-countries-layer"></g>
+                <g id="geo-points-layer"></g>
               </svg>
+              <div class="geo-tooltip" id="geo-tooltip" hidden></div>
+              <div class="geo-empty-state" id="geo-empty-state" hidden></div>
             </div>
           </div>
 
-          <!-- 2-Column Analytics Row: Heatmap + Top ASNs -->
+          <!-- 2-Column Analytics Row: Heatmap + Top Sources -->
           <div class="dash-middle-grid">
-            <!-- 24-Hour Ingestion Heatmap -->
+            <!-- Activity by time of day -->
             <div class="surface-card">
               <div class="card-header-flex">
                 <div class="card-heading-group">
-                  <h3>24-Hour Ingestion Heatmap</h3>
-                  <p>Hourly telemetry density clusters (15-min increments)</p>
+                  <h3>24-Hour Activity Heatmap</h3>
+                  <p id="heatmap-subtitle">Events per 15-minute slot, by the log's own timestamp</p>
                 </div>
               </div>
 
+              <div class="heatmap-hour-labels">
+                <span>00</span><span>04</span><span>08</span><span>12</span><span>16</span><span>20</span><span>24</span>
+              </div>
               <!-- Matrix Grid -->
               <div class="heatmap-matrix-grid" id="analytics-heatmap-grid">
                 <!-- Rendered dynamically by AnalyticsModule -->
@@ -1701,64 +1683,24 @@
               <!-- Heatmap Footer Legend -->
               <div class="d-flex justify-between align-center mt-2 pt-2"
                 style="border-top:1px solid var(--border-card); font-family:var(--font-mono); font-size:0.7rem; color:var(--text-muted);">
-                <span>1.2k EPS Baseline</span>
+                <span>0 events</span>
                 <div class="heat-legend-gradient"></div>
-                <span>18.4k EPS Peak</span>
+                <span id="heatmap-peak-label">Peak: 0</span>
               </div>
+              <div class="heatmap-anom-legend"><i class="heat-anom-mark"></i> Slot contains anomalous events</div>
             </div>
 
-            <!-- Top Malicious ASN Origins -->
+            <!-- Top Threat Sources -->
             <div class="surface-card">
               <div class="card-header-flex">
                 <div class="card-heading-group">
-                  <h3>Top Threat ASN Origins</h3>
-                  <p>Global ASN threat intelligence feed</p>
+                  <h3>Top Threat Sources</h3>
+                  <p>Source IPs ranked by anomalies, with offline geolocation</p>
                 </div>
-                <button class="btn-cream-action btn-sm" id="btn-refresh-asn-feed" title="Refresh Feed">
-                  <i data-lucide="rotate-cw"></i>
-                </button>
               </div>
 
-              <div class="asn-list-stack">
-                <div class="asn-item-row">
-                  <div><span>🇷🇺</span> <strong>192.168.1.45</strong> <small
-                      style="color:var(--text-muted)">AS48281</small></div>
-                  <div>
-                    <div class="asn-bar-wrap">
-                      <div class="asn-bar-fill" style="width:92%"></div>
-                    </div><strong style="color:var(--status-red);">4,821 reqs</strong>
-                  </div>
-                </div>
-
-                <div class="asn-item-row">
-                  <div><span>🇳🇱</span> <strong>185.220.101.5</strong> <small style="color:var(--text-muted)">AS60729
-                      (Tor)</small></div>
-                  <div>
-                    <div class="asn-bar-wrap">
-                      <div class="asn-bar-fill" style="width:78%"></div>
-                    </div><strong>3,140 reqs</strong>
-                  </div>
-                </div>
-
-                <div class="asn-item-row">
-                  <div><span>🇨🇳</span> <strong>103.251.167.22</strong> <small
-                      style="color:var(--text-muted)">AS133118</small></div>
-                  <div>
-                    <div class="asn-bar-wrap">
-                      <div class="asn-bar-fill" style="width:61%"></div>
-                    </div><strong>2,280 reqs</strong>
-                  </div>
-                </div>
-
-                <div class="asn-item-row">
-                  <div><span>🇧🇷</span> <strong>177.54.148.90</strong> <small
-                      style="color:var(--text-muted)">AS28573</small></div>
-                  <div>
-                    <div class="asn-bar-wrap">
-                      <div class="asn-bar-fill" style="width:44%"></div>
-                    </div><strong>1,490 reqs</strong>
-                  </div>
-                </div>
+              <div class="asn-list-stack" id="top-sources-list">
+                <!-- Rendered by AnalyticsModule.renderTopSources() -->
               </div>
             </div>
           </div>
@@ -2987,6 +2929,7 @@
   <script src="js/normalizer.js"></script>
   <script src="js/ai-mapper.js"></script>
   <script src="js/anomaly.js"></script>
+  <script src="js/world-map-data.js"></script>
   <script src="js/analytics.js"></script>
   <script src="js/sources.js"></script>
   <script src="js/parsers.js"></script>

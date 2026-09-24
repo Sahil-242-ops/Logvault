@@ -25,3 +25,6 @@ backend/tests/
 Dockerfile
 docker-compose.yml
 .dockerignore
+
+# One-time download/generator scripts (not needed at runtime)
+scripts/

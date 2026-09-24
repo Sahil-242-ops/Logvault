@@ -16,6 +16,13 @@ class Config:
     LLAMACPP_HOST = os.getenv("LLAMACPP_HOST", "http://127.0.0.1:8080")
     # Lines per uploaded file that get local AI enrichment (the rest are deterministic)
     BATCH_AI_LINES = int(os.getenv("BATCH_AI_LINES", "3"))
+
+    # Alert Center: AI auto-investigation (results still need analyst approval)
+    AUTO_INVESTIGATE = os.getenv("AUTO_INVESTIGATE", "true").lower() in ("1", "true", "yes")
+    INVESTIGATE_INTERVAL = float(os.getenv("INVESTIGATE_INTERVAL", "5"))
+
+    # Offline IP geolocation database folder (any MaxMind-format .mmdb)
+    GEOIP_DIR = os.getenv("GEOIP_DIR", os.path.join(os.path.dirname(BASE_DIR), "geoip"))
     
     # Init
     os.makedirs(UPLOAD_DIR, exist_ok=True)

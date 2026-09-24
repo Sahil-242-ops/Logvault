@@ -6,6 +6,8 @@ from .parsers.detector import detector
 from .ai.local_ai import local_ai
 from .config import config
 from .db import db
+from .ai import investigator
+from . import analytics
 from typing import Optional
 
 router = APIRouter()
@@ -28,7 +30,8 @@ async def health_check():
         "local_ai": ai_status.get("available", False),
         "ai_provider": ai_status.get("provider"),
         "model": ai_status.get("model"),
-        "fallback_available": True
+        "fallback_available": True,
+        "auto_investigate": config.AUTO_INVESTIGATE
     }
 
 @router.get("/api/ai/status")
@@ -162,6 +165,71 @@ async def get_alerts(
     status: Optional[str] = None
 ):
     return db.get_alerts(limit, offset, status)
+
+ALERT_STATUSES = ("OPEN", "Investigating", "Awaiting Approval", "Resolved")
+
+class AlertStatusRequest(BaseModel):
+    status: str
+    analyst: Optional[str] = None
+    note: Optional[str] = None
+
+class AlertDecisionRequest(BaseModel):
+    analyst: str
+    note: Optional[str] = None
+    include_related: bool = False  # also approve sibling alerts (same source IP + rule) awaiting approval
+
+def _require_alert(event_id: str):
+    evt = db.get_event(event_id)
+    if not evt or not (evt.get("anomaly") or {}).get("is_anomalous"):
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return evt
+
+@router.post("/api/alerts/{event_id}/investigate")
+async def investigate_alert(event_id: str):
+    """Run (or re-run) the AI investigation now. Result still needs analyst approval."""
+    evt = _require_alert(event_id)
+    db.set_alert_status(event_id, "AI Investigating")
+    result = await investigator.investigate_and_store(evt)
+    return {"event_id": event_id, "status": "Awaiting Approval", "investigation": result}
+
+@router.post("/api/alerts/{event_id}/approve")
+async def approve_alert(event_id: str, req: AlertDecisionRequest):
+    """Human approval step: accept the AI proposal and resolve the alert."""
+    evt = _require_alert(event_id)
+    if not req.analyst.strip():
+        raise HTTPException(status_code=400, detail="Analyst name is required")
+    ids = [event_id]
+    if req.include_related:
+        ids += db.get_sibling_alert_ids(evt, "Awaiting Approval")
+    for i in ids:
+        db.set_alert_status(i, "Resolved", decided_by=req.analyst.strip(), note=req.note or "Approved AI resolution")
+    return {"event_id": event_id, "status": "Resolved", "resolved_ids": ids}
+
+@router.post("/api/alerts/{event_id}/reject")
+async def reject_alert(event_id: str, req: AlertDecisionRequest):
+    """Human rejects the AI proposal; the alert goes to manual investigation."""
+    _require_alert(event_id)
+    if not req.analyst.strip():
+        raise HTTPException(status_code=400, detail="Analyst name is required")
+    db.set_alert_status(event_id, "Investigating", decided_by=req.analyst.strip(), note=req.note or "AI proposal rejected")
+    return {"event_id": event_id, "status": "Investigating"}
+
+@router.post("/api/alerts/{event_id}/status")
+async def set_alert_status(event_id: str, req: AlertStatusRequest):
+    """Manual Kanban move by an analyst."""
+    if req.status not in ALERT_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Status must be one of {ALERT_STATUSES}")
+    _require_alert(event_id)
+    db.set_alert_status(event_id, req.status, decided_by=(req.analyst or None), note=req.note)
+    return {"event_id": event_id, "status": req.status}
+
+@router.get("/api/analytics/geo")
+async def analytics_geo(limit: int = 300):
+    return analytics.geo_summary(limit)
+
+@router.get("/api/analytics/heatmap")
+async def analytics_heatmap():
+    return analytics.time_of_day_heatmap()
 
 @router.get("/api/sources")
 async def get_sources():

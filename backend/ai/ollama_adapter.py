@@ -80,7 +80,7 @@ class OllamaAdapter:
         except Exception:
             self._warmed_up = False
 
-    async def analyze(self, model: str, prompt: str):
+    async def analyze(self, model: str, prompt: str, num_predict: int = 150, timeout: float = 20.0):
         try:
             client = self._get_client()
             res = await asyncio.wait_for(
@@ -92,14 +92,14 @@ class OllamaAdapter:
                         "stream": False,
                         "format": "json",
                         "options": {
-                            "num_predict": 150,
+                            "num_predict": num_predict,
                             "temperature": 0.0
                         },
                         "keep_alive": "5m"
                     },
-                    timeout=20.0
+                    timeout=timeout
                 ),
-                timeout=20.0
+                timeout=timeout
             )
             if res.status_code == 200:
                 return res.json().get("response")

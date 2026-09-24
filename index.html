@@ -988,12 +988,30 @@
                       <i data-lucide="brain" class="dossier-brain-icon"></i>
                       <span>REAL LOCAL OLLAMA THREAT &amp; SEMANTIC ANALYSIS</span>
                     </div>
-                    <span class="badge-pill cherry-pill-subtle">LOCAL OLLAMA INFERENCE</span>
+                    <span class="badge-pill cherry-pill-subtle" id="res-ai-state">LOCAL OLLAMA INFERENCE</span>
                   </div>
                   <div class="dossier-ai-body" id="res-ai-analysis">
                     Waiting for analysis...
                   </div>
                 </div>
+              </div>
+
+              <!-- Batch upload results: every record from the file (rendered by Normalizer.renderBatchResults) -->
+              <div id="batch-results-card" class="batch-results-card" hidden>
+                <div class="batch-results-head">
+                  <div>
+                    <div class="dossier-title-text" id="batch-results-title">UPLOADED FILE RESULTS</div>
+                    <div class="batch-results-meta" id="batch-results-meta"></div>
+                  </div>
+                  <div class="batch-filter-group" role="group" aria-label="Filter records">
+                    <button type="button" class="batch-filter-btn active" data-batch-filter="all">All</button>
+                    <button type="button" class="batch-filter-btn" data-batch-filter="threats">Threats</button>
+                    <button type="button" class="batch-filter-btn" data-batch-filter="unparsed">Unparsed</button>
+                  </div>
+                </div>
+                <div class="batch-format-chips" id="batch-format-chips"></div>
+                <div class="batch-results-list" id="batch-results-list"></div>
+                <div class="batch-results-foot" id="batch-results-foot"></div>
               </div>
 
               <!-- OCSF 1.1 Compliance Strip -->

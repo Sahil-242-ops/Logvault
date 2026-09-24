@@ -68,58 +68,55 @@ class DatabaseManager:
         conn.commit()
         conn.close()
 
-    def insert_event(self, event_dict):
-        conn = self.get_connection()
-        c = conn.cursor()
-        
-        # Safely extract anomaly and mitre data
+    EVENT_COLUMNS = (
+        "timestamp", "detected_format", "parser_name", "parser_type", "event_type", "severity",
+        "source_ip", "source_port", "destination_ip", "destination_port", "user", "host", "process",
+        "protocol", "message", "threat_score", "is_anomalous", "mitre_technique", "category", "normalized_json",
+    )
+
+    @staticmethod
+    def _event_values(event_dict):
+        """Column values (in EVENT_COLUMNS order) derived from a normalized event."""
         anomaly = event_dict.get("anomaly") or {}
-        is_anomalous = anomaly.get("is_anomalous", False)
-        threat_score = anomaly.get("threat_score", 0)
-        
         mitre_technique = None
-        if anomaly.get("findings"):
-            for f in anomaly["findings"]:
-                if f.get("mitre_technique"):
-                    mitre_technique = f["mitre_technique"]
-                    break
+        for f in anomaly.get("findings") or []:
+            if f.get("mitre_technique"):
+                mitre_technique = f["mitre_technique"]
+                break
         if not mitre_technique and event_dict.get("ai_mitre_techniques"):
             mitre_technique = event_dict["ai_mitre_techniques"][0]
+        return (
+            event_dict.get("timestamp"), event_dict.get("detected_format"), event_dict.get("parser_name"),
+            event_dict.get("parser_type"), event_dict.get("event_type"), event_dict.get("severity"),
+            event_dict.get("source_ip"), event_dict.get("source_port"), event_dict.get("destination_ip"),
+            event_dict.get("destination_port"), event_dict.get("user"), event_dict.get("host"),
+            event_dict.get("process"), event_dict.get("protocol"), event_dict.get("message"),
+            anomaly.get("threat_score", 0), anomaly.get("is_anomalous", False), mitre_technique,
+            event_dict.get("category"), json.dumps(event_dict),
+        )
 
-        c.execute('''
-            INSERT OR IGNORE INTO events (
-                id, timestamp, received_at, detected_format, parser_name, parser_type, 
-                event_type, severity, source_ip, source_port, destination_ip, 
-                destination_port, user, host, process, protocol, message, 
-                threat_score, is_anomalous, mitre_technique, category, raw_log, 
-                normalized_json, session_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            event_dict.get("id"),
-            event_dict.get("timestamp"),
-            datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            event_dict.get("detected_format"),
-            event_dict.get("parser_name"),
-            event_dict.get("parser_type"),
-            event_dict.get("event_type"),
-            event_dict.get("severity"),
-            event_dict.get("source_ip"),
-            event_dict.get("source_port"),
-            event_dict.get("destination_ip"),
-            event_dict.get("destination_port"),
-            event_dict.get("user"),
-            event_dict.get("host"),
-            event_dict.get("process"),
-            event_dict.get("protocol"),
-            event_dict.get("message"),
-            threat_score,
-            is_anomalous,
-            mitre_technique,
-            event_dict.get("category"),
-            event_dict.get("raw_log"),
-            json.dumps(event_dict),
-            self.current_session_id
-        ))
+    def insert_events(self, events):
+        """Insert many normalized events in one transaction (fast path for uploads)."""
+        if not events:
+            return
+        cols = ("id", "received_at", "raw_log", "session_id") + self.EVENT_COLUMNS
+        now = self._now()
+        rows = [(e.get("id"), now, e.get("raw_log"), self.current_session_id) + self._event_values(e) for e in events]
+        conn = self.get_connection()
+        conn.executemany(
+            f"INSERT OR IGNORE INTO events ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})", rows)
+        conn.commit()
+        conn.close()
+
+    def insert_event(self, event_dict):
+        self.insert_events([event_dict])
+
+    def update_event(self, event_dict):
+        """Rewrite an existing event after re-analysis (keeps id, raw log, session, received_at)."""
+        conn = self.get_connection()
+        conn.execute(
+            f"UPDATE events SET {', '.join(c + ' = ?' for c in self.EVENT_COLUMNS)} WHERE id = ?",
+            self._event_values(event_dict) + (event_dict.get("id"),))
         conn.commit()
         conn.close()
 

@@ -286,85 +286,202 @@ const Normalizer = {
 
     try {
       const response = await window.LogVaultAPI.uploadFile(file);
-      
-      // If we got batch results, show the first one in the UI
-      if (response && response.results && response.results.length > 0) {
-        const firstResult = response.results[0];
-        
-        const rawText = firstResult.raw_log || firstResult.message || JSON.stringify(firstResult);
-        
-        let tokens = firstResult.tokens;
-        if (!tokens && rawText && typeof rawText === 'string') {
-          tokens = rawText.split(/[\s,]+/).map(t => {
-            let type = 'generic'; let mappedField = null;
-            if (t.includes(':') && !t.startsWith('http')) { type = 'process'; mappedField = 'process'; }
-            if (t.includes('=')) { type = 'keyval'; mappedField = 'metadata'; }
-            if (/\d+\.\d+\.\d+\.\d+/.test(t)) { type = 'src_ip'; mappedField = 'source_ip'; }
-            if (/\d{2}:\d{2}:\d{2}/.test(t)) { type = 'timestamp'; mappedField = 'timestamp'; }
-            return { text: t, type, mappedField };
-          });
-        }
-        
-        const enriched = {
-          name: `Batch File: ${file.name}`,
-          raw: rawText,
-          tokens: tokens || [],
-          format: firstResult.detected_format || 'Unknown',
-          parser: firstResult.parser_name || 'Backend Parser',
-          parserType: firstResult.parser_type || 'DETERMINISTIC',
-          latency: (firstResult.processing_latency_ms || 0).toFixed(2) + ' ms',
-          confidence: firstResult.parse_confidence || firstResult.detection_confidence || 0,
-          ocsf_class: firstResult.ocsf_class_name || null,
-          ocsf_class_uid: firstResult.ocsf_class_uid || null,
-          anomaly: firstResult.anomaly || null,
-          pii_masked: firstResult.pii_masked || false,
-          ai_provider: firstResult.ai_provider || 'none',
-          ai_model: firstResult.ai_model || 'none',
-          ai_reasoning: firstResult.ai_reasoning || firstResult.ai_threat_reasoning || '',
-          ai_threat_score: firstResult.ai_threat_score !== undefined ? firstResult.ai_threat_score : (firstResult.anomaly?.threat_score || 0),
-          ai_mitre_techniques: firstResult.ai_mitre_techniques || [],
-          ai_is_suspicious: firstResult.ai_is_suspicious || false,
-          schema: {
-            event_type: firstResult.event_type || 'GENERIC_EVENT',
-            user: firstResult.user || 'unknown',
-            status: firstResult.status || firstResult.action || 'RECORDED',
-            source_ip: firstResult.source_ip || null,
-            source_port: firstResult.source_port || null,
-            destination_ip: firstResult.destination_ip || null,
-            destination_port: firstResult.destination_port || null,
-            host: firstResult.host || null,
-            process: firstResult.process || null,
-            protocol: firstResult.protocol || null,
-            timestamp: firstResult.timestamp || new Date().toISOString(),
-            severity: firstResult.severity || 'INFO',
-            category: firstResult.category || 'general_telemetry',
-            message: firstResult.message || null
-          },
-          _raw_backend: firstResult
-        };
+      this.setPipelineStageLoading(false);
 
-        this.setPipelineStageLoading(false);
-        this.animateAndRenderPipeline(enriched);
-        Utils.showToast(`Processed ${response.file.total_lines} real log records from ${file.name}.`, 'success');
-        
-        // Refresh live logs and dashboard
-        if (window.LogStream && LogStream.fetchLogs) LogStream.fetchLogs();
-        if (window.App && App.renderDashboardElements) App.renderDashboardElements();
-
-        // Alert anomalies if found
-        if (response.anomaly_summary && response.anomaly_summary.anomalous > 0) {
-          setTimeout(() => {
-            Utils.showToast(`⚠ Detected ${response.anomaly_summary.anomalous} anomalous events.`, 'warning');
-          }, 1500);
-        }
-      } else {
-        this.setPipelineStageLoading(false);
+      if (!response || !response.results || response.results.length === 0) {
         Utils.showToast('No valid logs extracted from file.', 'warning');
+        return;
+      }
+
+      // Show threats first, then the rest in file order
+      const results = response.results.map((r, i) => ({ ...r, _pos: i + 1 }));
+      this.batch = { file, response, results, filter: 'all', selectedId: null, aiInFlight: {} };
+      this.renderBatchResults();
+      const firstThreat = results.find(r => r.anomaly && r.anomaly.is_anomalous);
+      this.showBatchRecord((firstThreat || results[0]).id, true);
+
+      const s = response.stats;
+      Utils.showToast(`Processed ${s.total_records} records from ${file.name} in ${Math.round(response.processing_time_ms)} ms.`, 'success');
+
+      // Refresh live logs and dashboard
+      if (window.LogStream && LogStream.fetchLogs) LogStream.fetchLogs();
+      if (window.App && App.renderDashboardElements) App.renderDashboardElements();
+
+      if (response.anomaly_summary && response.anomaly_summary.anomalous > 0) {
+        setTimeout(() => {
+          Utils.showToast(`⚠ Detected ${response.anomaly_summary.anomalous} anomalous events. AI is investigating them in the Alert Center.`, 'warning');
+        }, 1500);
       }
     } catch (err) {
       this.setPipelineStageLoading(false);
       Utils.showToast(`Upload failed: ${err.message}`, 'error');
     }
+  },
+
+  // Backend record -> the view model used by animateAndRenderPipeline / renderRealLogResultCard
+  toViewModel(r, label) {
+    const rawText = r.raw_log || r.message || JSON.stringify(r);
+    const tokens = rawText.split(/[\s,]+/).map(t => {
+      let type = 'generic'; let mappedField = null;
+      if (t.includes(':') && !t.startsWith('http')) { type = 'process'; mappedField = 'process'; }
+      if (t.includes('=')) { type = 'keyval'; mappedField = 'metadata'; }
+      if (/\d+\.\d+\.\d+\.\d+/.test(t)) { type = 'src_ip'; mappedField = 'source_ip'; }
+      if (/\d{2}:\d{2}:\d{2}/.test(t)) { type = 'timestamp'; mappedField = 'timestamp'; }
+      return { text: t, type, mappedField };
+    });
+    return {
+      name: label,
+      raw: rawText,
+      tokens,
+      format: r.detected_format || 'Unknown',
+      parser: r.parser_name || 'Backend Parser',
+      parserType: r.parser_type || 'DETERMINISTIC',
+      latency: (r.processing_latency_ms || 0).toFixed(2) + ' ms',
+      confidence: r.parse_confidence || r.detection_confidence || 0,
+      ocsf_class: r.ocsf_class_name || null,
+      ocsf_class_uid: r.ocsf_class_uid || null,
+      anomaly: r.anomaly || null,
+      pii_masked: r.pii_masked || false,
+      ai_provider: r.ai_provider || 'none',
+      ai_model: r.ai_model || 'none',
+      ai_reasoning: r.ai_reasoning || r.ai_threat_reasoning || '',
+      ai_threat_score: r.ai_threat_score,
+      ai_mitre_techniques: r.ai_mitre_techniques || [],
+      ai_is_suspicious: r.ai_is_suspicious || false,
+      schema: {
+        event_type: r.event_type || 'GENERIC_EVENT',
+        user: r.user || 'unknown',
+        status: r.status || r.action || 'RECORDED',
+        source_ip: r.source_ip || null,
+        source_port: r.source_port || null,
+        destination_ip: r.destination_ip || null,
+        destination_port: r.destination_port || null,
+        host: r.host || null,
+        process: r.process || null,
+        protocol: r.protocol || null,
+        timestamp: r.timestamp || new Date().toISOString(),
+        severity: r.severity || 'INFO',
+        category: r.category || 'general_telemetry',
+        message: r.message || null
+      },
+      _raw_backend: r
+    };
+  },
+
+  showBatchRecord(id, animate = false) {
+    if (!this.batch) return;
+    const r = this.batch.results.find(x => x.id === id);
+    if (!r) return;
+    this.batch.selectedId = id;
+    const vm = this.toViewModel(r, `Record ${r._pos} of ${this.batch.response.stats.total_records}: ${this.batch.file.name}`);
+    if (animate) {
+      this.animateAndRenderPipeline(vm);
+    } else {
+      this.currentData = vm;
+      this.renderRealLogResultCard(vm);
+      this.renderSchemaOutput(vm.schema);
+    }
+    document.querySelectorAll('.batch-row').forEach(row => row.classList.toggle('selected', row.dataset.id === id));
+    this.requestRecordAi(r);
+  },
+
+  // Local AI runs per viewed record in the background, so uploads stay instant
+  async requestRecordAi(r) {
+    const stateEl = document.getElementById('res-ai-state');
+    const analysisEl = document.getElementById('res-ai-analysis');
+    if (r.ai_provider === 'ollama' || !r.id) {
+      if (stateEl) stateEl.innerText = 'LOCAL OLLAMA INFERENCE';
+      return;
+    }
+    if (stateEl) stateEl.innerText = 'ANALYSING…';
+    if (analysisEl) analysisEl.innerText = 'Local AI is analysing this record. Parsing, rules and OCSF mapping above are already complete.';
+
+    const batch = this.batch;
+    if (!batch.aiInFlight[r.id]) {
+      batch.aiInFlight[r.id] = LogVaultAPI._postJSON(`/api/events/${encodeURIComponent(r.id)}/ai-analyze`, {}, 60000)
+        .catch(err => ({ _error: err.message }));
+    }
+    const enriched = await batch.aiInFlight[r.id];
+    if (this.batch !== batch) return;  // a new file was uploaded meanwhile
+
+    if (enriched && !enriched._error) {
+      const idx = batch.results.findIndex(x => x.id === r.id);
+      if (idx >= 0) batch.results[idx] = { ...enriched, _pos: batch.results[idx]._pos };
+      this.renderBatchResults();
+    } else {
+      delete batch.aiInFlight[r.id];
+    }
+
+    if (batch.selectedId !== r.id) return;  // user moved on to another record
+    const current = batch.results.find(x => x.id === r.id);
+    this.currentData = this.toViewModel(current, `Record ${current._pos}: ${batch.file.name}`);
+    this.renderRealLogResultCard(this.currentData);
+    this.renderSchemaOutput(this.currentData.schema);
+    if (stateEl) stateEl.innerText = current.ai_provider === 'ollama' ? 'LOCAL OLLAMA INFERENCE' : 'AI UNAVAILABLE';
+    if (enriched && enriched._error && analysisEl) {
+      analysisEl.innerText = `Local AI analysis failed (${enriched._error}). Deterministic results above are complete.`;
+    }
+  },
+
+  renderBatchResults() {
+    const card = document.getElementById('batch-results-card');
+    const list = document.getElementById('batch-results-list');
+    if (!card || !list || !this.batch) return;
+    const { response, results, filter, selectedId } = this.batch;
+    const s = response.stats;
+    card.hidden = false;
+
+    const layoutLabel = {
+      'json-document': 'JSON document', 'json-lines': 'JSON Lines',
+      'csv-with-header': 'CSV with header', 'line-per-record': 'one record per line'
+    }[response.file.layout] || response.file.layout;
+    const setText = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
+    setText('batch-results-title', response.file.filename.toUpperCase());
+    setText('batch-results-meta',
+      `${s.total_records} records (${layoutLabel}) • ${s.successful_records} parsed • ${s.failed_records} unparsed • ` +
+      `${s.threats_found} threats • ${Math.round(response.processing_time_ms)} ms`);
+
+    const chips = document.getElementById('batch-format-chips');
+    if (chips) {
+      chips.innerHTML = Object.entries(s.detected_formats)
+        .map(([fmt, n]) => `<span class="badge-pill ${fmt === 'unknown' ? 'warn-pill' : 'neutral-pill'}">${Utils.escapeHtml(fmt.toUpperCase())} × ${n}</span>`)
+        .join('');
+    }
+
+    const visible = results.filter(r => filter === 'all'
+      || (filter === 'threats' && r.anomaly && r.anomaly.is_anomalous)
+      || (filter === 'unparsed' && r.detected_format === 'unknown'));
+
+    const sevPill = (sev) => ({ CRITICAL: 'crit-pill', HIGH: 'high-pill', MEDIUM: 'warn-pill', LOW: 'green-pill' })[sev] || 'neutral-pill';
+    list.innerHTML = visible.length ? visible.map(r => {
+      const threat = Math.max(r.ai_threat_score || 0, (r.anomaly && r.anomaly.threat_score) || 0);
+      const anomalous = r.anomaly && r.anomaly.is_anomalous;
+      return `
+        <div class="batch-row${r.id === selectedId ? ' selected' : ''}${anomalous ? ' is-threat' : ''}" data-id="${Utils.escapeHtml(r.id)}" role="button" tabindex="0">
+          <span class="batch-pos">#${r._pos}</span>
+          <span class="badge-pill ${r.detected_format === 'unknown' ? 'warn-pill' : 'gold-pill'} batch-fmt">${Utils.escapeHtml((r.detected_format || '?').toUpperCase())}</span>
+          <span class="batch-type">${Utils.escapeHtml(r.event_type || 'GENERIC_EVENT')}</span>
+          <span class="badge-pill ${sevPill(r.severity)}">${Utils.escapeHtml(r.severity || 'INFO')}</span>
+          <span class="batch-threat${threat >= 50 ? ' hot' : ''}">${threat}</span>
+          <span class="batch-ai" title="${r.ai_provider === 'ollama' ? 'Analysed by local AI' : 'Not yet analysed by AI'}">${r.ai_provider === 'ollama' ? '<i data-lucide="brain"></i>' : ''}</span>
+          <span class="batch-raw">${Utils.escapeHtml(String(r.raw_log || '').substring(0, 140))}</span>
+        </div>`;
+    }).join('') : '<div class="kanban-empty">No records match this filter.</div>';
+
+    list.querySelectorAll('.batch-row').forEach(row => {
+      row.addEventListener('click', () => this.showBatchRecord(row.dataset.id));
+      row.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.showBatchRecord(row.dataset.id); });
+    });
+
+    card.querySelectorAll('[data-batch-filter]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.batchFilter === filter);
+      btn.onclick = () => { this.batch.filter = btn.dataset.batchFilter; this.renderBatchResults(); };
+    });
+
+    setText('batch-results-foot', response.results_truncated
+      ? `Showing the first ${results.length} of ${s.total_records} records. All ${s.total_records} are stored; see Live Log Stream.`
+      : 'Click a record to inspect it. Local AI analyses the record you open.');
+    if (window.lucide) lucide.createIcons();
   },
 
   async simulateAiRuleGeneration() {
@@ -488,7 +605,7 @@ const Normalizer = {
       sevEl.className = 'badge-pill ' + (sev === 'CRITICAL' ? 'crit-pill' : (sev === 'HIGH' ? 'high-pill' : (sev === 'MEDIUM' ? 'warn-pill' : 'green-pill')));
     }
 
-    const threatScore = data.ai_threat_score !== undefined ? data.ai_threat_score : (data.anomaly?.threat_score || 0);
+    const threatScore = Math.max(data.ai_threat_score || 0, data.anomaly?.threat_score || 0);
     if (threatScoreEl) threatScoreEl.innerText = `${threatScore} / 100`;
 
     const aiModel = data.ai_model || data._raw_backend?.ai_model || null;
@@ -517,7 +634,15 @@ const Normalizer = {
       piiEl.className = isMasked ? 'badge-pill warn-pill' : 'badge-pill green-pill';
     }
 
-    const aiAnalysis = data.ai_reasoning || data._raw_backend?.ai_threat_reasoning || data.anomaly?.findings?.find(f => f.description)?.description || 'No analysis available.';
+    // Rule findings first (deterministic evidence), then the local model's opinion
+    const reasoning = /^AI skipped for bulk upload/.test(data.ai_reasoning || '') ? '' : data.ai_reasoning;
+    const ruleFindings = (data.anomaly?.findings || []).filter(f => f.rule_name && !/^Ollama AI/.test(f.rule_name));
+    const parts = [];
+    if (ruleFindings.length) {
+      parts.push('Detection rules: ' + ruleFindings.map(f => f.rule_name + (f.mitre_technique ? ` (${f.mitre_technique})` : '')).join('; ') + '.');
+    }
+    if (reasoning) parts.push((ruleFindings.length ? 'Local AI: ' : '') + reasoning);
+    const aiAnalysis = parts.join('\n') || 'No threat indicators found by detection rules or local AI.';
     if (analysisEl) analysisEl.innerText = aiAnalysis;
 
     if (window.lucide) lucide.createIcons();

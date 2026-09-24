@@ -6,7 +6,22 @@ from .ai.local_ai import local_ai
 from .config import config
 from .pii_masker import PIIMasker
 from .anomaly_detector import anomaly_detector
-from .schema.ocsf import get_ocsf_class_uid, OCSF_CATEGORIES
+from .schema.ocsf import get_ocsf_class_uid
+
+# event_type substring -> (OCSF class, OCSF category); first match wins
+OCSF_EVENT_CLASS_RULES = (
+    ("AUTHENTICATION", "Authentication", "iam"),
+    ("LOGIN", "Authentication", "iam"),
+    ("ACCOUNT", "Account Change", "iam"),
+    ("HTTP", "HTTP Activity", "network"),
+    ("SECURITY_FINDING", "Security Finding", "findings"),
+    ("FILE", "File Activity", "system"),
+    ("PROCESS", "Process Activity", "system"),
+    ("NETWORK", "Network Activity", "network"),
+    ("CONNECTION", "Network Activity", "network"),
+    ("FIREWALL", "Network Activity", "network"),
+)
+
 
 class Normalizer:
     def __init__(self):
@@ -47,8 +62,12 @@ class Normalizer:
             if ai_sev_rank > current_sev_rank or "severity" not in parsed:
                 parsed["severity"] = ai_sev
                 
-        if "event_type" not in parsed or parsed["event_type"] == "GENERIC_EVENT":
-            parsed["event_type"] = ai_intelligence.get("semantic_classification", "GENERIC_EVENT")
+        # Parser-level catch-all types can be refined by the AI's semantic classification
+        ai_class = ai_intelligence.get("semantic_classification")
+        if ai_class and parsed.get("event_type") in (None, "GENERIC_EVENT", "JSON_EVENT", "WINDOWS_EVENT"):
+            parsed["event_type"] = ai_class
+        elif not parsed.get("event_type"):
+            parsed["event_type"] = "GENERIC_EVENT"
 
         # Ensure raw log is preserved in the base parsed data for downstream
         parsed["raw_log"] = raw_log
@@ -75,6 +94,12 @@ class Normalizer:
             
         parsed["ai_threat_reasoning"] = ai_intelligence.get("reasoning", "")
 
+        # An event that matched a detection rule is at least as severe as that rule
+        sev_rank = {"INFO": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}
+        rule_sev = anomaly_results.get("max_severity")
+        if sev_rank.get(rule_sev, -1) > sev_rank.get(str(parsed.get("severity", "INFO")).upper(), 0):
+            parsed["severity"] = rule_sev
+
         # 4. PII Masking
         masked_data, pii_detected = self.pii_masker.mask_dict(parsed)
         
@@ -83,15 +108,13 @@ class Normalizer:
         event_class_name = "Unknown"
         event_type = masked_data.get("event_type", "GENERIC_EVENT")
         
-        if "AUTHENTICATION" in event_type:
-            event_class_name = "Authentication"
-        elif "HTTP" in event_type:
-            event_class_name = "HTTP Activity"
-        elif "SECURITY_FINDING" in event_type:
-            event_class_name = "Security Finding"
-        
+        ocsf_category = "other"
+        for marker, cls, cat in OCSF_EVENT_CLASS_RULES:
+            if marker in event_type:
+                event_class_name, ocsf_category = cls, cat
+                break
+
         class_uid = get_ocsf_class_uid(event_class_name)
-        ocsf_category = OCSF_CATEGORIES.get(event_class_name, "other")
 
         latency_ms = (time.time() - start_time) * 1000
 

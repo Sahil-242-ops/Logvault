@@ -6,6 +6,7 @@ from .parsers.detector import detector
 from .ai.local_ai import local_ai
 from .config import config
 from .db import db
+from .ingest import split_records
 from .ai import investigator
 from . import analytics
 from . import storage
@@ -68,7 +69,7 @@ async def detect_log(req: LogRequest):
 
 @router.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
-    if not file.filename.endswith(('.log', '.txt', '.csv', '.json', '.jsonl')):
+    if not (file.filename or '').lower().endswith(('.log', '.txt', '.csv', '.json', '.jsonl')):
         raise HTTPException(status_code=400, detail="Unsupported file extension")
 
     contents = await file.read()
@@ -76,21 +77,22 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=413, detail="File too large")
         
     try:
-        text = contents.decode('utf-8')
+        text = contents.decode('utf-8-sig')  # tolerate a BOM from Windows-exported files
     except UnicodeDecodeError:
         raise HTTPException(status_code=400, detail="File must be valid UTF-8 text")
-        
-    lines = text.splitlines()
-    if not lines:
+
+    # JSON arrays, JSON Lines, CSV with header, or one record per line
+    records, layout = split_records(file.filename, text)
+    if not records:
         raise HTTPException(status_code=400, detail="File is empty")
-        
+
     start_time = time.time()
-    results = await normalizer.batch_normalize(lines)
-    
+    results = await normalizer.batch_normalize(records)
+    db.insert_events(results)
+
     successful = 0
     anomalous = 0
     formats = {}
-    
     for r in results:
         fmt = r.get("detected_format", "unknown")
         if fmt != "unknown":
@@ -98,20 +100,22 @@ async def upload_file(file: UploadFile = File(...)):
         if r.get("anomaly", {}).get("is_anomalous"):
             anomalous += 1
         formats[fmt] = formats.get(fmt, 0) + 1
-        db.insert_event(r)
-        
+
     return {
         "file": {
             "filename": file.filename,
-            "total_lines": len(lines),
+            "total_lines": len(text.splitlines()),
+            "total_records": len(results),
+            "layout": layout,
             "size_bytes": len(contents)
         },
         "processing_time_ms": round((time.time() - start_time) * 1000, 2),
-        "results": results[:100],  # Return up to 100 results to UI to avoid freezing
+        "results": results[:500],  # enough for the UI result list without freezing the browser
+        "results_truncated": len(results) > 500,
         "stats": {
-            "total_records": len(lines),
+            "total_records": len(results),
             "successful_records": successful,
-            "failed_records": len(lines) - successful,
+            "failed_records": len(results) - successful,
             "detected_formats": formats,
             "threats_found": anomalous
         },
@@ -119,6 +123,20 @@ async def upload_file(file: UploadFile = File(...)):
             "anomalous": anomalous
         }
     }
+
+@router.post("/api/events/{event_id}/ai-analyze")
+async def ai_analyze_event(event_id: str):
+    """Run local AI on one stored event (used by the Normalizer for the record being viewed,
+    so uploads stay fast) and save the enriched result."""
+    evt = db.get_event(event_id)
+    if not evt:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if evt.get("ai_provider") == "ollama":
+        return evt  # already analysed
+    result = await normalizer.normalize(evt.get("raw_log") or "", use_ai=True)
+    result["id"] = event_id
+    db.update_event(result)
+    return result
 
 @router.post("/api/ai/analyze")
 async def ai_analyze(req: AIMessageRequest):

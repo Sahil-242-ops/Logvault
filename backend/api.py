@@ -8,6 +8,8 @@ from .config import config
 from .db import db
 from .ai import investigator
 from . import analytics
+from . import storage
+import asyncio
 from typing import Optional
 
 router = APIRouter()
@@ -222,6 +224,35 @@ async def set_alert_status(event_id: str, req: AlertStatusRequest):
     _require_alert(event_id)
     db.set_alert_status(event_id, req.status, decided_by=(req.analyst or None), note=req.note)
     return {"event_id": event_id, "status": req.status}
+
+class StoragePolicyRequest(BaseModel):
+    storage_limit_gb: float = 0  # 0 = unlimited
+    retention_days: int = 0      # 0 = keep forever
+
+@router.get("/api/storage")
+async def get_storage():
+    return storage.stats()
+
+@router.put("/api/storage/policy")
+async def update_storage_policy(req: StoragePolicyRequest):
+    if req.storage_limit_gb != 0 and not (0.1 <= req.storage_limit_gb <= 100000):
+        raise HTTPException(status_code=400, detail="Storage limit must be 0 (unlimited) or between 0.1 and 100000 GB")
+    if req.retention_days != 0 and not (1 <= req.retention_days <= 3650):
+        raise HTTPException(status_code=400, detail="Retention must be 0 (forever) or between 1 and 3650 days")
+    return {"policy": storage.set_policy(req.storage_limit_gb, req.retention_days)}
+
+@router.post("/api/storage/enforce")
+async def enforce_storage_policy():
+    """Apply the size limit / retention window now (normally runs every 10 minutes)."""
+    result = await asyncio.to_thread(storage.enforce)
+    return {**result, "storage": storage.stats()}
+
+@router.post("/api/storage/vacuum")
+async def vacuum_storage():
+    before = storage.stats()["db_file_bytes"]
+    await asyncio.to_thread(db.vacuum)
+    after = storage.stats()
+    return {"reclaimed_bytes": max(0, before - after["db_file_bytes"]), "storage": after}
 
 @router.get("/api/analytics/geo")
 async def analytics_geo(limit: int = 300):

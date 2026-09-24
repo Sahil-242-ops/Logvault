@@ -7199,6 +7199,9 @@ body.theme-dark .flowchart-stage-col {
 
 /* Layout utilities: used throughout index.html but previously undefined */
 .d-flex { display: flex; }
+.flex-column { flex-direction: column; }
+.align-baseline { align-items: baseline; }
+.font-mono { font-family: var(--font-mono); }
 .align-center { align-items: center; }
 .justify-between { justify-content: space-between; }
 .flex-1 { flex: 1; }
@@ -7224,3 +7227,40 @@ body.theme-dark .flowchart-stage-col {
   border: 1px solid var(--border-card); background: var(--bg-card-subtle);
   font-family: var(--font-mono); font-size: 0.66rem; font-weight: 700; color: var(--text-ink);
 }
+
+/* Settings: storage limit & retention policy */
+.storage-policy-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  background: var(--bg-card-subtle);
+}
+.storage-policy-field { display: flex; flex-direction: column; gap: 4px; }
+.storage-policy-field label {
+  font-family: var(--font-mono); font-size: 0.64rem; font-weight: 700;
+  letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-muted);
+}
+.storage-policy-inputs { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.storage-policy-inputs select,
+.storage-policy-inputs input {
+  padding: 6px 10px; font-size: 0.76rem; color: var(--text-ink);
+  background: var(--bg-card); border: 1px solid var(--border-card); border-radius: var(--radius-sm);
+}
+.storage-policy-inputs select { flex: 1 1 180px; min-width: 0; }
+.storage-policy-inputs input { width: 90px; font-family: var(--font-mono); }
+.storage-policy-inputs input:disabled { opacity: 0.45; }
+.storage-policy-inputs select:focus,
+.storage-policy-inputs input:focus { outline: none; border-color: var(--border-focus); }
+.storage-unit { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted); }
+.storage-policy-help { margin: 0; font-size: 0.72rem; line-height: 1.5; color: var(--text-body); }
+.storage-policy-help strong { color: var(--text-ink); }
+.storage-policy-form button svg { width: 14px; height: 14px; }
+.storage-section-label {
+  margin-bottom: 8px; font-family: var(--font-mono); font-size: 0.66rem; font-weight: 700;
+  letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-muted);
+}
+.storage-footnote { font-size: 0.66rem; color: var(--text-muted); line-height: 1.5; }

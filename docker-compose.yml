@@ -15,6 +15,8 @@ services:
       BATCH_AI_LINES: ${BATCH_AI_LINES:-3}
       AUTO_INVESTIGATE: ${AUTO_INVESTIGATE:-true}
       INVESTIGATE_INTERVAL: ${INVESTIGATE_INTERVAL:-5}
+      STORAGE_LIMIT_GB: ${STORAGE_LIMIT_GB:-0}
+      RETENTION_DAYS: ${RETENTION_DAYS:-0}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

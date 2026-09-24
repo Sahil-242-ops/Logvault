@@ -10,6 +10,7 @@ from .api import router
 from .db import db
 from .ai.local_ai import local_ai
 from .ai.investigator import investigation_worker
+from .storage import maintenance_worker
 from .config import config
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,7 +28,10 @@ async def lifespan(app: FastAPI):
         print(f"[BOOT] AI warm-up notice: {e}")
     # Background AI investigation of new alerts (proposals still need analyst approval)
     worker = asyncio.create_task(investigation_worker()) if config.AUTO_INVESTIGATE else None
+    # Storage limit / retention enforcement (no-op while unlimited)
+    maintenance = asyncio.create_task(maintenance_worker())
     yield
+    maintenance.cancel()
     if worker:
         worker.cancel()
 

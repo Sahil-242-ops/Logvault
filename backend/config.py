@@ -21,6 +21,11 @@ class Config:
     AUTO_INVESTIGATE = os.getenv("AUTO_INVESTIGATE", "true").lower() in ("1", "true", "yes")
     INVESTIGATE_INTERVAL = float(os.getenv("INVESTIGATE_INTERVAL", "5"))
 
+    # Storage policy defaults (0 = unlimited / keep forever). Settings screen overrides these.
+    STORAGE_LIMIT_GB = float(os.getenv("STORAGE_LIMIT_GB", "0"))
+    RETENTION_DAYS = int(os.getenv("RETENTION_DAYS", "0"))
+    STORAGE_CHECK_INTERVAL = float(os.getenv("STORAGE_CHECK_INTERVAL", "600"))
+
     # Offline IP geolocation database folder (any MaxMind-format .mmdb)
     GEOIP_DIR = os.getenv("GEOIP_DIR", os.path.join(os.path.dirname(BASE_DIR), "geoip"))
     

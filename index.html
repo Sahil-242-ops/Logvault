@@ -2557,8 +2557,8 @@
             <div class="kpi-card">
               <div class="kpi-icon-wrap"><i data-lucide="database"></i></div>
               <span class="kpi-label">Local Storage Footprint</span>
-              <span class="kpi-value">2.42 <small style="font-size:0.75rem;">GB</small></span>
-              <span class="kpi-trend positive"><i data-lucide="hard-drive"></i> 24.2% of 10.0 GB Limit</span>
+              <span class="kpi-value" id="kpi-storage-value">&mdash;</span>
+              <span class="kpi-trend positive" id="kpi-storage-sub"><i data-lucide="hard-drive"></i> Loading&hellip;</span>
             </div>
 
             <div class="kpi-card">
@@ -2571,8 +2571,8 @@
             <div class="kpi-card">
               <div class="kpi-icon-wrap"><i data-lucide="calendar"></i></div>
               <span class="kpi-label">Rolling Retention Window</span>
-              <span class="kpi-value">90 <small style="font-size:0.75rem;">Days</small></span>
-              <span class="kpi-trend positive"><i data-lucide="refresh-cw"></i> FIFO Automatic Pruning</span>
+              <span class="kpi-value" id="kpi-retention-value">&mdash;</span>
+              <span class="kpi-trend positive" id="kpi-retention-sub"><i data-lucide="refresh-cw"></i> Loading&hellip;</span>
             </div>
 
             <div class="kpi-card">
@@ -2695,13 +2695,6 @@
                   <span class="badge-pill green-pill">VERIFIED</span>
                 </div>
 
-                <div class="settings-policy-item" style="flex-direction:column; align-items:stretch; gap:6px;">
-                  <div class="d-flex justify-between align-center">
-                    <strong style="font-size:0.78rem; color:var(--text-ink);">Rolling Retention Window Pruning</strong>
-                    <span id="settings-retention-val" style="font-family:var(--font-mono); font-size:0.72rem; font-weight:800; color:var(--cherry-primary);">90 Days</span>
-                  </div>
-                  <input type="range" id="settings-retention-slider" min="7" max="180" value="90" style="width:100%; accent-color:var(--cherry-primary);" />
-                </div>
               </div>
             </div>
 
@@ -2713,12 +2706,45 @@
                   <div>
                     <h3 class="parsers-benchmark-title">
                       <i data-lucide="database" style="color:var(--cherry-primary);"></i>
-                      Local Storage &amp; Runtime Heap Breakdown
+                      Local Storage &amp; Retention Policy
                     </h3>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Allocation by raw log telemetry, normalized OCSF, and vector embeddings</p>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Live usage of the local SQLite event store and how long data is kept</p>
                   </div>
-                  <span class="badge-pill green-pill" style="font-size:0.6rem;">INDEXEDDB</span>
+                  <span class="badge-pill green-pill" style="font-size:0.6rem;">SQLITE</span>
                 </div>
+
+                <!-- Storage policy: size limit + retention (0 = unlimited / forever) -->
+                <div class="storage-policy-form">
+                  <div class="storage-policy-field">
+                    <label for="storage-limit-mode">Storage limit</label>
+                    <div class="storage-policy-inputs">
+                      <select id="storage-limit-mode">
+                        <option value="unlimited">Unlimited (until disk is full)</option>
+                        <option value="custom">Set a limit</option>
+                      </select>
+                      <input type="number" id="storage-limit-gb" min="0.1" step="0.1" value="10" aria-label="Storage limit in GB" />
+                      <span class="storage-unit">GB</span>
+                    </div>
+                  </div>
+                  <div class="storage-policy-field">
+                    <label for="storage-retention-mode">Keep events for</label>
+                    <div class="storage-policy-inputs">
+                      <select id="storage-retention-mode">
+                        <option value="forever">Forever</option>
+                        <option value="custom">A number of days</option>
+                      </select>
+                      <input type="number" id="storage-retention-days" min="1" max="3650" step="1" value="90" aria-label="Retention in days" />
+                      <span class="storage-unit">days</span>
+                    </div>
+                  </div>
+                  <p class="storage-policy-help" id="storage-policy-help"></p>
+                  <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn-cherry-primary btn-sm" id="btn-save-storage-policy"><i data-lucide="save"></i> Save policy</button>
+                    <button class="btn-cream-action btn-sm" id="btn-apply-storage-policy"><i data-lucide="scissors"></i> Apply now</button>
+                  </div>
+                </div>
+
+                <div class="storage-section-label">What is using space</div>
                 <div id="settingsStorageBreakdownContainer" style="display:flex; flex-direction:column; justify-content:center; flex:1;">
                   <!-- Populated dynamically by SettingsModule.renderStorageBars() -->
                 </div>

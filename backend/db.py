@@ -1,6 +1,6 @@
 import sqlite3
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from .config import config
 
 class DatabaseManager:
@@ -60,6 +60,11 @@ class DatabaseManager:
         ''')
         # An investigation interrupted by a restart goes back to the queue
         c.execute("UPDATE alert_state SET status = 'OPEN' WHERE status = 'AI Investigating'")
+        # Key/value platform settings (storage limit, retention)
+        c.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
+        # Retention pruning and per-session queries scan by these columns
+        c.execute("CREATE INDEX IF NOT EXISTS idx_events_received_at ON events(received_at)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_events_session ON events(session_id)")
         conn.commit()
         conn.close()
 
@@ -461,6 +466,100 @@ class DatabaseManager:
         if row:
             return json.loads(row[0])
         return None
+
+    # ---- Settings ----
+    def get_setting(self, key, default=None):
+        conn = self.get_connection()
+        c = conn.cursor()
+        c.execute("SELECT value FROM settings WHERE key = ?", (key,))
+        row = c.fetchone()
+        conn.close()
+        return row[0] if row else default
+
+    def set_setting(self, key, value):
+        conn = self.get_connection()
+        c = conn.cursor()
+        c.execute("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                  (key, str(value)))
+        conn.commit()
+        conn.close()
+
+    # ---- Storage accounting & pruning ----
+    # Anomalous events whose alert is not Resolved are never pruned
+    PROTECTED_SQL = """(e.is_anomalous = 1 AND NOT EXISTS (
+        SELECT 1 FROM alert_state s WHERE s.event_id = e.id AND s.status = 'Resolved'))"""
+
+    def storage_stats(self):
+        conn = self.get_connection()
+        c = conn.cursor()
+        c.execute("""
+            SELECT COUNT(*), COALESCE(SUM(LENGTH(raw_log)), 0), COALESCE(SUM(LENGTH(normalized_json)), 0),
+                   COALESCE(SUM(is_anomalous), 0), MIN(received_at), MAX(received_at), COUNT(DISTINCT session_id)
+            FROM events
+        """)
+        total, raw_bytes, norm_bytes, anomalous, oldest, newest, sessions = c.fetchone()
+        c.execute("SELECT COUNT(*), COALESCE(SUM(LENGTH(investigation_json)), 0) FROM alert_state")
+        alert_rows, alert_bytes = c.fetchone()
+        c.execute(f"SELECT COUNT(*) FROM events e WHERE {self.PROTECTED_SQL}")
+        protected = c.fetchone()[0]
+        c.execute("PRAGMA page_size")
+        page_size = c.fetchone()[0]
+        c.execute("PRAGMA freelist_count")
+        free_pages = c.fetchone()[0]
+        conn.close()
+        return {
+            "events": total, "anomalous_events": anomalous, "protected_events": protected,
+            "sessions": sessions, "oldest_event": oldest, "newest_event": newest,
+            "raw_log_bytes": raw_bytes, "normalized_bytes": norm_bytes,
+            "alert_records": alert_rows, "alert_bytes": alert_bytes,
+            "reclaimable_bytes": page_size * free_pages,
+        }
+
+    def prune(self, retention_days=0, max_data_bytes=0):
+        """Delete old, non-protected events. retention_days=0 and max_data_bytes=0 mean 'keep everything'.
+        Returns (deleted_by_age, deleted_by_size)."""
+        conn = self.get_connection()
+        c = conn.cursor()
+        by_age = by_size = 0
+
+        if retention_days and retention_days > 0:
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat().replace("+00:00", "Z")
+            c.execute(f"DELETE FROM events WHERE id IN (SELECT e.id FROM events e WHERE e.received_at < ? AND NOT {self.PROTECTED_SQL})",
+                      (cutoff,))
+            by_age = c.rowcount
+
+        if max_data_bytes and max_data_bytes > 0:
+            c.execute("SELECT COALESCE(SUM(LENGTH(raw_log) + LENGTH(normalized_json)), 0) FROM events")
+            used = c.fetchone()[0]
+            # Once over the limit, prune down to 90% so we don't prune again on every insert
+            target = int(max_data_bytes * 0.9) if used > max_data_bytes else used
+            while used > target:
+                c.execute(f"""SELECT e.id, LENGTH(e.raw_log) + LENGTH(e.normalized_json) FROM events e
+                              WHERE NOT {self.PROTECTED_SQL} ORDER BY e.received_at ASC LIMIT 500""")
+                batch = c.fetchall()
+                if not batch:
+                    break  # only protected (open) alerts remain
+                ids = []
+                for event_id, size in batch:
+                    ids.append(event_id)
+                    used -= size or 0
+                    if used <= target:
+                        break
+                c.executemany("DELETE FROM events WHERE id = ?", [(i,) for i in ids])
+                by_size += len(ids)
+                if used <= target:
+                    break
+
+        if by_age or by_size:
+            c.execute("DELETE FROM alert_state WHERE event_id NOT IN (SELECT id FROM events)")
+        conn.commit()
+        conn.close()
+        return by_age, by_size
+
+    def vacuum(self):
+        conn = self.get_connection()
+        conn.execute("VACUUM")
+        conn.close()
 
     def delete_events(self):
         conn = self.get_connection()

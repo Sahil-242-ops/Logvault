@@ -393,6 +393,8 @@ LOGVAULT/
 
 *Built for Smart India Hackathon 2026 · SIH26156*
 
+**Team:** [Sahil](https://github.com/Sahil-242-ops) · [Aman Gupta](https://github.com/amanguptawork124-collab)
+
 [MIT License](LICENSE)
 
 </div>

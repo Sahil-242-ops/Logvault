@@ -1,67 +1,104 @@
 /**
- * LOGVAULT — Operator Authentication & Access Control Module (SIH26156)
- * Dual-Theme Authentication Portal with Session Persistence, Clearance Presets & Instant Demo Access
+ * LOGVAULT — Operator sign-in.
+ * Credentials are checked by the backend (PBKDF2-hashed passwords); it returns a session token that
+ * js/api.js attaches to every API call. The operator's role comes from their account, not the browser.
  */
 
 const AuthModule = {
   isAuthenticated: false,
+  operator: null,
 
+  // Quick-fill buttons for the evaluation accounts the backend creates on first start
   presets: {
-    'sahil': {
-      name: 'Agent Sahil',
-      email: 'sahil.soc@logvault.sih',
-      role: 'Tier-3 SOC Lead',
-      tier: 'Tier-3 SOC Lead (Full Command Authority)',
-      pass: 'CyberSecurity2026!'
-    },
-    'vikram': {
-      name: 'Hunter Vikram',
-      email: 'vikram.hunt@logvault.sih',
-      role: 'Tier-2 Threat Hunter',
-      tier: 'Tier-2 Senior Analyst (Triage & SOAR)',
-      pass: 'ThreatHunter2026!'
-    },
-    'rajesh': {
-      name: 'Commander Rajesh',
-      email: 'rajesh.cmd@logvault.sih',
-      role: 'Incident Commander',
-      tier: 'Incident Commander (Executive Authority)',
-      pass: 'Command2026!'
-    },
-    'sneha': {
-      name: 'Analyst Sneha',
-      email: 'sneha.triage@logvault.sih',
-      role: 'Tier-1 Triage Analyst',
-      tier: 'Tier-1 Security Analyst (Monitoring)',
-      pass: 'TriageAnalyst2026!'
-    }
+    sahil: { email: 'sahil.soc@logvault.sih', pass: 'CyberSecurity2026!' },
+    vikram: { email: 'vikram.hunt@logvault.sih', pass: 'ThreatHunter2026!' },
+    rajesh: { email: 'rajesh.cmd@logvault.sih', pass: 'Command2026!' },
+    sneha: { email: 'sneha.triage@logvault.sih', pass: 'TriageAnalyst2026!' }
   },
 
-  init() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const authParam = urlParams.get('auth') || urlParams.get('demo');
-    const storedAuth = localStorage.getItem('logvault_authenticated');
+  getToken() {
+    return sessionStorage.getItem('logvault_token') || localStorage.getItem('logvault_token');
+  },
 
-    if (authParam === '1' || authParam === 'true' || authParam === 'demo') {
-      this.isAuthenticated = true;
-      localStorage.setItem('logvault_authenticated', 'true');
-      localStorage.setItem('logvault_op_name', 'Agent Sahil');
-      localStorage.setItem('logvault_op_role', 'Tier-3 SOC Lead');
-    } else if (authParam === '0' || authParam === 'login') {
-      this.isAuthenticated = false;
-      localStorage.removeItem('logvault_authenticated');
-    } else {
-      this.isAuthenticated = storedAuth === 'true';
+  storeSession(session, remember) {
+    this.clearToken();
+    (remember ? localStorage : sessionStorage).setItem('logvault_token', session.token);
+    this.setOperator(session.operator);
+  },
+
+  clearToken() {
+    sessionStorage.removeItem('logvault_token');
+    localStorage.removeItem('logvault_token');
+  },
+
+  // Keep the profile keys other modules read for display
+  setOperator(op) {
+    this.operator = op;
+    if (!op) return;
+    localStorage.setItem('logvault_op_name', op.name);
+    localStorage.setItem('logvault_op_role', op.role);
+    localStorage.setItem('logvault_op_email', op.email);
+    localStorage.setItem('logvault_op_callsign', op.callsign || '');
+    localStorage.setItem('logvault_op_org', op.org || '');
+  },
+
+  async init() {
+    this.bindEvents();
+    const params = new URLSearchParams(window.location.search);
+    const authParam = params.get('auth') || params.get('demo');
+
+    // Drop the parameter so a reload does not repeat it
+    if (authParam) {
+      params.delete('auth');
+      params.delete('demo');
+      const qs = params.toString();
+      history.replaceState(null, '', location.pathname + (qs ? `?${qs}` : '') + location.hash);
     }
 
+    if (authParam === '0' || authParam === 'login') {
+      await this.logout(false);
+      return;
+    }
+
+    if (this.getToken()) {
+      try {
+        this.setOperator(await LogVaultAPI.me());
+        this.isAuthenticated = true;
+        this.renderAuthState();
+        if (window.SettingsModule) SettingsModule.loadOperatorProfile();
+        if (window.App) App.renderDashboardElements();
+        return;
+      } catch {
+        this.clearToken();
+      }
+    }
+
+    if (authParam === '1' || authParam === 'true' || authParam === 'demo') {
+      await this.handleDemoLogin();
+      return;
+    }
+    this.isAuthenticated = false;
     this.renderAuthState();
-    this.bindEvents();
+    this.loadAuthConfig();
+  },
+
+  async loadAuthConfig() {
+    try {
+      const cfg = await LogVaultAPI.getAuthConfig();
+      const demoBtn = document.getElementById('btn-instant-demo-login');
+      const divider = document.querySelector('.login-demo-divider');
+      if (!cfg.demo_login) {
+        if (demoBtn) demoBtn.style.display = 'none';
+        if (divider) divider.style.display = 'none';
+      }
+    } catch {
+      this.showError('Backend unreachable. Start the LOGVAULT server, then reload this page.');
+    }
   },
 
   renderAuthState() {
     const loginOverlay = document.getElementById('logvault-login-overlay');
     const mainApp = document.querySelector('.logvault-app');
-
     if (!loginOverlay) return;
 
     if (this.isAuthenticated) {
@@ -71,10 +108,14 @@ const AuthModule = {
       loginOverlay.classList.remove('auth-hidden');
       if (mainApp) mainApp.classList.add('blurred-state');
     }
+    if (window.lucide) lucide.createIcons();
+  },
 
-    if (window.lucide) {
-      lucide.createIcons();
-    }
+  showError(msg) {
+    const el = document.getElementById('login-error');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.style.display = msg ? 'block' : 'none';
   },
 
   bindEvents() {
@@ -87,11 +128,7 @@ const AuthModule = {
     }
 
     const demoBtn = document.getElementById('btn-instant-demo-login');
-    if (demoBtn) {
-      demoBtn.addEventListener('click', () => {
-        this.handleDemoLogin();
-      });
-    }
+    if (demoBtn) demoBtn.addEventListener('click', () => this.handleDemoLogin());
 
     const logoutBtn = document.getElementById('btn-operator-logout');
     if (logoutBtn) {
@@ -101,115 +138,108 @@ const AuthModule = {
       });
     }
 
-    // Password visibility toggle
-    const togglePwd = document.getElementById('login-toggle-pwd');
-    if (togglePwd) {
-      togglePwd.addEventListener('click', () => {
-        const pwdInput = document.getElementById('login-operator-pwd');
-        if (pwdInput) {
-          const isPwd = pwdInput.type === 'password';
-          pwdInput.type = isPwd ? 'text' : 'password';
-          togglePwd.setAttribute('data-lucide', isPwd ? 'eye-off' : 'eye');
-          if (window.lucide) lucide.createIcons();
-        }
-      });
-    }
+    // Delegated: lucide replaces the <i> with an <svg>, which drops listeners bound to the original element
+    document.addEventListener('click', (e) => {
+      const toggle = e.target.closest('#login-toggle-pwd');
+      const pwdInput = document.getElementById('login-operator-pwd');
+      if (!toggle || !pwdInput) return;
+      const show = pwdInput.type === 'password';
+      pwdInput.type = show ? 'text' : 'password';
+      const icon = document.createElement('i');
+      icon.id = 'login-toggle-pwd';
+      icon.className = 'login-field-icon-right';
+      icon.title = show ? 'Hide password' : 'Show password';
+      icon.setAttribute('data-lucide', show ? 'eye-off' : 'eye');
+      toggle.replaceWith(icon);
+      if (window.lucide) lucide.createIcons();
+    });
 
-    // Clearance Preset Buttons
     document.querySelectorAll('.login-preset-chip').forEach(btn => {
       btn.addEventListener('click', () => {
-        const key = btn.getAttribute('data-preset');
-        const p = this.presets[key];
-        if (p) {
-          document.querySelectorAll('.login-preset-chip').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-
-          const emailInput = document.getElementById('login-operator-email');
-          const pwdInput = document.getElementById('login-operator-pwd');
-          const tierSelect = document.getElementById('login-operator-tier');
-
-          if (emailInput) emailInput.value = p.email;
-          if (pwdInput) pwdInput.value = p.pass;
-          if (tierSelect) {
-            for (let i = 0; i < tierSelect.options.length; i++) {
-              if (tierSelect.options[i].text.includes(p.role) || tierSelect.options[i].value.includes(p.role.split(' ')[0])) {
-                tierSelect.selectedIndex = i;
-                break;
-              }
-            }
-          }
-          Utils.showToast(`Selected clearance preset: ${p.name} (${p.role})`, 'info');
-        }
+        const p = this.presets[btn.getAttribute('data-preset')];
+        if (!p) return;
+        document.querySelectorAll('.login-preset-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const emailInput = document.getElementById('login-operator-email');
+        const pwdInput = document.getElementById('login-operator-pwd');
+        if (emailInput) emailInput.value = p.email;
+        if (pwdInput) pwdInput.value = p.pass;
+        this.showError('');
       });
     });
   },
 
-  handleLogin() {
-    const emailInput = document.getElementById('login-operator-email');
-    const roleSelect = document.getElementById('login-operator-tier');
+  async handleLogin() {
+    const email = (document.getElementById('login-operator-email') || {}).value || '';
+    const password = (document.getElementById('login-operator-pwd') || {}).value || '';
+    const remember = !!(document.getElementById('login-remember-me') || {}).checked;
     const btn = document.getElementById('btn-submit-login');
+    const original = btn ? btn.innerHTML : '';
 
-    const email = emailInput ? emailInput.value.trim() : 'sahil.soc@logvault.sih';
-    const role = roleSelect ? roleSelect.value : 'Tier-3 SOC Lead';
-    const name = email.split('@')[0].replace('.', ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
-
+    this.showError('');
     if (btn) {
-      btn.innerHTML = `<span class="auth-spinner"></span> Authenticating Air-Gapped Session...`;
+      btn.innerHTML = '<span class="auth-spinner"></span> Checking credentials...';
       btn.disabled = true;
     }
-
-    setTimeout(() => {
-      this.loginSuccess(name, role);
+    try {
+      const session = await LogVaultAPI.login(email.trim(), password);
+      this.storeSession(session, remember);
+      this.loginSuccess();
+    } catch (err) {
+      this.showError(err.message === 'Failed to fetch' ? 'Backend unreachable.' : err.message);
       if (btn) {
-        btn.innerHTML = `<i data-lucide="shield-check"></i> Access Granted`;
+        btn.innerHTML = original;
         btn.disabled = false;
       }
-    }, 600);
+    }
   },
 
-  handleDemoLogin() {
+  async handleDemoLogin() {
     const demoBtn = document.getElementById('btn-instant-demo-login');
-    if (demoBtn) {
-      demoBtn.innerHTML = `⚡ Unlocking SOC Command Center...`;
+    if (demoBtn) demoBtn.disabled = true;
+    try {
+      const session = await LogVaultAPI.demoLogin();
+      this.storeSession(session, false);
+      this.loginSuccess();
+    } catch (err) {
+      this.isAuthenticated = false;
+      this.renderAuthState();
+      this.showError(err.message);
+      if (demoBtn) demoBtn.disabled = false;
     }
-
-    setTimeout(() => {
-      this.loginSuccess('Agent Sahil', 'Tier-3 SOC Lead');
-      if (demoBtn) {
-        demoBtn.innerHTML = `⚡ Instant Demo Access (Tier-3 SOC Lead)`;
-      }
-    }, 300);
   },
 
-  loginSuccess(name, role) {
+  // Reload so every screen fetches its data with the new session
+  loginSuccess() {
     this.isAuthenticated = true;
-    localStorage.setItem('logvault_authenticated', 'true');
-    localStorage.setItem('logvault_op_name', name);
-    localStorage.setItem('logvault_op_role', role);
-
-    if (window.SettingsModule) {
-      SettingsModule.loadOperatorProfile();
-    }
-
-    this.renderAuthState();
-    Utils.showToast(`✓ Access Granted: Session Authenticated for ${name} (${role})`, 'success');
-
-    // Trigger chart resize & icon refresh
-    setTimeout(() => {
-      if (window.Charts && window.Navigation && Navigation.activeScreen === 'dashboard') {
-        Charts.renderDashboardSpline();
-        Charts.renderSparklines();
-        Charts.renderEventDistributionDonut();
-      }
-      if (window.lucide) lucide.createIcons();
-    }, 150);
+    location.reload();
   },
 
-  logout() {
+  // Called by the fetch wrapper when the backend answers 401
+  sessionExpired() {
+    if (!this.isAuthenticated && !this.getToken()) {
+      this.renderAuthState();
+      return;
+    }
     this.isAuthenticated = false;
-    localStorage.removeItem('logvault_authenticated');
+    this.clearToken();
     this.renderAuthState();
-    Utils.showToast('🔒 Operator Session Locked. Please re-authenticate.', 'info');
+    this.showError('Your session ended. Please sign in again.');
+  },
+
+  async logout(notify = true) {
+    if (this.getToken()) await LogVaultAPI.logout();
+    this.clearToken();
+    this.isAuthenticated = false;
+    this.operator = null;
+    this.renderAuthState();
+    this.loadAuthConfig();
+    if (notify && window.Utils) Utils.showToast('Signed out.', 'info');
+  },
+
+  hasRank(minRank) {
+    const ranks = { 'Tier-1 Security Analyst': 1, 'Tier-2 Senior Analyst': 2, 'Tier-3 SOC Lead': 3, 'Incident Commander': 3 };
+    return !!this.operator && (ranks[this.operator.role] || 0) >= minRank;
   }
 };
 

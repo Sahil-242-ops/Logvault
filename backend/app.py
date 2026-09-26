@@ -1,5 +1,6 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -12,6 +13,10 @@ from .ai.local_ai import local_ai
 from .ai.investigator import investigation_worker
 from .storage import maintenance_worker
 from .config import config
+from . import auth, containment, mapper
+
+# Reachable without signing in
+PUBLIC_API = {"/api/health", "/api/auth/login", "/api/auth/demo", "/api/auth/config"}
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
@@ -19,6 +24,9 @@ FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
+    auth.init_auth_tables()
+    containment.init_tables()
+    mapper.init_tables()
     # Generate new current session ID
     db.current_session_id = str(uuid.uuid4())
     print(f"[BOOT] New Empty Application Session: {db.current_session_id}")
@@ -38,6 +46,22 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="LogVault Air-Gapped Backend", version="1.0.0", lifespan=lifespan)
 
+
+@app.middleware("http")
+async def require_sign_in(request: Request, call_next):
+    """Every /api/* call needs a valid bearer token from /api/auth/login (unless LOGVAULT_AUTH=false)."""
+    request.state.operator = None
+    path = request.url.path
+    if path.startswith("/api/") and request.method != "OPTIONS":
+        header = request.headers.get("authorization", "")
+        token = header[7:] if header.lower().startswith("bearer ") else ""
+        operator = auth.operator_for_token(token) if token else None
+        request.state.operator = operator
+        if operator is None and config.AUTH_REQUIRED and path not in PUBLIC_API:
+            return JSONResponse({"detail": "Sign in required"}, status_code=401)
+    return await call_next(request)
+
+# Added last so it is the outermost layer and 401 answers still carry CORS headers
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], # Since it's a local tool, allow all origins

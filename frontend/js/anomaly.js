@@ -1,67 +1,52 @@
 /**
- * LOGVAULT — Anomaly Investigation & 3D Threat Topology Module
- * High-Fidelity 3D Volumetric Mountain Elevation Graph + Cyan Vortex Summit
- * Merges Network Forensics with 60 FPS Volumetric Particle Arcs & Kanban Engine
+ * LOGVAULT — Anomaly screen (one real incident: entity graph, related-event timeline, containment)
+ * and Alert Center (queue, Kanban, AI investigation with analyst approval).
  */
 
 const AnomalyModule = {
-  activeIncidentId: 'INC-01',
+  activeIncidentId: null,
   workflowFilter: 'ALL',
-  scrubProgress: 0.85,
-  isScrubbing: false,
-  scrubTimer: null,
   animFrameId: null,
   hoveredNode: null,
 
-  // 3D Nodes with Ground (gx, gy) and Elevation (elev)
-  graphNodes: [
-    { id: 'attacker', name: '192.168.1.45 (Attacker)', label: '192.168.1.45', gx: 0.16, gy: 0.54, elev: 8, radius: 15, type: 'attacker' },
-    { id: 'fw1', name: 'Perimeter FW 01', label: 'Perimeter FW 01', gx: 0.28, gy: 0.44, elev: 28, radius: 11, type: 'firewall' },
-    { id: 'vpn', name: 'VPN Gateway', label: 'VPN Gateway', gx: 0.30, gy: 0.68, elev: 22, radius: 10, type: 'gateway' },
-    { id: 'swA', name: 'Core Switch A', label: 'Core Switch A', gx: 0.45, gy: 0.38, elev: 65, radius: 10, type: 'switch' },
-    { id: 'swB', name: 'Core Switch B', label: 'Core Switch B', gx: 0.46, gy: 0.60, elev: 52, radius: 10, type: 'switch' },
-    { id: 'auth', name: 'Auth Server DC-01', label: 'Auth Server DC-01', gx: 0.62, gy: 0.26, elev: 90, radius: 9, type: 'server' },
-    { id: 'target', name: 'server-07 (DB Target)', label: 'server-07 (DB Target)', gx: 0.63, gy: 0.42, elev: 130, radius: 16, type: 'target' }, // Summit Apex
-    { id: 'web4', name: 'Web Cluster 04', label: 'Web Cluster 04', gx: 0.58, gy: 0.76, elev: 35, radius: 9, type: 'shielded_web' },
-    { id: 'pay', name: 'Payment API Node', label: 'Payment API Node', gx: 0.78, gy: 0.58, elev: 42, radius: 9, type: 'shielded_pay' },
-    { id: 'redis', name: 'Redis Cache 02', label: 'Redis Cache 02', gx: 0.80, gy: 0.30, elev: 48, radius: 9, type: 'shielded_redis' },
-    { id: 'edge1', name: 'Edge Node 01', label: 'Edge 01', gx: 0.72, gy: 0.78, elev: 15, radius: 7, type: 'server' },
-    { id: 'edge2', name: 'Backup Storage', label: 'Backup Vault', gx: 0.88, gy: 0.46, elev: 18, radius: 8, type: 'server' }
-  ],
-
-  graphLinks: [
-    { from: 'attacker', to: 'fw1', arc: 18 },
-    { from: 'attacker', to: 'vpn', arc: 14 },
-    { from: 'fw1', to: 'swA', arc: 26 },
-    { from: 'vpn', to: 'swB', arc: 22 },
-    { from: 'swA', to: 'target', arc: 45 },
-    { from: 'swB', to: 'target', arc: 48 },
-    { from: 'swA', to: 'auth', arc: 28 },
-    { from: 'swB', to: 'web4', arc: 20 },
-    { from: 'target', to: 'auth', arc: 24 },
-    { from: 'target', to: 'pay', arc: 38 },
-    { from: 'target', to: 'redis', arc: 34 },
-    { from: 'web4', to: 'edge1', arc: 12 },
-    { from: 'pay', to: 'edge2', arc: 16 }
-  ],
-
-  // Procedural Smoke Particles
-  smokeParticles: Array.from({ length: 42 }, () => ({
-    x: 0.25 + Math.random() * 0.55,
-    y: 0.35 + Math.random() * 0.45,
-    elev: Math.random() * 110,
-    size: 16 + Math.random() * 28,
-    speed: 0.2 + Math.random() * 0.5,
-    opacity: 0.04 + Math.random() * 0.08
-  })),
+  incident: null,       // dossier of the incident shown on the Anomaly screen
+  graph: null,          // entity graph built from that dossier
 
   alerts: [],
   anomalies: [],
 
+  // Alert workflow: OPEN -> AI Investigating -> Awaiting Approval -> Resolved
+  //                                               -> (analyst reject) Investigating
+  STATUS_COLUMNS: {
+    'OPEN': 'new',
+    'AI Investigating': 'new',
+    'Awaiting Approval': 'awaiting',
+    'Investigating': 'investigating',
+    'Resolved': 'resolved'
+  },
+  FILTER_STATUSES: {
+    'Active': ['OPEN', 'AI Investigating'],
+    'Awaiting Approval': ['Awaiting Approval'],
+    'Investigating': ['Investigating'],
+    'Resolved': ['Resolved']
+  },
+  COLUMN_DROP_STATUS: { new: 'OPEN', awaiting: 'Awaiting Approval', investigating: 'Investigating', resolved: 'Resolved' },
+  VERDICT_META: {
+    TRUE_POSITIVE: { label: 'Confirmed threat', pill: 'crit-pill' },
+    SUSPICIOUS: { label: 'Suspicious', pill: 'warn-pill' },
+    FALSE_POSITIVE: { label: 'False positive', pill: 'green-pill' }
+  },
+
+  statusCounts: {},
+  activeDossierTab: 'details',
+  noteDraft: '',
+  pendingSearch: '',
+  busy: false,
+  _pollTimer: null,
+
   async init() {
     this.bindEvents();
     await this.fetchData();
-    this.startThreatGraphLoop();
   },
 
   async onScreenOpen(screenId) {
@@ -69,7 +54,8 @@ const AnomalyModule = {
       await this.fetchData();
     }
     if (screenId === 'anomalies') {
-      this.startThreatGraphLoop();
+      this.openIncident(this.activeIncidentId, true);
+      this.startGraphLoop();
     }
   },
 
@@ -99,6 +85,7 @@ const AnomalyModule = {
 
     this.applyPendingSearch();
     this.updateTriageStrip();
+    this.renderIncidentPicker();
     this.schedulePoll();
   },
 
@@ -124,57 +111,16 @@ const AnomalyModule = {
       });
     }
 
-    // Timeline Scrubber Slider
-    const scrubRange = document.getElementById('anomaly-timeline-slider');
-    if (scrubRange) {
-      scrubRange.addEventListener('input', (e) => {
-        this.scrubProgress = parseFloat(e.target.value) / 100;
-        this.updateScrubLabel();
-      });
-    }
-
-    // Scrub Play/Pause
-    const scrubPlayBtn = document.getElementById('btn-scrub-play');
-    if (scrubPlayBtn) {
-      scrubPlayBtn.addEventListener('click', () => this.toggleScrubPlay());
-    }
-
-    // Quick Containment Actions
-    const btnIsolate = document.getElementById('btn-qc-isolate');
-    if (btnIsolate) {
-      btnIsolate.addEventListener('click', () => this.isolateTargetNode());
-    }
-
-    const btnViewLogs = document.getElementById('btn-qc-logs');
-    if (btnViewLogs) {
-      btnViewLogs.addEventListener('click', () => {
-        Navigation.navigateTo('live-logs');
-        Utils.showToast('Filtered live log stream for server-07 attack vector.');
-      });
-    }
-
-    const btnUpdateAcl = document.getElementById('btn-qc-acl');
-    if (btnUpdateAcl) {
-      btnUpdateAcl.addEventListener('click', () => {
-        Utils.showToast('Perimeter Firewall ACL updated: 192.168.1.45 dropped.', 'danger');
-      });
-    }
-
-    // Mitigation actions
-    const btnQuarantine = document.getElementById('btn-contain-server');
-    if (btnQuarantine) {
-      btnQuarantine.addEventListener('click', () => this.triggerContainment());
-    }
-
-    const btnBlockIp = document.getElementById('btn-block-source-ip');
-    if (btnBlockIp) {
-      btnBlockIp.addEventListener('click', () => this.triggerBlockIp());
-    }
-
-    const btnExportDossier = document.getElementById('btn-export-dossier');
-    if (btnExportDossier) {
-      btnExportDossier.addEventListener('click', () => this.exportDossier());
-    }
+    // Incident picker and containment actions on the Anomaly screen
+    const picker = document.getElementById('incident-select');
+    if (picker) picker.addEventListener('change', (e) => this.openIncident(e.target.value, false));
+    const on = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+    on('btn-qc-isolate', () => this.containActive('host'));
+    on('btn-contain-server', () => this.containActive('host'));
+    on('btn-qc-acl', () => this.containActive('ip'));
+    on('btn-block-source-ip', () => this.containActive('ip'));
+    on('btn-qc-logs', () => this.viewActiveLogs());
+    on('btn-export-dossier', () => this.downloadDossier());
   },
 
   setWorkflowFilter(status) {
@@ -185,386 +131,9 @@ const AnomalyModule = {
     this.fetchData();
   },
 
-  toggleScrubPlay() {
-    const btn = document.getElementById('btn-scrub-play');
-    this.isScrubbing = !this.isScrubbing;
-
-    if (this.isScrubbing) {
-      if (btn) btn.innerHTML = '<i data-lucide="pause"></i>';
-      this.scrubTimer = setInterval(() => {
-        this.scrubProgress += 0.015;
-        if (this.scrubProgress > 1) this.scrubProgress = 0.1;
-        const slider = document.getElementById('anomaly-timeline-slider');
-        if (slider) slider.value = Math.round(this.scrubProgress * 100);
-        this.updateScrubLabel();
-      }, 80);
-      Utils.showToast('Replaying attack progression telemetry timeline.');
-    } else {
-      if (btn) btn.innerHTML = '<i data-lucide="play"></i>';
-      clearInterval(this.scrubTimer);
-    }
-    if (window.lucide) lucide.createIcons();
-  },
-
-  updateScrubLabel() {
-    const label = document.getElementById('scrub-time-label');
-    if (label) {
-      const minutes = Math.round(this.scrubProgress * 7);
-      label.innerText = `T+${minutes}m (${Math.round(this.scrubProgress * 4821)} attempts)`;
-    }
-  },
-
-  isolateTargetNode() {
-    Utils.showToast('Target Node server-07 isolated from internal switch fabrics.', 'danger');
-  },
-
-  startThreatGraphLoop() {
-    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
-
-    const loop = () => {
-      if (Navigation.activeScreen === 'anomalies') {
-        this.drawThreatGraphFrame();
-      }
-      this.animFrameId = requestAnimationFrame(loop);
-    };
-
-    this.animFrameId = requestAnimationFrame(loop);
-  },
-
-  drawThreatGraphFrame() {
-    const canvas = document.getElementById('threatGraphCanvas');
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    const w = rect.width || 800;
-    const h = rect.height || 380;
-    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
-    }
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, w, h);
-
-    const now = Date.now();
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-
-    // 1. Draw 3D Isometric Perspective Floor Grid (From Reference Images)
-    ctx.beginPath();
-    ctx.strokeStyle = isDark ? 'rgba(232, 160, 170, 0.08)' : 'rgba(116, 21, 42, 0.08)';
-    ctx.lineWidth = 1;
-
-    for (let i = 0; i <= 9; i++) {
-      const gy = h * 0.32 + i * (h * 0.068);
-      const span = (i / 9);
-      const lx = w * 0.08 - span * (w * 0.03);
-      const rx = w * 0.92 + span * (w * 0.03);
-      ctx.moveTo(lx, gy);
-      ctx.lineTo(rx, gy);
-    }
-
-    for (let j = 0; j <= 14; j++) {
-      const topX = w * 0.12 + j * (w * 0.055);
-      const botX = w * 0.06 + j * (w * 0.064);
-      ctx.moveTo(topX, h * 0.32);
-      ctx.lineTo(botX, h * 0.94);
-    }
-    ctx.stroke();
-
-    // Map Screen Node Coordinates (with 3D Elevation offset)
-    const nodeMap = {};
-    this.graphNodes.forEach(n => {
-      const floorX = n.gx * w;
-      const floorY = n.gy * h;
-      const elevatedY = floorY - n.elev * (0.6 + this.scrubProgress * 0.4);
-      nodeMap[n.id] = { ...n, fx: floorX, fy: floorY, px: floorX, py: elevatedY };
-    });
-
-    // 2. Draw Floor Projection Pads & Drop Stems
-    Object.values(nodeMap).forEach(n => {
-      // Floor Pad (Soft Ellipse Footprint on Grid)
-      ctx.beginPath();
-      ctx.ellipse(n.fx, n.fy, n.radius * 1.5, n.radius * 0.55, 0, 0, Math.PI * 2);
-      ctx.fillStyle = isDark ? 'rgba(0, 0, 0, 0.45)' : 'rgba(116, 21, 42, 0.12)';
-      ctx.fill();
-
-      // Vertical Elevation Drop Stem
-      if (n.elev > 10) {
-        ctx.beginPath();
-        ctx.moveTo(n.fx, n.fy);
-        ctx.lineTo(n.px, n.py);
-        ctx.strokeStyle = isDark ? 'rgba(232, 160, 170, 0.18)' : 'rgba(116, 21, 42, 0.16)';
-        ctx.setLineDash([2, 4]);
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    });
-
-    // 3. Draw Volumetric Smoke / Particle Mist rising to Summit (Image 2 effect)
-    this.smokeParticles.forEach(p => {
-      p.elev = (p.elev + p.speed) % 130;
-      const sx = p.x * w;
-      const sy = p.y * h - p.elev;
-      ctx.beginPath();
-      ctx.arc(sx, sy, p.size, 0, Math.PI * 2);
-      const mistGrad = ctx.createRadialGradient(sx, sy, 2, sx, sy, p.size);
-      const mistColor = isDark ? '232, 160, 170' : '116, 21, 42';
-      mistGrad.addColorStop(0, `rgba(${mistColor}, ${p.opacity})`);
-      mistGrad.addColorStop(1, `rgba(${mistColor}, 0)`);
-      ctx.fillStyle = mistGrad;
-      ctx.fill();
-    });
-
-    // 4. Draw Elevated Curved Spline Arcs (Parabolic Mountain Ribbons from Image 2)
-    this.graphLinks.forEach(link => {
-      const src = nodeMap[link.from];
-      const dst = nodeMap[link.to];
-      if (!src || !dst) return;
-
-      const isAttackPath = (link.from === 'attacker' || link.to === 'target' || link.from === 'fw1' || link.from === 'vpn');
-      const midX = (src.px + dst.px) / 2;
-      const midY = Math.min(src.py, dst.py) - link.arc * (0.8 + this.scrubProgress * 0.4);
-
-      // Curved Spline Path
-      ctx.beginPath();
-      ctx.moveTo(src.px, src.py);
-      ctx.quadraticCurveTo(midX, midY, dst.px, dst.py);
-
-      const grad = ctx.createLinearGradient(src.px, src.py, dst.px, dst.py);
-      if (isAttackPath) {
-        grad.addColorStop(0, '#C47A16');
-        grad.addColorStop(0.6, '#B4233C');
-        grad.addColorStop(1, '#74152A');
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 2.4;
-      } else {
-        ctx.strokeStyle = isDark ? 'rgba(232, 160, 170, 0.28)' : 'rgba(116, 21, 42, 0.22)';
-        ctx.lineWidth = 1.4;
-      }
-      ctx.stroke();
-
-      // Flowing Luminous Data Particles riding the 3D curved arc
-      if (isAttackPath && this.scrubProgress > 0.15) {
-        const particleCount = 3;
-        for (let p = 0; p < particleCount; p++) {
-          const t = ((now / 1500) + (p / particleCount)) % 1;
-          const u = 1 - t;
-          const px = u * u * src.px + 2 * u * t * midX + t * t * dst.px;
-          const py = u * u * src.py + 2 * u * t * midY + t * t * dst.py;
-
-          ctx.beginPath();
-          ctx.arc(px, py, 3.4, 0, Math.PI * 2);
-          ctx.fillStyle = '#FFFFFF';
-          ctx.shadowColor = '#C6283D';
-          ctx.shadowBlur = 9;
-          ctx.fill();
-          ctx.shadowBlur = 0;
-        }
-      }
-    });
-
-    // 5. Draw Apex Cyan Vortex Swirl at the Summit (Image 2 Key Feature)
-    const target = nodeMap['target'];
-    if (target) {
-      const vortexX = target.px;
-      const vortexY = target.py;
-      const spin = (now / 1200) % (Math.PI * 2);
-
-      // Cyan Vortex Spiral Rings
-      for (let r = 1; r <= 3; r++) {
-        ctx.save();
-        ctx.translate(vortexX, vortexY);
-        ctx.rotate(spin * (r % 2 === 0 ? 1 : -1));
-        ctx.beginPath();
-        ctx.ellipse(0, 0, target.radius * (1.8 + r * 0.9), target.radius * (0.9 + r * 0.45), 0, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(78, 205, 196, ${0.85 - r * 0.22})`;
-        ctx.lineWidth = 2.2 - r * 0.4;
-        ctx.shadowColor = 'rgba(78, 205, 196, 0.8)';
-        ctx.shadowBlur = 12;
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      // Volumetric Cyan Halo
-      const haloGrad = ctx.createRadialGradient(vortexX, vortexY, 4, vortexX, vortexY, target.radius * 3.8);
-      haloGrad.addColorStop(0, 'rgba(78, 205, 196, 0.4)');
-      haloGrad.addColorStop(0.6, 'rgba(78, 205, 196, 0.12)');
-      haloGrad.addColorStop(1, 'rgba(78, 205, 196, 0)');
-      ctx.beginPath();
-      ctx.arc(vortexX, vortexY, target.radius * 3.8, 0, Math.PI * 2);
-      ctx.fillStyle = haloGrad;
-      ctx.fill();
-
-      // Deep Crimson Target Sphere at center of vortex
-      const pulse = Math.sin(now / 200) * 2;
-      const tr = target.radius + pulse;
-      const targetGrad = ctx.createRadialGradient(vortexX - 4, vortexY - 4, 2, vortexX, vortexY, tr);
-      targetGrad.addColorStop(0, '#FF4D6D');
-      targetGrad.addColorStop(0.5, '#B4233C');
-      targetGrad.addColorStop(1, '#4A0814');
-      ctx.beginPath();
-      ctx.arc(vortexX, vortexY, tr, 0, Math.PI * 2);
-      ctx.fillStyle = targetGrad;
-      ctx.fill();
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 2.4;
-      ctx.stroke();
-    }
-
-    // 6. Draw Remaining 3D Node Spheres with Gradient Highlights
-    if (this.anomalies.length === 0) {
-      ctx.fillStyle = isDark ? '#E8A0AA' : '#756568';
-      ctx.font = '600 14px JetBrains Mono, monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('No anomalies detected.', w / 2, h / 2);
-      return; // Skip drawing nodes if no anomalies
-    }
-
-    Object.values(nodeMap).forEach(n => {
-      if (n.type === 'target') return;
-
-      const r = n.radius;
-      const sphereGrad = ctx.createRadialGradient(n.px - r * 0.35, n.py - r * 0.35, 1, n.px, n.py, r);
-
-      if (n.type === 'attacker') {
-        // Golden Sphere
-        sphereGrad.addColorStop(0, '#FFD166');
-        sphereGrad.addColorStop(0.6, '#F4A261');
-        sphereGrad.addColorStop(1, '#8C4A00');
-        ctx.beginPath();
-        ctx.arc(n.px, n.py, r, 0, Math.PI * 2);
-        ctx.fillStyle = sphereGrad;
-        ctx.fill();
-        ctx.strokeStyle = '#FFF8F0';
-        ctx.lineWidth = 2.2;
-        ctx.stroke();
-      } else {
-        // Crimson / White Shaded Nodes
-        sphereGrad.addColorStop(0, '#FFE6EA');
-        sphereGrad.addColorStop(0.4, '#C6283D');
-        sphereGrad.addColorStop(1, '#5C1021');
-        ctx.beginPath();
-        ctx.arc(n.px, n.py, r, 0, Math.PI * 2);
-        ctx.fillStyle = sphereGrad;
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 248, 240, 0.9)';
-        ctx.lineWidth = 1.6;
-        ctx.stroke();
-      }
-
-      // Draw Floating Pill Label
-      this.drawNodePillBadge(ctx, n.px, n.py - r - 11, n.label, isDark);
-    });
-
-    // 7. Draw Target Telemetry Tooltip Card
-    if (target) {
-      this.drawTargetTooltipCard(ctx, target.px - 140, target.py + 32, isDark);
-    }
-  },
-
-  drawNodePillBadge(ctx, x, y, text, isDark) {
-    ctx.font = '700 10px JetBrains Mono, monospace';
-    const textW = ctx.measureText(text).width;
-    const boxW = textW + 12;
-    const boxH = 17;
-
-    ctx.fillStyle = isDark ? 'rgba(34, 20, 24, 0.92)' : 'rgba(255, 248, 240, 0.95)';
-    ctx.strokeStyle = isDark ? 'rgba(232, 160, 170, 0.35)' : 'rgba(116, 21, 42, 0.25)';
-    ctx.lineWidth = 1;
-
-    ctx.beginPath();
-    ctx.roundRect(x - boxW / 2, y - boxH / 2, boxW, boxH, 4);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = isDark ? '#FFF8F0' : '#24191B';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, x, y);
-  },
-
-  drawTargetTooltipCard(ctx, x, y, isDark) {
-    const cardW = 180;
-    const cardH = 64;
-
-    ctx.fillStyle = isDark ? 'rgba(28, 14, 18, 0.95)' : 'rgba(255, 248, 240, 0.98)';
-    ctx.strokeStyle = 'rgba(198, 40, 61, 0.45)';
-    ctx.lineWidth = 1.4;
-
-    ctx.shadowColor = 'rgba(116, 21, 42, 0.18)';
-    ctx.shadowBlur = 12;
-    ctx.beginPath();
-    ctx.roundRect(x, y, cardW, cardH, 6);
-    ctx.fill();
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    ctx.font = '600 9.5px JetBrains Mono, monospace';
-    ctx.fillStyle = isDark ? '#E8A0AA' : '#756568';
-    ctx.textAlign = 'left';
-    ctx.fillText('Active connections: ', x + 10, y + 18);
-    ctx.fillStyle = '#C6283D';
-    ctx.font = '800 10px JetBrains Mono, monospace';
-    ctx.fillText('14', x + 130, y + 18);
-
-    ctx.font = '600 9.5px JetBrains Mono, monospace';
-    ctx.fillStyle = isDark ? '#E8A0AA' : '#756568';
-    ctx.fillText('Vulnerability: ', x + 10, y + 35);
-    ctx.fillStyle = '#C47A16';
-    ctx.font = '700 9.5px JetBrains Mono, monospace';
-    ctx.fillText('CVE-2023-1234', x + 94, y + 35);
-
-    ctx.font = '600 9.5px JetBrains Mono, monospace';
-    ctx.fillStyle = isDark ? '#E8A0AA' : '#756568';
-    ctx.fillText('Risk: ', x + 10, y + 52);
-    ctx.fillStyle = '#C6283D';
-    ctx.font = '800 10px JetBrains Mono, monospace';
-    ctx.fillText('Critical', x + 44, y + 52);
-  },
-
-  // ================================================================
-  // ALERT CENTER: AI auto-investigation + human approval workflow
-  // OPEN -> AI Investigating -> Awaiting Approval -> (analyst) Resolved
-  //                                               -> (analyst reject) Investigating
-  // ================================================================
-  STATUS_COLUMNS: {
-    'OPEN': 'new',
-    'AI Investigating': 'new',
-    'Awaiting Approval': 'awaiting',
-    'Investigating': 'investigating',
-    'Resolved': 'resolved'
-  },
-  FILTER_STATUSES: {
-    'Active': ['OPEN', 'AI Investigating'],
-    'Awaiting Approval': ['Awaiting Approval'],
-    'Investigating': ['Investigating'],
-    'Resolved': ['Resolved']
-  },
-  COLUMN_DROP_STATUS: { new: 'OPEN', awaiting: 'Awaiting Approval', investigating: 'Investigating', resolved: 'Resolved' },
-  VERDICT_META: {
-    TRUE_POSITIVE: { label: 'Confirmed threat', pill: 'crit-pill' },
-    SUSPICIOUS: { label: 'Suspicious', pill: 'warn-pill' },
-    FALSE_POSITIVE: { label: 'False positive', pill: 'green-pill' }
-  },
-
-  statusCounts: {},
-  activeDossierTab: 'details',
-  noteDraft: '',
-  pendingSearch: '',
-  busy: false,
-  _pollTimer: null,
-
   analystName() {
-    try {
-      return localStorage.getItem('logvault_op_name') || 'Agent Sahil';
-    } catch {
-      return 'Agent Sahil';
-    }
+    return (window.AuthModule && AuthModule.operator && AuthModule.operator.name)
+      || localStorage.getItem('logvault_op_name') || 'analyst';
   },
 
   esc(v) {
@@ -1083,6 +652,14 @@ const AnomalyModule = {
     } else {
       html = `<div class="d-flex gap-2 flex-wrap">${btn('reopen', 'btn-cream-action', 'rotate-ccw', 'Reopen')}</div>`;
     }
+    // Containment and evidence export are available whatever the triage status
+    const hasIp = inc.source_ip && inc.source_ip !== 'Unknown';
+    const hasHost = inc.host && inc.host !== 'Unknown';
+    html += `<div class="d-flex gap-2 flex-wrap" style="margin-top:8px;">
+      ${hasIp ? btn('block-ip', 'btn-outline-cherry', 'lock', `Block IP ${this.esc(inc.source_ip)}`) : ''}
+      ${hasHost ? btn('isolate-host', 'btn-cream-action', 'shield-ban', `Isolate ${this.esc(inc.host)}`) : ''}
+      ${btn('dossier', 'btn-cream-action', 'download', 'Dossier JSON')}
+    </div>`;
     el.innerHTML = html;
 
     const note = document.getElementById('approval-note');
@@ -1096,6 +673,7 @@ const AnomalyModule = {
         else if (a === 'rerun') this.runInvestigation(inc.id);
         else if (a === 'resolve') this.resolveManually(inc.id);
         else if (a === 'reopen') this.moveKanbanCard(inc.id, 'OPEN');
+        else if (a === 'block-ip' || a === 'isolate-host' || a === 'dossier') this.alertCenterAction(a, inc);
       });
     });
   },
@@ -1112,6 +690,24 @@ const AnomalyModule = {
     await this.fetchData();
   },
 
+  async alertCenterAction(action, inc) {
+    if (action === 'dossier') {
+      this.activeIncidentId = inc.id;
+      return this.downloadDossier();
+    }
+    const kind = action === 'block-ip' ? 'ip' : 'host';
+    const value = kind === 'ip' ? inc.source_ip : inc.host;
+    const reason = window.prompt(`${kind === 'ip' ? 'Block IP' : 'Isolate host'} ${value}?\n\nNew logs involving it will raise CRITICAL alerts and it is added to the firewall export. Reason:`, inc.title || '');
+    if (reason === null) return;
+    try {
+      const res = await LogVaultAPI.contain(kind, value, reason, inc.id);
+      Utils.showToast(res.already_contained ? `${value} was already contained.` : `${value} contained.`, 'success');
+      await this.fetchData();
+    } catch (err) {
+      Utils.showToast(`Could not contain: ${err.message}`, 'error');
+    }
+  },
+
   clearIncidentDossier() {
     const set = (elId, text) => { const el = document.getElementById(elId); if (el) el.innerText = text; };
     set('dossier-main-title', 'No Incident Selected');
@@ -1122,32 +718,536 @@ const AnomalyModule = {
     });
   },
 
-  triggerContainment() {
-    Utils.showToast('Automated Containment executed: server-07 quarantined and firewall ACL drop rule engaged.', 'danger');
+  // ------------------------------------------------------------ Anomaly screen: one incident
+
+  renderIncidentPicker() {
+    const select = document.getElementById('incident-select');
+    if (!select) return;
+    select.innerHTML = this.alerts.length
+      ? this.alerts.slice(0, 200).map(a => `<option value="${this.esc(a.id)}">[${this.esc(a.severity)}] ${this.esc(a.title)} · ${this.esc(a.source_ip || a.host || 'no source')} · ${this.esc(a.status)}</option>`).join('')
+      : '<option value="">No alerts yet</option>';
+    if (this.activeIncidentId) select.value = this.activeIncidentId;
+    if (!this.alerts.length) this.renderIncident(null);
   },
 
-  triggerBlockIp() {
-    Utils.showToast('Source IP 192.168.1.45 permanently added to edge firewall blacklist.', 'danger');
+  // Open an alert on the Anomaly screen (dashboard threat feed, picker)
+  async openIncident(id, quiet = false) {
+    if (!id) id = this.alerts.length ? this.alerts[0].id : null;
+    if (!id) {
+      this.renderIncident(null);
+      return;
+    }
+    this.activeIncidentId = id;
+    const select = document.getElementById('incident-select');
+    if (select) select.value = id;
+    try {
+      const [dossier, cont] = await Promise.all([
+        LogVaultAPI._getJSON(`/api/alerts/${encodeURIComponent(id)}/dossier`, 20000),
+        LogVaultAPI.getContainment()
+      ]);
+      this.incident = dossier;
+      this.containment = cont.entries;
+      this.renderIncident(dossier);
+    } catch (err) {
+      if (!quiet) Utils.showToast(`Could not load incident: ${err.message}`, 'error');
+    }
   },
 
-  exportDossier() {
-    const data = {
-      incident_id: this.activeIncidentId,
-      analyst_assigned: 'Agent Sahil (Tier-3 Lead)',
-      generated_at: new Date().toISOString()
+  renderIncident(d) {
+    const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+    if (!d) {
+      this.incident = null;
+      this.graph = null;
+      set('incident-title', 'No anomalies yet');
+      set('incident-desc', 'Upload or paste logs in the Normalizer. Events that match a detection rule, look obfuscated, or that the local AI flags will appear here.');
+      ['incident-id-badge', 'incident-detected', 'incident-sev-tag', 'incident-score', 'incident-src-ip', 'incident-src-sub', 'incident-target',
+        'incident-target-sub', 'incident-related', 'incident-related-sub', 'incident-duration', 'incident-duration-sub', 'incident-timeline-badge']
+        .forEach(id => set(id, '&mdash;'));
+      set('incident-timeline', '');
+      return;
+    }
+    const a = d.alert;
+    const an = a.anomaly || {};
+    const findings = an.findings || [];
+    const useful = v => v && !['unknown', 'none', '-', 'n/a'].includes(String(v).toLowerCase());
+    const sev = an.max_severity && an.max_severity !== 'NONE' ? an.max_severity : (a.severity || 'MEDIUM');
+    const triage = d.triage || {};
+
+    set('incident-id-badge', `ALERT ${this.esc(a.id.slice(0, 8).toUpperCase())} &bull; ${this.esc(triage.status || 'OPEN')}`);
+    set('incident-sev-badge', `<i data-lucide="shield-alert"></i> ${this.esc(sev)} ANOMALY`);
+    set('incident-detected', a.timestamp ? `Log time ${this.esc(a.timestamp)}` : 'No timestamp in the log record');
+    set('incident-title', this.esc(findings.length ? findings[0].rule_name : 'Anomaly detected'));
+    set('incident-desc', this.esc(findings.map(f => f.description || `${f.rule_name}${f.mitre_technique ? ` (${f.mitre_technique})` : ''}`).join(' · ') || a.message || ''));
+    set('incident-sev-tag', this.esc(sev));
+    set('incident-score', String(an.threat_score ?? 0));
+
+    // Metrics
+    const rel = d.related_events;
+    const relAnom = rel.filter(e => e.anomaly && e.anomaly.is_anomalous).length;
+    set('incident-src-ip', this.esc(useful(a.source_ip) ? a.source_ip : 'none'));
+    const fromIp = rel.filter(e => e.source_ip === a.source_ip).length;
+    set('incident-src-sub', useful(a.source_ip) ? `${fromIp} other event${fromIp === 1 ? '' : 's'} from this IP` : 'no source IP in this record');
+    const target = useful(a.host) ? a.host : useful(a.destination_ip) ? a.destination_ip : 'unknown';
+    set('incident-target', this.esc(target));
+    set('incident-target-sub', this.esc([useful(a.user) ? `user ${a.user}` : null, a.destination_port ? `port ${a.destination_port}` : null, a.process || null].filter(Boolean).join(' · ') || a.detected_format || ''));
+    set('incident-related', rel.length.toLocaleString());
+    set('incident-related-sub', `${relAnom} anomalous &bull; same IP, user or host`);
+    const times = [a, ...rel].map(e => e.timestamp).filter(Boolean).sort();
+    set('incident-duration', times.length > 1 ? this.esc(times[0]) : this.esc(a.timestamp || '—'));
+    set('incident-duration-sub', times.length > 1 ? `to ${this.esc(times[times.length - 1])} (log times)` : 'single event');
+
+    // Timeline: this alert + related events, grouped by log minute
+    const all = [a, ...rel];
+    const groups = {};
+    all.forEach(e => {
+      const key = (e.timestamp || '').slice(0, 16) || 'no timestamp';
+      const g = groups[key] || (groups[key] = { key, events: 0, anomalies: 0, types: {} });
+      g.events += 1;
+      if (e.anomaly && e.anomaly.is_anomalous) g.anomalies += 1;
+      const t = e.event_type || 'EVENT';
+      g.types[t] = (g.types[t] || 0) + 1;
+    });
+    const list = Object.values(groups).sort((x, y) => x.key.localeCompare(y.key)).slice(-12);
+    set('incident-timeline-badge', `${all.length} events &bull; ${list.length} time groups`);
+    set('incident-timeline', list.map(g => `
+      <div class="timeline-step-item">
+        <span class="timeline-time-col">${this.esc(g.key.length > 10 ? g.key.slice(-5) : g.key)}</span>
+        <span class="step-node-dot"></span>
+        <div class="step-details-card"${g.anomalies ? ' style="border-left: 3px solid var(--status-red);"' : ''}>
+          <div><strong>${this.esc(Object.entries(g.types).sort((x, y) => y[1] - x[1]).map(([t, n]) => `${t} ×${n}`).join(', '))}</strong>
+            <span class="step-note-text">&bull; ${this.esc(g.key)}</span></div>
+          <span class="step-fail-count">${g.anomalies} anomalous / ${g.events}</span>
+        </div>
+      </div>`).join(''));
+
+    // Containment state and button labels
+    const contained = (this.containment || []).filter(c => c.value === a.source_ip || c.value === a.host || c.alert_id === a.id);
+    set('incident-containment', contained.length ? contained.map((c, i) =>
+      `<div style="margin-bottom:4px;"><span class="badge-pill crit-pill" style="font-size:0.6rem;">${c.kind.toUpperCase()}</span>
+        <strong>${this.esc(c.value)}</strong> contained by ${this.esc(c.created_by)} ${App.timeAgo(c.created_at)} &bull; ${c.events_since} events since
+        <button class="btn-cream-action btn-sm" style="margin-left:6px;" onclick="AnomalyModule.releaseContainment(${i})">Release</button></div>`).join('')
+      : 'None. Blocking or isolating adds the asset to the containment list: new logs involving it raise CRITICAL alerts, and it is included in the firewall rule export (Settings).');
+    this.incidentContainment = contained;
+    const ipContained = contained.some(c => c.kind === 'ip' && c.value === a.source_ip);
+    const hostContained = contained.some(c => c.kind === 'host' && c.value === a.host);
+    set('btn-block-source-ip-label', useful(a.source_ip) ? (ipContained ? `${this.esc(a.source_ip)} blocked` : `Block IP ${this.esc(a.source_ip)}`) : 'No source IP');
+    set('btn-contain-server-label', useful(a.host) ? (hostContained ? `${this.esc(a.host)} isolated` : `Isolate Host ${this.esc(a.host)}`) : 'No host to isolate');
+    const dis = (id, v) => { const el = document.getElementById(id); if (el) el.disabled = v; };
+    dis('btn-block-source-ip', !useful(a.source_ip) || ipContained);
+    dis('btn-contain-server', !useful(a.host) || hostContained);
+
+    this.graph = this.buildGraph(a, rel);
+    set('incident-graph-tag', `<i data-lucide="radio" style="width:12px; color:var(--status-red);"></i> ${this.graph.nodes.length} entities`);
+    if (window.lucide) lucide.createIcons();
+  },
+
+  // Entities of the alert and how they co-occur in related events. The alert source is the gold
+  // sphere, the most-hit host (or destination) is the summit target, height = share of anomalous events.
+  buildGraph(a, rel) {
+    const useful = v => v && !['unknown', 'none', '-', 'n/a'].includes(String(v).toLowerCase());
+    const events = [a, ...rel];
+    const nodes = {};
+    const links = {};
+    const touch = (id, kind, anomalous) => {
+      const n = nodes[id] || (nodes[id] = { id, kind, count: 0, anomalous: 0 });
+      n.count += 1;
+      if (anomalous) n.anomalous += 1;
     };
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2))
-      .then(() => Utils.showToast('Forensic Dossier JSON copied to clipboard.', 'success'))
-      .catch(() => Utils.showToast('Exported Forensic Dossier.'));
+    events.forEach(e => {
+      const anomalous = !!(e.anomaly && e.anomaly.is_anomalous);
+      const ents = [];
+      if (useful(e.source_ip)) ents.push([e.source_ip, e.source_ip === a.source_ip ? 'source' : 'peer']);
+      if (useful(e.host)) ents.push([e.host, 'host']);
+      if (useful(e.user)) ents.push([e.user, 'user']);
+      if (useful(e.destination_ip)) ents.push([e.destination_ip, 'destination']);
+      // Detection rules the event triggered (what the source was doing)
+      ((e.anomaly && e.anomaly.findings) || []).forEach(f => {
+        if (f.rule_name && f.type !== 'severity_flag') ents.push([f.rule_name, 'rule']);
+      });
+      ents.forEach(([id, kind]) => touch(id, kind, anomalous));
+      // Every pair of entities seen in the same event is a link
+      for (let i = 0; i < ents.length; i++) {
+        for (let j = i + 1; j < ents.length; j++) {
+          const key = [ents[i][0], ents[j][0]].sort().join('\u0000');
+          const l = links[key] || (links[key] = { from: ents[i][0], to: ents[j][0], count: 0, anomalous: 0 });
+          l.count += 1;
+          if (anomalous) l.anomalous += 1;
+        }
+      }
+    });
+
+    const source = useful(a.source_ip) ? a.source_ip : null;
+    if (source && nodes[source]) nodes[source].kind = 'source';
+    const candidates = Object.values(nodes).filter(n => n.id !== source);
+    // Summit: the most-hit host or destination, else the most-triggered detection rule
+    const byCount = (x, y) => y.count - x.count;
+    const target = candidates.filter(n => n.kind === 'host' || n.kind === 'destination').sort(byCount)[0]
+      || candidates.filter(n => n.kind === 'rule').sort(byCount)[0] || candidates.sort(byCount)[0] || null;
+    const others = candidates.filter(n => n !== target).sort((x, y) => y.count - x.count).slice(0, 10);
+
+    // Place on the floor: source left, target centre-right summit, others fanned around
+    const placed = [];
+    if (source) placed.push({ ...nodes[source], type: 'attacker', gx: 0.16, gy: 0.58, elev: 10, radius: 15 });
+    if (target) placed.push({ ...target, type: 'target', gx: 0.6, gy: 0.46, elev: 45 + 50 * (target.anomalous / target.count), radius: 16 });
+    others.forEach((n, i) => {
+      const col = i % 5, row = Math.floor(i / 5);
+      placed.push({
+        ...n, type: 'node',
+        gx: 0.34 + col * 0.13 + (row ? 0.06 : 0),
+        gy: (i % 2 ? 0.74 : 0.34) + row * 0.08,
+        elev: 14 + 70 * (n.anomalous / Math.max(1, n.count)),
+        radius: 8 + Math.min(5, n.count)
+      });
+    });
+    const ids = new Set(placed.map(n => n.id));
+    const keptLinks = Object.values(links).filter(l => ids.has(l.from) && ids.has(l.to));
+    const maxLink = Math.max(1, ...keptLinks.map(l => l.count));
+    return {
+      nodes: placed,
+      links: keptLinks.map(l => ({ ...l, arc: 10 + 24 * (l.count / maxLink) })),
+      sourceId: source,
+      targetId: target ? target.id : null,
+      events: events.length,
+      anomalous: events.filter(e => e.anomaly && e.anomaly.is_anomalous).length,
+      threat: (a.anomaly && a.anomaly.threat_score) || 0,
+      severity: (a.anomaly && a.anomaly.max_severity && a.anomaly.max_severity !== 'NONE') ? a.anomaly.max_severity : (a.severity || 'MEDIUM'),
+      technique: ((a.anomaly && a.anomaly.findings) || []).map(f => f.mitre_technique).find(Boolean) || null
+    };
   },
 
-  selectTimelineNode(index) {
-    this.scrubProgress = index / 6;
-    const slider = document.getElementById('anomaly-timeline-slider');
-    if (slider) slider.value = Math.round(this.scrubProgress * 100);
-    this.updateScrubLabel();
-    Utils.showToast(`Focused attack progression at checkpoint T+${index} mins.`);
-  }
+  // Rising mist behind the graph (decoration)
+  smokeParticles: Array.from({ length: 36 }, () => ({
+    x: 0.25 + Math.random() * 0.55,
+    y: 0.35 + Math.random() * 0.45,
+    elev: Math.random() * 110,
+    size: 16 + Math.random() * 28,
+    speed: 0.2 + Math.random() * 0.5,
+    opacity: 0.04 + Math.random() * 0.07
+  })),
+
+  startGraphLoop() {
+    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+    const loop = () => {
+      if (Navigation.activeScreen !== 'anomalies') {
+        this.animFrameId = null;
+        return;
+      }
+      this.drawGraph();
+      this.animFrameId = requestAnimationFrame(loop);
+    };
+    this.animFrameId = requestAnimationFrame(loop);
+  },
+
+  drawGraph() {
+    const canvas = document.getElementById('threatGraphCanvas');
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const w = rect.width || 800;
+    const h = rect.height || 380;
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+    }
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    const now = Date.now();
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+    // 1. Perspective floor grid
+    ctx.beginPath();
+    ctx.strokeStyle = isDark ? 'rgba(232, 160, 170, 0.08)' : 'rgba(116, 21, 42, 0.08)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 9; i++) {
+      const gy = h * 0.32 + i * (h * 0.068);
+      const span = i / 9;
+      ctx.moveTo(w * 0.08 - span * (w * 0.03), gy);
+      ctx.lineTo(w * 0.92 + span * (w * 0.03), gy);
+    }
+    for (let j = 0; j <= 14; j++) {
+      ctx.moveTo(w * 0.12 + j * (w * 0.055), h * 0.32);
+      ctx.lineTo(w * 0.06 + j * (w * 0.064), h * 0.94);
+    }
+    ctx.stroke();
+
+    const g = this.graph;
+    if (!g || !g.nodes.length) {
+      ctx.fillStyle = isDark ? '#E8A0AA' : '#756568';
+      ctx.font = '600 14px JetBrains Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(g ? 'This alert has no IP, host or user to graph.' : 'No anomalies detected.', w / 2, h / 2);
+      return;
+    }
+
+    const contained = new Set((this.containment || []).map(c => c.value));
+    const map = {};
+    g.nodes.forEach(n => {
+      const fx = n.gx * w, fy = n.gy * h;
+      map[n.id] = { ...n, fx, fy, px: fx, py: fy - n.elev };
+    });
+
+    // 2. Floor pads and drop stems
+    Object.values(map).forEach(n => {
+      ctx.beginPath();
+      ctx.ellipse(n.fx, n.fy, n.radius * 1.5, n.radius * 0.55, 0, 0, Math.PI * 2);
+      ctx.fillStyle = isDark ? 'rgba(0, 0, 0, 0.45)' : 'rgba(116, 21, 42, 0.12)';
+      ctx.fill();
+      if (n.elev > 10) {
+        ctx.beginPath();
+        ctx.moveTo(n.fx, n.fy);
+        ctx.lineTo(n.px, n.py);
+        ctx.strokeStyle = isDark ? 'rgba(232, 160, 170, 0.18)' : 'rgba(116, 21, 42, 0.16)';
+        ctx.setLineDash([2, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    });
+
+    // 3. Mist
+    const mist = isDark ? '232, 160, 170' : '116, 21, 42';
+    this.smokeParticles.forEach(p => {
+      p.elev = (p.elev + p.speed) % 130;
+      const sx = p.x * w, sy = p.y * h - p.elev;
+      const grad = ctx.createRadialGradient(sx, sy, 2, sx, sy, p.size);
+      grad.addColorStop(0, `rgba(${mist}, ${p.opacity})`);
+      grad.addColorStop(1, `rgba(${mist}, 0)`);
+      ctx.beginPath();
+      ctx.arc(sx, sy, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    });
+
+    // 4. Curved arcs: attack paths (touching the source or target) glow, with particles
+    g.links.forEach((l, li) => {
+      const s = map[l.from], d = map[l.to];
+      if (!s || !d) return;
+      const attack = l.anomalous > 0 && [g.sourceId, g.targetId].some(id => id === l.from || id === l.to);
+      const midX = (s.px + d.px) / 2;
+      const midY = Math.min(s.py, d.py) - l.arc;
+      ctx.beginPath();
+      ctx.moveTo(s.px, s.py);
+      ctx.quadraticCurveTo(midX, midY, d.px, d.py);
+      if (attack) {
+        const grad = ctx.createLinearGradient(s.px, s.py, d.px, d.py);
+        grad.addColorStop(0, '#C47A16');
+        grad.addColorStop(0.6, '#B4233C');
+        grad.addColorStop(1, '#74152A');
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 1.6 + Math.min(3, l.count / 2);
+      } else {
+        ctx.strokeStyle = isDark ? 'rgba(232, 160, 170, 0.28)' : 'rgba(116, 21, 42, 0.22)';
+        ctx.lineWidth = 1.4;
+      }
+      ctx.stroke();
+
+      // Event count on the arc
+      ctx.font = '700 9px JetBrains Mono, monospace';
+      ctx.fillStyle = isDark ? '#E8A0AA' : '#74152A';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(`${l.count}`, midX, (Math.min(s.py, d.py) + midY) / 2 - 2);
+
+      if (attack) {
+        for (let p = 0; p < 3; p++) {
+          const t = ((now / 1500) + p / 3 + li * 0.07) % 1;
+          const u = 1 - t;
+          ctx.beginPath();
+          ctx.arc(u * u * s.px + 2 * u * t * midX + t * t * d.px, u * u * s.py + 2 * u * t * midY + t * t * d.py, 3.4, 0, Math.PI * 2);
+          ctx.fillStyle = '#FFFFFF';
+          ctx.shadowColor = '#C6283D';
+          ctx.shadowBlur = 9;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      }
+    });
+
+    // 5. Target summit: spinning rings, halo, pulsing sphere
+    const target = map[g.targetId];
+    if (target) {
+      const spin = (now / 1200) % (Math.PI * 2);
+      for (let r = 1; r <= 3; r++) {
+        ctx.save();
+        ctx.translate(target.px, target.py);
+        ctx.rotate(spin * (r % 2 === 0 ? 1 : -1));
+        ctx.beginPath();
+        ctx.ellipse(0, 0, target.radius * (1.8 + r * 0.9), target.radius * (0.9 + r * 0.45), 0, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(78, 205, 196, ${0.85 - r * 0.22})`;
+        ctx.lineWidth = 2.2 - r * 0.4;
+        ctx.shadowColor = 'rgba(78, 205, 196, 0.8)';
+        ctx.shadowBlur = 12;
+        ctx.stroke();
+        ctx.restore();
+      }
+      const halo = ctx.createRadialGradient(target.px, target.py, 4, target.px, target.py, target.radius * 3.8);
+      halo.addColorStop(0, 'rgba(78, 205, 196, 0.4)');
+      halo.addColorStop(0.6, 'rgba(78, 205, 196, 0.12)');
+      halo.addColorStop(1, 'rgba(78, 205, 196, 0)');
+      ctx.beginPath();
+      ctx.arc(target.px, target.py, target.radius * 3.8, 0, Math.PI * 2);
+      ctx.fillStyle = halo;
+      ctx.fill();
+      const tr = target.radius + Math.sin(now / 200) * 2;
+      const tg = ctx.createRadialGradient(target.px - 4, target.py - 4, 2, target.px, target.py, tr);
+      tg.addColorStop(0, '#FF4D6D');
+      tg.addColorStop(0.5, '#B4233C');
+      tg.addColorStop(1, '#4A0814');
+      ctx.beginPath();
+      ctx.arc(target.px, target.py, tr, 0, Math.PI * 2);
+      ctx.fillStyle = tg;
+      ctx.fill();
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+      this.drawNodePillBadge(ctx, target.px, target.py - tr - 12, `${target.id} (${target.kind})`, isDark, contained.has(target.id));
+    }
+
+    // 6. Other spheres
+    Object.values(map).forEach(n => {
+      if (n.type === 'target') return;
+      const r = n.radius;
+      const sg = ctx.createRadialGradient(n.px - r * 0.35, n.py - r * 0.35, 1, n.px, n.py, r);
+      if (n.type === 'attacker') {
+        sg.addColorStop(0, '#FFD166');
+        sg.addColorStop(0.6, '#F4A261');
+        sg.addColorStop(1, '#8C4A00');
+      } else if (n.kind === 'rule') {
+        sg.addColorStop(0, '#E6FFFB');
+        sg.addColorStop(0.45, '#2A9D8F');
+        sg.addColorStop(1, '#0B4F47');
+      } else if (n.kind === 'user') {
+        sg.addColorStop(0, '#FFF1D6');
+        sg.addColorStop(0.45, '#C47A16');
+        sg.addColorStop(1, '#6B3D00');
+      } else {
+        sg.addColorStop(0, '#FFE6EA');
+        sg.addColorStop(0.4, '#C6283D');
+        sg.addColorStop(1, '#5C1021');
+      }
+      ctx.beginPath();
+      ctx.arc(n.px, n.py, r, 0, Math.PI * 2);
+      ctx.fillStyle = sg;
+      ctx.fill();
+      ctx.strokeStyle = contained.has(n.id) ? '#E53E3E' : 'rgba(255, 248, 240, 0.9)';
+      ctx.lineWidth = contained.has(n.id) ? 3 : 1.8;
+      ctx.stroke();
+      const label = n.type === 'attacker' ? `${n.id} (source)` : `${n.id} (${n.kind})`;
+      this.drawNodePillBadge(ctx, n.px, n.py - r - 11, label, isDark, contained.has(n.id));
+    });
+
+    // 7. Summary card with real figures
+    if (target) {
+      // Top-right corner: clear of the nodes and of the containment panel (bottom-right)
+      const x = w - 200;
+      const y = 12;
+      this.drawTargetTooltipCard(ctx, x, y, isDark, [
+        ['Related events', `${g.events}`, '#C6283D'],
+        ['Anomalous', `${g.anomalous}`, '#C47A16'],
+        [g.technique ? 'MITRE' : 'Risk', g.technique ? g.technique.split(' - ')[0] : `${g.severity} · ${g.threat}`, '#C6283D']
+      ]);
+    }
+  },
+
+  drawNodePillBadge(ctx, x, y, text, isDark, contained = false) {
+    text = String(text).length > 30 ? String(text).slice(0, 29) + '…' : String(text);
+    if (contained) text = `🔒 ${text}`;
+    ctx.font = '700 10px JetBrains Mono, monospace';
+    const boxW = ctx.measureText(text).width + 12;
+    const boxH = 17;
+    ctx.fillStyle = isDark ? 'rgba(34, 20, 24, 0.92)' : 'rgba(255, 248, 240, 0.95)';
+    ctx.strokeStyle = contained ? '#E53E3E' : (isDark ? 'rgba(232, 160, 170, 0.35)' : 'rgba(116, 21, 42, 0.25)');
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(x - boxW / 2, y - boxH / 2, boxW, boxH, 4);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = isDark ? '#FFF8F0' : '#24191B';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y);
+    ctx.textBaseline = 'alphabetic';
+  },
+
+  drawTargetTooltipCard(ctx, x, y, isDark, rows) {
+    const cardW = 188;
+    const cardH = 18 + rows.length * 17;
+    ctx.fillStyle = isDark ? 'rgba(28, 14, 18, 0.95)' : 'rgba(255, 248, 240, 0.98)';
+    ctx.strokeStyle = 'rgba(198, 40, 61, 0.45)';
+    ctx.lineWidth = 1.4;
+    ctx.shadowColor = 'rgba(116, 21, 42, 0.18)';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.roundRect(x, y, cardW, cardH, 6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.textAlign = 'left';
+    rows.forEach(([label, value, color], i) => {
+      const ry = y + 18 + i * 17;
+      ctx.font = '600 9.5px JetBrains Mono, monospace';
+      ctx.fillStyle = isDark ? '#E8A0AA' : '#756568';
+      ctx.fillText(`${label}:`, x + 10, ry);
+      ctx.font = '800 10px JetBrains Mono, monospace';
+      ctx.fillStyle = color;
+      ctx.fillText(value, x + 104, ry);
+    });
+  },
+
+  async containActive(kind) {
+    const d = this.incident;
+    if (!d) return;
+    const value = kind === 'ip' ? d.alert.source_ip : d.alert.host;
+    if (!value) {
+      Utils.showToast(`This alert has no ${kind === 'ip' ? 'source IP' : 'host'}.`, 'warning');
+      return;
+    }
+    const findings = (d.alert.anomaly && d.alert.anomaly.findings) || [];
+    const reason = window.prompt(`${kind === 'ip' ? 'Block IP' : 'Isolate host'} ${value}?\n\nNew logs involving it will raise CRITICAL alerts and it is added to the firewall export. Reason:`,
+      findings.length ? findings[0].rule_name : '');
+    if (reason === null) return;
+    try {
+      const res = await LogVaultAPI.contain(kind, value, reason, d.alert.id);
+      Utils.showToast(res.already_contained ? `${value} was already contained.` : `${value} contained. Export firewall rules from Settings.`, 'success');
+      await this.fetchData();
+      this.openIncident(d.alert.id, true);
+    } catch (err) {
+      Utils.showToast(`Could not contain: ${err.message}`, 'error');
+    }
+  },
+
+  async releaseContainment(i) {
+    const c = (this.incidentContainment || [])[i];
+    if (!c || !window.confirm(`Release ${c.value}? New logs involving it will no longer be raised as critical.`)) return;
+    try {
+      await LogVaultAPI.releaseContainment(c.id);
+      Utils.showToast(`${c.value} released.`, 'success');
+      this.openIncident(this.activeIncidentId, true);
+    } catch (err) {
+      Utils.showToast(`Could not release: ${err.message}`, 'error');
+    }
+  },
+
+  viewActiveLogs() {
+    const d = this.incident;
+    if (d && d.alert.source_ip) LogStream.filterByIp(d.alert.source_ip);
+    else Navigation.navigateTo('live-logs');
+  },
+
+  async downloadDossier() {
+    if (!this.activeIncidentId) return;
+    try {
+      const r = await LogVaultAPI.download(`/api/alerts/${encodeURIComponent(this.activeIncidentId)}/dossier`, 'logvault-dossier.json');
+      Utils.showToast(`Downloaded ${r.name}.`, 'success');
+    } catch (err) {
+      Utils.showToast(`Download failed: ${err.message}`, 'error');
+    }
+  },
+
+  openInAlertCenter() {
+    Navigation.navigateTo('alerts');
+    if (this.activeIncidentId) this.loadIncidentDossier(this.activeIncidentId);
+  },
 };
 
 window.AnomalyModule = AnomalyModule;

@@ -6,6 +6,7 @@ from .ai.local_ai import local_ai
 from .config import config
 from .pii_masker import PIIMasker
 from .anomaly_detector import anomaly_detector
+from . import containment
 from .schema.ocsf import get_ocsf_class_uid
 
 # event_type substring -> (OCSF class, OCSF category); first match wins
@@ -74,7 +75,13 @@ class Normalizer:
 
         # 3. Anomaly Detection (pre-masking, using full data context)
         anomaly_results = anomaly_detector.detect(parsed)
-        
+
+        # Any activity from an IP or host an analyst has contained is critical by definition
+        contained = containment.check_event(parsed)
+        if contained:
+            anomaly_results["findings"].insert(0, contained)
+            anomaly_results.update(is_anomalous=True, threat_score=100, max_severity="CRITICAL")
+
         # Merge AI threat findings if suspicious or threat_score > 50 or MITRE technique identified
         ai_mitre = ai_intelligence.get("mitre_techniques") or []
         ai_score = ai_intelligence.get("threat_score", 0)
@@ -124,8 +131,8 @@ class Normalizer:
             "processing_latency_ms": round(latency_ms, 3),
             "detected_format": fmt,
             "detection_confidence": confidence,
-            "parser_name": f"{fmt.upper()} Parser",
-            "parser_type": parser_type,
+            "parser_name": f"Mapping rule: {fmt[7:]}" if fmt.startswith("custom:") else f"{fmt.upper()} Parser",
+            "parser_type": "MAPPING_RULE" if fmt.startswith("custom:") else parser_type,
             "parse_confidence": confidence,
             "ocsf_class_uid": class_uid,
             "ocsf_class_name": event_class_name,

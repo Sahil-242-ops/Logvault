@@ -120,7 +120,8 @@ class DatabaseManager:
         conn.commit()
         conn.close()
 
-    def get_events(self, limit=100, offset=0, search=None, severity=None, event_type=None, source_ip=None):
+    def get_events(self, limit=100, offset=0, search=None, severity=None, event_type=None, source_ip=None,
+                   detected_format=None, since_minutes=None):
         conn = self.get_connection()
         c = conn.cursor()
         
@@ -143,7 +144,14 @@ class DatabaseManager:
         if source_ip:
             query += " AND source_ip = ?"
             params.append(source_ip)
-            
+        if detected_format and detected_format != 'ALL':
+            query += " AND detected_format = ?"
+            params.append(detected_format)
+        if since_minutes:
+            cutoff = (datetime.now(timezone.utc) - timedelta(minutes=since_minutes)).isoformat().replace("+00:00", "Z")
+            query += " AND received_at >= ?"
+            params.append(cutoff)
+
         # Count total
         count_query = query.replace("SELECT normalized_json", "SELECT COUNT(*)")
         c.execute(count_query, params)

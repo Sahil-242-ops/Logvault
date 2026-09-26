@@ -79,7 +79,18 @@ AI explains each alert. An analyst approves the fix.
 docker compose up -d --build
 ```
 
-**Step 2 — Open** 👉 **http://127.0.0.1:8000/?auth=demo**
+**Step 2 — Open** 👉 **http://127.0.0.1:8000/?auth=demo** (signs you in as the evaluation SOC lead)
+
+Evaluation accounts are created on first start; passwords are checked by the server (PBKDF2-hashed) and each role limits what the account may do:
+
+| Account | Password | Role |
+|:--|:--|:--|
+| `sahil.soc@logvault.sih` | `CyberSecurity2026!` | Tier-3 SOC Lead (everything) |
+| `rajesh.cmd@logvault.sih` | `Command2026!` | Incident Commander (everything) |
+| `vikram.hunt@logvault.sih` | `ThreatHunter2026!` | Tier-2 Senior Analyst (containment, mapping rules) |
+| `sneha.triage@logvault.sih` | `TriageAnalyst2026!` | Tier-1 Analyst (triage only) |
+
+For a real deployment set `LOGVAULT_SEED_OPERATORS=false` and `LOGVAULT_DEMO_LOGIN=false`, and change passwords in Settings.
 
 **Step 3 — Follow the attack:**
 
@@ -268,7 +279,7 @@ docker compose up -d
 | Frontend | HTML · CSS · JavaScript (no framework) |
 | Standards | OCSF 1.1 · MITRE ATT&CK |
 | Deployment | Docker · Docker Compose |
-| Quality | 31 automated tests (`python -m pytest backend/tests`) |
+| Quality | 42 automated tests (`python -m pytest backend/tests`) |
 
 ---
 
@@ -310,6 +321,9 @@ Set in `.env` (copy [`.env.example`](.env.example)) or as environment variables.
 | `STORAGE_LIMIT_GB` | `0` | Default size limit (0 = unlimited) |
 | `RETENTION_DAYS` | `0` | Default retention (0 = forever) |
 | `GEOIP_DIR` | `geoip/` | Folder with the `.mmdb` location database |
+| `LOGVAULT_AUTH` | `true` | Require sign-in for every API call (`false` only for a trusted single-user setup) |
+| `LOGVAULT_SEED_OPERATORS` | `true` | Create the four evaluation accounts on first start |
+| `LOGVAULT_DEMO_LOGIN` | `true` | Allow the one-click demo sign-in and `?auth=demo` |
 
 ### API
 
@@ -324,6 +338,13 @@ Live, interactive documentation: **http://127.0.0.1:8000/docs**
 | `POST` | `/api/alerts/{id}/investigate` · `/approve` · `/reject` | AI investigation and analyst decision |
 | `GET` | `/api/analytics/geo` · `/api/analytics/heatmap` | Map and activity data |
 | `GET` · `PUT` | `/api/storage` · `/api/storage/policy` | Storage usage and limits |
+| `POST` | `/api/auth/login` · `/api/auth/logout` | Sign in (returns a bearer token for all other calls) and out |
+| `GET` | `/api/dashboard` · `/api/collectors` | Dashboard figures and per-source ingestion health |
+| `GET` · `POST` | `/api/parsers` · `/api/parsers/benchmark` | Parser catalog with usage, and timed test runs |
+| `POST` · `GET` | `/api/mapper/infer` · `/api/mapper/rules` | Propose a field mapping for an unknown format; saved rules are used by the parser |
+| `GET` · `POST` · `DELETE` | `/api/containment` · `/api/containment/export` | Block IPs / isolate hosts (new activity becomes CRITICAL); export as iptables, Cisco ACL, Windows Firewall or CSV |
+| `GET` | `/api/alerts/{id}/dossier` · `/api/export/bundle` · `/api/export/ocsf` | Evidence downloads (bundle has a SHA-256 manifest) |
+| `GET` | `/api/integrity` · `/api/system/status` | Evidence fingerprint (SHA-256 hash chain) and live security status |
 
 ### Project structure
 

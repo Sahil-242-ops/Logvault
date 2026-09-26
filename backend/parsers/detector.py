@@ -21,6 +21,13 @@ class LogDetector:
         """
         Returns (format_name, parsed_data, confidence)
         """
+        # Analyst-saved mapping rules first: they were written for exactly this source
+        from ..mapper import apply_rules
+        custom = apply_rules(raw_log)
+        if custom:
+            name, parsed = custom
+            return f"custom:{name}", parsed, 0.95
+
         # Try deterministic parsers in order of specificity
         for fmt in ["cef", "json", "apache", "windows", "syslog"]:
             parsed = self.parsers[fmt].parse(raw_log)

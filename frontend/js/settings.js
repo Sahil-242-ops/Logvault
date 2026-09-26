@@ -1,73 +1,149 @@
 /**
- * LOGVAULT — Platform Settings & Air-Gapped Storage Module (Stage 3 Masterpiece)
- * Operator Profile Credentials + Local Storage Footprint + Air-Gapped Controls
+ * LOGVAULT — Settings: operator profile (server-side account), live security status, storage policy,
+ * evidence fingerprint and exports.
  */
 
 const SettingsModule = {
   storage: null,
 
-  memoryData: [
-    { name: 'WASM JIT Zero-Copy Heap', allocated: '48 MB / 512 MB', pct: 9.3, color: '#25855A' },
-    { name: 'IndexedDB FIFO Buffer Queue', allocated: '12 MB / 128 MB', pct: 9.3, color: '#25855A' },
-    { name: 'ONNX Runtime Tensor Weights', allocated: '32 MB / 256 MB', pct: 12.5, color: '#C47A16' }
-  ],
+  status: null,
 
   init() {
     this.loadOperatorProfile();
-    this.renderStorageBars();
-    this.renderMemoryBars();
     this.bindEvents();
   },
 
   onScreenOpen() {
+    this.refreshAll(false);
+  },
+
+  refreshAll(notify) {
     this.loadOperatorProfile();
     this.renderStorageBars();
-    this.renderMemoryBars();
+    this.loadSecurityStatus();
+    this.loadIntegrity(false);
+    this.loadContainmentCount();
+    if (notify) Utils.showToast('Settings refreshed from the backend.', 'success');
   },
 
+  // Profile comes from the signed-in account (AuthModule.operator)
   loadOperatorProfile() {
-    const name = localStorage.getItem('logvault_op_name') || 'Agent Sahil';
-    const callsign = localStorage.getItem('logvault_op_callsign') || 'SOC-OP-9042';
-    const role = localStorage.getItem('logvault_op_role') || 'Tier-3 SOC Lead';
-    const tier = localStorage.getItem('logvault_op_tier') || 'Tier-3 Senior Lead';
-    const org = localStorage.getItem('logvault_op_org') || 'Cyber Defense Command';
-
-    const inputName = document.getElementById('operator-input-name');
-    const inputCallsign = document.getElementById('operator-input-callsign');
-    const inputRole = document.getElementById('operator-input-role');
-    const selectTier = document.getElementById('operator-select-tier');
-    const inputOrg = document.getElementById('operator-input-org');
-
-    if (inputName) inputName.value = name;
-    if (inputCallsign) inputCallsign.value = callsign;
-    if (inputRole) inputRole.value = role;
-    if (selectTier) selectTier.value = tier;
-    if (inputOrg) inputOrg.value = org;
-
-    this.updateAvatarVisuals(name, role);
+    const op = (window.AuthModule && AuthModule.operator) || {
+      name: localStorage.getItem('logvault_op_name') || '',
+      role: localStorage.getItem('logvault_op_role') || '',
+      email: localStorage.getItem('logvault_op_email') || '',
+      callsign: localStorage.getItem('logvault_op_callsign') || '',
+      org: localStorage.getItem('logvault_op_org') || ''
+    };
+    const val = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+    val('operator-input-name', op.name);
+    val('operator-input-callsign', op.callsign);
+    val('operator-input-email', op.email);
+    val('operator-input-role', op.role);
+    val('operator-input-org', op.org);
+    this.updateAvatarVisuals(op.name || 'Operator', op.role || '');
   },
 
-  saveOperatorProfile() {
-    const inputName = document.getElementById('operator-input-name');
-    const inputCallsign = document.getElementById('operator-input-callsign');
-    const inputRole = document.getElementById('operator-input-role');
-    const selectTier = document.getElementById('operator-select-tier');
-    const inputOrg = document.getElementById('operator-input-org');
+  async saveOperatorProfile() {
+    const get = id => ((document.getElementById(id) || {}).value || '').trim();
+    const name = get('operator-input-name');
+    if (!name) {
+      Utils.showToast('Name is required.', 'warning');
+      return;
+    }
+    try {
+      const op = await LogVaultAPI.updateProfile(name, get('operator-input-callsign'), get('operator-input-org'));
+      AuthModule.setOperator(op);
+      this.loadOperatorProfile();
+      Utils.showToast(`Profile saved for ${op.name}.`, 'success');
+    } catch (err) {
+      Utils.showToast(`Could not save profile: ${err.message}`, 'error');
+    }
+  },
 
-    const name = inputName ? inputName.value.trim() : 'Agent Sahil';
-    const callsign = inputCallsign ? inputCallsign.value.trim() : 'SOC-OP-9042';
-    const role = inputRole ? inputRole.value.trim() : 'Tier-3 SOC Lead';
-    const tier = selectTier ? selectTier.value : 'Tier-3 Senior Lead';
-    const org = inputOrg ? inputOrg.value.trim() : 'Cyber Defense Command';
+  async changePassword() {
+    const cur = document.getElementById('operator-pwd-current');
+    const nw = document.getElementById('operator-pwd-new');
+    if (!cur || !nw || !cur.value || !nw.value) {
+      Utils.showToast('Enter your current and new password.', 'warning');
+      return;
+    }
+    try {
+      await LogVaultAPI.changePassword(cur.value, nw.value);
+      cur.value = '';
+      nw.value = '';
+      Utils.showToast('Password changed.', 'success');
+    } catch (err) {
+      Utils.showToast(`Could not change password: ${err.message}`, 'error');
+    }
+  },
 
-    localStorage.setItem('logvault_op_name', name);
-    localStorage.setItem('logvault_op_callsign', callsign);
-    localStorage.setItem('logvault_op_role', role);
-    localStorage.setItem('logvault_op_tier', tier);
-    localStorage.setItem('logvault_op_org', org);
+  async loadSecurityStatus() {
+    const el = document.getElementById('settings-security-status');
+    let st;
+    try {
+      st = await LogVaultAPI._getJSON('/api/system/status');
+    } catch {
+      if (el) el.innerHTML = '<div class="analytics-empty">Backend unavailable.</div>';
+      return;
+    }
+    this.status = st;
+    const row = (title, detail, ok, label) => `
+      <div class="settings-policy-item">
+        <div>
+          <strong style="font-size:0.78rem; color:var(--text-ink); display:block;">${title}</strong>
+          <span style="font-size:0.68rem; color:var(--text-muted);">${detail}</span>
+        </div>
+        <span class="badge-pill ${ok ? 'green' : 'warn'}-pill">${label}</span>
+      </div>`;
+    const esc = v => Utils.escapeHtml(String(v ?? ''));
+    if (el) el.innerHTML =
+      row('Sign-in required for the API', st.auth_required ? 'Every /api call needs a session token' : 'LOGVAULT_AUTH=false: anyone who can reach the port has full access', st.auth_required, st.auth_required ? 'ENFORCED' : 'OFF')
+      + row('Passwords', `${esc(st.password_hashing)}; sessions expire after ${st.session_hours} h`, true, 'HASHED')
+      + row('One-click demo access', st.demo_login_enabled ? 'Turn off with LOGVAULT_DEMO_LOGIN=false for real deployments' : 'Disabled', !st.demo_login_enabled, st.demo_login_enabled ? 'ON' : 'OFF')
+      + row('Local AI endpoint', `${esc(st.ai_endpoint)} &bull; ${esc(st.ai_status)}${st.ai_model ? ` (${esc(st.ai_model)})` : ''}`, st.ai_endpoint_local, st.ai_endpoint_local ? 'LOCAL' : 'REMOTE')
+      + row('Offline GeoIP database', st.geoip_offline_database ? 'Installed: IP locations are resolved on this server' : 'Not installed: run scripts/download_geoip.py', st.geoip_offline_database, st.geoip_offline_database ? 'READY' : 'MISSING')
+      + row('Operator accounts', `${st.operators} account${st.operators === 1 ? '' : 's'} &bull; ${st.active_containments} active containment${st.active_containments === 1 ? '' : 's'} &bull; ${st.mapping_rules} mapping rule${st.mapping_rules === 1 ? '' : 's'}`, true, String(st.operators));
 
-    this.updateAvatarVisuals(name, role);
-    Utils.showToast(`✓ Operator credentials saved: ${name} (${role})`, 'success');
+    const set = (id, html) => { const e = document.getElementById(id); if (e) e.innerHTML = html; };
+    set('kpi-ai-endpoint', st.ai_endpoint_local ? 'LOCAL' : 'REMOTE');
+    set('kpi-ai-endpoint-sub', `<i data-lucide="cpu"></i> ${esc(st.ai_status)}`);
+    set('settings-ai-badge', st.ai_endpoint_local ? 'AI RUNS LOCALLY' : 'AI ENDPOINT IS REMOTE');
+    if (window.lucide) lucide.createIcons();
+  },
+
+  async loadIntegrity(notify) {
+    const set = (id, html) => { const e = document.getElementById(id); if (e) e.innerHTML = html; };
+    try {
+      const r = await LogVaultAPI._getJSON('/api/integrity', 120000);
+      set('settings-integrity-hash', r.fingerprint);
+      set('settings-integrity-note', `SHA-256 chain over ${r.events.toLocaleString()} stored events (every id and raw log, in arrival order), computed ${new Date(r.computed_at).toLocaleString()}. If any stored event is edited or deleted, this value changes.`);
+      set('kpi-integrity-value', `${r.fingerprint.slice(0, 8)}&hellip;`);
+      set('kpi-integrity-sub', `<i data-lucide="shield-check"></i> ${r.events.toLocaleString()} events chained`);
+      if (notify) Utils.showToast('Evidence fingerprint recomputed.', 'success');
+      if (window.lucide) lucide.createIcons();
+    } catch (err) {
+      if (notify) Utils.showToast(`Could not compute fingerprint: ${err.message}`, 'error');
+    }
+  },
+
+  async loadContainmentCount() {
+    try {
+      const r = await LogVaultAPI.getContainment();
+      const ips = r.entries.filter(e => e.kind === 'ip').length;
+      const el = document.getElementById('containment-export-sub');
+      if (el) el.textContent = `${ips} blocked IP${ips === 1 ? '' : 's'}, ${r.entries.length - ips} isolated host${r.entries.length - ips === 1 ? '' : 's'}, ready for the network team`;
+    } catch { /* offline */ }
+  },
+
+  async download(path, name, label) {
+    Utils.showToast(`Preparing ${label}...`, 'info');
+    try {
+      const r = await LogVaultAPI.download(path, name);
+      Utils.showToast(`Downloaded ${r.name} (${this.formatBytes(r.bytes)}).`, 'success');
+    } catch (err) {
+      Utils.showToast(`${label} failed: ${err.message}`, 'error');
+    }
   },
 
   updateAvatarVisuals(name, role) {
@@ -116,18 +192,25 @@ const SettingsModule = {
       btnSaveOp.addEventListener('click', () => this.saveOperatorProfile());
     }
 
-    // Export bundle button
+    const btnPwd = document.getElementById('btn-change-password');
+    if (btnPwd) btnPwd.addEventListener('click', () => this.changePassword());
+
     const btnExport = document.getElementById('btn-export-forensic-bundle');
     if (btnExport) {
       btnExport.addEventListener('click', () => {
-        Utils.showToast('✓ Generating encrypted forensic evidence archive (AES-256 GCM)...', 'info');
-        setTimeout(() => {
-          Utils.showToast('Forensic bundle downloaded: logvault-forensics-20260903.lvault', 'success');
-        }, 1200);
+        const scope = (document.getElementById('bundle-scope') || {}).value || 'session';
+        this.download(`/api/export/bundle?scope=${scope}`, 'logvault-forensics.zip', 'Forensic bundle');
       });
     }
 
-    // Vacuum database button
+    const btnFw = document.getElementById('btn-export-firewall-rules');
+    if (btnFw) {
+      btnFw.addEventListener('click', () => {
+        const fmt = (document.getElementById('firewall-format') || {}).value || 'iptables';
+        this.download(`/api/containment/export?format=${fmt}`, `logvault-containment.${fmt === 'csv' ? 'csv' : 'txt'}`, 'Firewall rules');
+      });
+    }
+
     const btnVacuum = document.getElementById('btn-vacuum-database');
     if (btnVacuum) {
       btnVacuum.addEventListener('click', async () => {
@@ -143,20 +226,26 @@ const SettingsModule = {
       });
     }
 
-    // Purge buffers button
     const btnPurge = document.getElementById('btn-purge-buffers');
     if (btnPurge) {
-      btnPurge.addEventListener('click', () => {
-        Utils.showToast('✓ Transient ring memory queues flushed to local storage.', 'success');
+      btnPurge.addEventListener('click', async () => {
+        const typed = window.prompt('This permanently deletes ALL stored events and alerts. Type DELETE to confirm:');
+        if (typed !== 'DELETE') return;
+        try {
+          const res = await fetch(`${LogVaultAPI._baseURL}/api/events?confirm=true`, { method: 'DELETE' });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+          Utils.showToast('All stored events deleted.', 'success');
+          this.refreshAll(false);
+        } catch (err) {
+          Utils.showToast(`Could not delete: ${err.message}`, 'error');
+        }
       });
     }
 
-    // Download OCSF definitions
     const btnOcsf = document.getElementById('btn-download-ocsf-defs');
     if (btnOcsf) {
-      btnOcsf.addEventListener('click', () => {
-        Utils.showToast('✓ Downloaded OCSF v1.1.0 schema definitions JSON bundle.', 'success');
-      });
+      btnOcsf.addEventListener('click', () => this.download('/api/export/ocsf', 'logvault-ocsf.json', 'OCSF definitions'));
     }
   },
 
@@ -330,25 +419,6 @@ const SettingsModule = {
     }
   },
 
-  renderMemoryBars() {
-    const container = document.getElementById('settingsMemoryContainer');
-    if (!container) return;
-
-    container.innerHTML = this.memoryData.map(item => `
-      <div class="latency-bench-item" style="margin-bottom:12px;">
-        <div style="min-width: 190px;">
-          <span style="font-weight:800; color:var(--text-ink); display:block; font-size:0.74rem;">${item.name}</span>
-          <span style="font-size:0.65rem; color:var(--text-muted); font-family:var(--font-mono);">${item.allocated}</span>
-        </div>
-        <div class="latency-bench-bar-track" style="height:9px; background:var(--border-card);">
-          <div class="latency-bench-bar-fill" style="width: ${item.pct}%; background-color: ${item.color}; border-radius:4px;"></div>
-        </div>
-        <div style="min-width: 60px; text-align:right;">
-          <span style="font-family:var(--font-mono); font-weight:800; color:${item.color}; font-size:0.75rem;">${item.pct}%</span>
-        </div>
-      </div>
-    `).join('');
-  }
 };
 
 window.SettingsModule = SettingsModule;

@@ -1,29 +1,27 @@
 /**
  * LOGVAULT — Live Log Stream Module
- * High-performance real-time telemetry streaming simulation & filtering
+ * Polls stored events from the backend and filters them by format, severity, time, IP and text
  */
 
 const LogStream = {
   logs: [],
   filteredLogs: [],
   isPlaying: true,
-  streamSpeed: 1000, // ms per tick
+  streamSpeed: 2000, // poll interval (ms)
   timerId: null,
   selectedLogId: null,
   filters: {
     source: 'ALL',
     severity: 'ALL',
-    timeRange: '1h',
-    searchQuery: ''
+    timeRange: 'all',
+    searchQuery: '',
+    sourceIp: ''
   },
   totalProcessedCount: 0,
   sparkHistory: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   lastFetchTime: Date.now(),
   lastProcessedCount: 0,
   currentEps: 0,
-
-  // Stream generator templates for realistic SIEM telemetry
-  templates: [],
 
   async init() {
     this.logs = [];
@@ -52,7 +50,7 @@ const LogStream = {
       speedSelect.addEventListener('change', (e) => {
         this.streamSpeed = parseInt(e.target.value, 10);
         this.restartStreaming();
-        Utils.showToast(`Stream rate set to ${e.target.options[e.target.selectedIndex].text}`);
+        Utils.showToast(e.target.options[e.target.selectedIndex].text);
       });
     }
 
@@ -101,6 +99,36 @@ const LogStream = {
         Utils.showToast('Live stream buffer cleared.');
       });
     }
+  },
+
+  // Source filter lists the formats actually present in stored events
+  async loadFormatOptions() {
+    const now = Date.now();
+    if (this._formatsLoadedAt && now - this._formatsLoadedAt < 15000) return;
+    this._formatsLoadedAt = now;
+    const d = await LogVaultAPI.getDashboard();
+    const select = document.getElementById('stream-filter-source');
+    if (!d || !select) return;
+    const current = this.filters.source;
+    select.innerHTML = '<option value="ALL">All Formats</option>' + d.formats.map(f =>
+      `<option value="${Utils.escapeHtml(f.format)}">${Utils.escapeHtml(window.Charts ? Charts.formatLabel(f.format) : f.format)} (${f.count.toLocaleString()})</option>`
+    ).join('');
+    select.value = d.formats.some(f => f.format === current) ? current : 'ALL';
+  },
+
+  // Show only events from one source IP (used by alerts, sources and the command palette)
+  filterByIp(ip) {
+    this.filters.sourceIp = ip || '';
+    const input = document.getElementById('stream-search-input');
+    if (input) input.value = '';
+    this.filters.searchQuery = '';
+    const badge = document.getElementById('stream-ip-filter-badge');
+    if (badge) {
+      badge.style.display = ip ? 'inline-flex' : 'none';
+      badge.innerHTML = ip ? `IP ${Utils.escapeHtml(ip)} <span style="cursor:pointer; margin-left:6px;" onclick="LogStream.filterByIp('')">&times;</span>` : '';
+    }
+    if (window.Navigation) Navigation.navigateTo('live-logs');
+    this.fetchRealEvents();
   },
 
   togglePlayPause() {
@@ -160,9 +188,20 @@ const LogStream = {
     }
     if (!LogVaultAPI.isBackendAvailable()) return;
     
-    const result = await LogVaultAPI.getEvents(100, 0, this.filters.searchQuery, this.filters.severity, this.filters.source);
+    const since = { '15m': 15, '1h': 60, '24h': 1440 }[this.filters.timeRange] || null;
+    const result = await LogVaultAPI.getEvents(100, 0, this.filters.searchQuery, this.filters.severity,
+      this.filters.source, this.filters.sourceIp, since);
+    this.loadFormatOptions();
     
+    const backendBadge = document.getElementById('stream-backend-badge');
+    if (backendBadge) {
+      backendBadge.className = LogVaultAPI.isBackendAvailable() ? 'badge-pill green-pill' : 'badge-pill crit-pill';
+      backendBadge.textContent = LogVaultAPI.isBackendAvailable() ? 'Online' : 'Offline';
+    }
     if (result && result.events) {
+      const lat = result.events.map(e => e.processing_latency_ms).filter(v => typeof v === 'number');
+      const latEl = document.getElementById('stream-latency');
+      if (latEl) latEl.textContent = lat.length ? `${(lat.reduce((a, v) => a + v, 0) / lat.length).toFixed(2)} ms / record` : '—';
       const existingIds = new Set(this.logs.map(l => l.id));
       let newCount = 0;
       
@@ -183,7 +222,7 @@ const LogStream = {
         return {
           id: evt.id,
           time: formattedTime,
-          source: evt.detected_format ? evt.detected_format.toUpperCase() : 'UNKNOWN',
+          source: evt.detected_format || 'unknown',
           action: evt.event_type || 'EVENT',
           ip: evt.source_ip || evt.destination_ip || 'N/A',
           user: evt.user || 'N/A',
@@ -222,6 +261,7 @@ const LogStream = {
   applyFilters() {
     this.filteredLogs = this.logs.filter(log => {
       if (this.filters.source !== 'ALL' && log.source !== this.filters.source) return false;
+      if (this.filters.sourceIp && log.ip !== this.filters.sourceIp) return false;
       if (this.filters.severity !== 'ALL' && log.sev !== this.filters.severity) return false;
       if (this.filters.searchQuery) {
         const text = `${log.time} ${log.source} ${log.action} ${log.ip} ${log.user} ${log.sev} ${log.msg}`.toLowerCase();
@@ -420,6 +460,10 @@ const LogStream = {
     this.filters.source = 'ALL';
     this.filters.severity = 'ALL';
     this.filters.searchQuery = '';
+    this.filters.sourceIp = '';
+    this.filters.timeRange = 'all';
+    const tr = document.getElementById('stream-filter-timerange');
+    if (tr) tr.value = 'all';
     const srcSelect = document.getElementById('stream-filter-source');
     const sevSelect = document.getElementById('stream-filter-severity');
     const searchInput = document.getElementById('stream-search-input');

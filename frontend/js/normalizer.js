@@ -16,45 +16,47 @@ const Normalizer = {
   currentTiltX: 0,
   currentTiltY: 0,
 
-  // 7 Enterprise Regex Patterns with named capture groups
-  formatPatterns: {
-    ssh: {
-      regex: '^(?<timestamp>\\w+\\s+\\d+\\s+[\\d:]+)\\s+(?<host>\\S+)\\s+sshd\\[(?<pid>\\d+)\\]:\\s+(?<action>Accepted|Failed)\\s+password\\s+for\\s+(?<user>\\S+)\\s+from\\s+(?<src_ip>[\\d.]+)\\s+port\\s+(?<port>\\d+)\\s+(?<protocol>\\w+)$',
-      description: 'POSIX PAM authentication failure & success pattern'
-    },
-    cef: {
-      regex: 'CEF:0\\|(?<vendor>[^\\|]+)\\|(?<product>[^\\|]+)\\|(?<version>[^\\|]+)\\|(?<signature_id>[^\\|]+)\\|(?<name>[^\\|]+)\\|(?<severity>\\d+)\\|src=(?<src_ip>[\\d.]+)\\s+dst=(?<dst_ip>[\\d.]+)\\s+spt=(?<src_port>\\d+)\\s+dpt=(?<dst_port>\\d+)\\s+act=(?<action>\\w+)',
-      description: 'Common Event Format (CEF v0.1) perimeter security telemetry'
-    },
-    apache: {
-      regex: '^(?<src_ip>[\\d.]+)\\s+-\\s+(?<user>\\S+)\\s+\\[(?<timestamp>[^\\]]+)\\]\\s+"(?<http_method>\\w+)\\s+(?<url>\\S+)\\s+HTTP/(?<http_version>[\\d.]+)"\\s+(?<status_code>\\d+)\\s+(?<bytes>\\d+)',
-      description: 'W3C Standard Web Access Log format'
-    },
-    cloudtrail: {
-      regex: '\\{"eventVersion":"(?<version>[^"]+)","userIdentity":\\{"type":"(?<user_type>[^"]+)","userName":"(?<user>[^"]+)"\\},"sourceIPAddress":"(?<src_ip>[^"]+)","eventName":"(?<action>[^"]+)"\\}',
-      description: 'AWS CloudTrail multi-region JSON telemetry envelope'
-    },
-    windows: {
-      regex: 'EventID=(?<event_id>\\d+)\\s+AccountName=(?<user>\\S+)\\s+Workstation=(?<host>\\S+)\\s+SourceIP=(?<src_ip>[\\d.]+)\\s+Status=(?<status>[^;]+)',
-      description: 'Windows Security Subsystem Event Log (WinEventLog)'
-    },
-    kubernetes: {
-      regex: '^(?<src_ip>[\\d.]+)\\s+-\\s+\\[(?<timestamp>[^\\]]+)\\]\\s+"(?<http_method>\\w+)\\s+(?<url>\\S+)\\s+HTTP/(?<http_version>[\\d.]+)"\\s+(?<status_code>\\d+)\\s+(?<bytes>\\d+)\\s+"(?<ingress>[^"]+)"\\s+"(?<user_agent>[^"]+)"\\s+req_id=(?<request_id>\\S+)',
-      description: 'Kubernetes Ingress Controller NGINX Access Telemetry'
-    },
-    suricata: {
-      regex: '\\{"timestamp":"(?<timestamp>[^"]+)","event_type":"(?<event_type>[^"]+)","src_ip":"(?<src_ip>[^"]+)","src_port":(?<src_port>\\d+),"dest_ip":"(?<dst_ip>[^"]+)","dest_port":(?<dst_port>\\d+)',
-      description: 'Suricata EVE JSON Network Intrusion & Threat Feed'
-    }
-  },
+  // Regex each backend parser runs, keyed by format id (loaded from /api/parsers)
+  parserPatterns: {},
 
   init() {
     this.bindEvents();
     this.initCanvas3D();
   },
 
+  // Store-wide figures for the ribbon (throttled)
+  async refreshRibbon() {
+    if (this._ribbonAt && Date.now() - this._ribbonAt < 5000) return;
+    this._ribbonAt = Date.now();
+    const [d, rules] = await Promise.all([LogVaultAPI.getDashboard(), LogVaultAPI.getMappingRules().catch(() => null)]);
+    const setText = (id, t) => { const el = document.getElementById(id); if (el) el.innerHTML = t; };
+    if (d) {
+      setText('norm-ribbon-ocsf', d.total_events ? `${d.confidence.schema_mapping}%` : 'no events');
+      const unknown = d.formats.find(f => f.format === 'unknown');
+      setText('norm-ribbon-unparsed', d.total_events ? `${unknown ? unknown.pct : 0}%` : 'no events');
+    }
+    if (rules) setText('norm-ribbon-rules', String(rules.rules.length));
+  },
+
+  async loadParserPatterns() {
+    const res = await LogVaultAPI.getParsers();
+    if (!res) return;
+    this.parserPatterns = {};
+    res.parsers.forEach(p => { this.parserPatterns[p.id] = p.pattern; });
+    if (this.currentData) this.renderRegexPattern(this.currentData.format);
+  },
+
+  // Put a record in the input box and run it (used by the Schema Mapper)
+  loadRawCustomInput(raw) {
+    const input = document.getElementById('norm-custom-raw-input');
+    if (input) input.value = raw;
+    this.executeCustomPipeline(raw, { store: false });
+  },
+
   onScreenOpen() {
     this.initCanvas3D();
+    this.loadParserPatterns();
+    if (!this.currentData) this.loadPreset(this.currentPreset);
   },
 
   bindEvents() {
@@ -125,9 +127,7 @@ const Normalizer = {
     // AI Auto-Generate Rule Button
     const aiBtn = document.getElementById('btn-ai-generate-rule');
     if (aiBtn) {
-      aiBtn.addEventListener('click', () => {
-        this.simulateAiRuleGeneration();
-      });
+      aiBtn.addEventListener('click', () => this.generateRuleWithAi());
     }
 
     // Output view tabs (Key-Value Table vs JSON Tree vs AST)
@@ -154,9 +154,13 @@ const Normalizer = {
     const copyRegexBtn = document.getElementById('btn-copy-regex');
     if (copyRegexBtn) {
       copyRegexBtn.addEventListener('click', () => {
-        const pat = this.formatPatterns[this.currentPreset] || this.formatPatterns.ssh;
-        navigator.clipboard.writeText(pat.regex)
-          .then(() => Utils.showToast('Named capture regex copied to clipboard!', 'success'));
+        const pat = this.currentData && this.parserPatterns[this.currentData.format];
+        if (!pat) {
+          Utils.showToast('This record was not parsed by a regex.', 'info');
+          return;
+        }
+        navigator.clipboard.writeText(pat)
+          .then(() => Utils.showToast('Parser regex copied to clipboard.', 'success'));
       });
     }
 
@@ -169,7 +173,7 @@ const Normalizer = {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `ocsf_${this.currentPreset}_normalized.json`;
+        a.download = `ocsf_${String(this.currentData.format || 'record').replace(/[^a-z0-9_-]/gi, '_')}_normalized.json`;
         a.click();
         URL.revokeObjectURL(url);
         Utils.showToast('Downloaded OCSF Schema JSON.');
@@ -211,23 +215,16 @@ const Normalizer = {
     }
   },
 
+  // Example buttons run the example through the real backend pipeline without storing it
   loadPreset(presetKey) {
+    const example = window.NormalizerExamples[presetKey] || window.NormalizerExamples.ssh;
     this.currentPreset = presetKey;
-    const data = window.mockNormalizerPresets[presetKey] || window.mockNormalizerPresets.ssh;
-    if (!data) return;
-
-    // Update preset pills
     document.querySelectorAll('[data-norm-preset]').forEach(btn => {
       btn.classList.toggle('active', btn.getAttribute('data-norm-preset') === presetKey);
     });
-
-    // Populate custom input textarea
     const input = document.getElementById('norm-custom-raw-input');
-    if (input) {
-      input.value = data.raw;
-    }
-
-    this.animateAndRenderPipeline(data);
+    if (input) input.value = example.raw;
+    this.executeCustomPipeline(example.raw, { store: false });
   },
 
   switchRawMode(mode) {
@@ -245,11 +242,11 @@ const Normalizer = {
     if (entropyBox) entropyBox.style.display = mode === 'entropy' ? 'block' : 'none';
   },
 
-  async executeCustomPipeline(rawText) {
+  async executeCustomPipeline(rawText, { store = true } = {}) {
     this.setPipelineStageLoading(true);
 
     try {
-      const parsedResult = await window.LogVaultAPI.normalizeLog(rawText);
+      const parsedResult = await window.LogVaultAPI.normalizeLog(rawText, { store });
 
       const tokens = rawText.split(/[\s,]+/).map(t => {
         let type = 'generic';
@@ -270,10 +267,11 @@ const Normalizer = {
 
       this.setPipelineStageLoading(false);
       this.animateAndRenderPipeline(enriched);
-      Utils.showToast('✓ Real Log Processed — AI Analysis & OCSF Normalized.', 'success');
+      if (!store) return;  // example preview: nothing stored, nothing to refresh
+      Utils.showToast('✓ Log processed and stored.', 'success');
 
-      // Refresh real live logs & dashboard stats
-      if (window.LogStream && LogStream.fetchLogs) LogStream.fetchLogs();
+      // Refresh live logs & dashboard stats
+      if (window.LogStream) LogStream.fetchRealEvents();
       if (window.App && App.renderDashboardElements) App.renderDashboardElements();
     } catch (err) {
       this.setPipelineStageLoading(false);
@@ -304,7 +302,7 @@ const Normalizer = {
       Utils.showToast(`Processed ${s.total_records} records from ${file.name} in ${Math.round(response.processing_time_ms)} ms.`, 'success');
 
       // Refresh live logs and dashboard
-      if (window.LogStream && LogStream.fetchLogs) LogStream.fetchLogs();
+      if (window.LogStream) LogStream.fetchRealEvents();
       if (window.App && App.renderDashboardElements) App.renderDashboardElements();
 
       if (response.anomaly_summary && response.anomaly_summary.anomalous > 0) {
@@ -484,23 +482,17 @@ const Normalizer = {
     if (window.lucide) lucide.createIcons();
   },
 
-  async simulateAiRuleGeneration() {
-    this.playHapticBlip(720);
+  // Open the record in the Schema Mapper with the local AI's classification
+  generateRuleWithAi() {
     const input = document.getElementById('norm-custom-raw-input');
     const text = input ? input.value.trim() : '';
     if (!text) {
-      Utils.showToast('Please enter a raw log string first to analyze with Ollama AI.', 'warning');
+      Utils.showToast('Enter a raw log record first.', 'warning');
       return;
     }
-    Utils.showToast('Querying local Ollama model for log intelligence...', 'info');
-    try {
-      const res = await window.LogVaultAPI.aiAnalyze(text);
-      if (res && res.response) {
-        Utils.showToast(`AI (${res.model || 'Ollama'}): ${res.response.slice(0, 80)}...`, 'success');
-      }
-    } catch (err) {
-      Utils.showToast(`AI analysis error: ${err.message}`, 'error');
-    }
+    if (window.AiMapper) AiMapper.loaded = true;
+    Navigation.navigateTo('ai-mapper');
+    if (window.AiMapper) AiMapper.analyze(text, true);
   },
 
   setPipelineStageLoading(isLoading) {
@@ -551,14 +543,24 @@ const Normalizer = {
     const parserLatency = document.getElementById('norm-parser-latency');
     const parserTypeBadge = document.getElementById('norm-parser-type-badge');
     if (parserName) parserName.innerText = data.parser;
-    if (parserLatency) parserLatency.innerText = data.latency || '0.04 ms';
+    if (parserLatency) parserLatency.innerText = data.latency || '—';
     if (parserTypeBadge) {
       parserTypeBadge.innerText = data.parserType || 'DETERMINISTIC';
       parserTypeBadge.className = data.parserType === 'AI_HEURISTIC' ? 'badge-pill cherry-pill' : 'badge-pill gold-pill';
     }
 
+    // Ribbon, OCSF strip and flow badge for this record
+    const setText = (id, t) => { const el = document.getElementById(id); if (el) el.innerHTML = t; };
+    setText('norm-ribbon-latency', data.latency || '&mdash;');
+    setText('norm-flow-badge', Utils.escapeHtml(`${data.format} → ${data.ocsf_class || 'Unknown class'}`));
+    setText('norm-ocsf-class-pill', data.ocsf_class_uid ? Utils.escapeHtml(`Class ${data.ocsf_class_uid}: ${data.ocsf_class}`) : 'No OCSF class');
+    const schemaVals = Object.values(data.schema || {});
+    const filled = schemaVals.filter(v => v !== null && v !== undefined && v !== '' && v !== 'unknown').length;
+    setText('norm-ocsf-fields-pill', `${filled} of ${schemaVals.length} fields populated`);
+    this.refreshRibbon();
+
     // 4. Update Regex Pattern Breakdown
-    this.renderRegexPattern(this.currentPreset);
+    this.renderRegexPattern(data.format);
 
     // 5. Stage 4: Common Log Schema Output (OCSF 1.1)
     this.renderSchemaOutput(data.schema);
@@ -700,12 +702,21 @@ const Normalizer = {
     entropyFillEl.style.width = `${pct}%`;
   },
 
-  renderRegexPattern(presetKey) {
+  // Show the regex of the parser that actually handled this record
+  renderRegexPattern(format) {
     const patternBox = document.getElementById('norm-regex-pattern-display');
     if (!patternBox) return;
-
-    const pat = this.formatPatterns[presetKey] || this.formatPatterns.ssh;
-    patternBox.innerHTML = Utils.escapeHtml(pat.regex).replace(/\?&lt;([^&]+)&gt;/g, '<span style="color:#C47A16; font-weight:800;">?&lt;$1&gt;</span>');
+    const pat = this.parserPatterns[format];
+    if (!pat) {
+      patternBox.innerHTML = format === 'json'
+        ? 'Parsed as a JSON document (field names mapped by alias, no regex).'
+        : format === 'unknown' || !format
+          ? 'No parser matched this record. Map it in the AI Schema Mapper.'
+          : 'Loading parser pattern&hellip;';
+      if (!Object.keys(this.parserPatterns).length) this.loadParserPatterns();
+      return;
+    }
+    patternBox.innerHTML = Utils.escapeHtml(pat).replace(/\?P&lt;([^&]+)&gt;/g, '<span style="color:#C47A16; font-weight:800;">?P&lt;$1&gt;</span>');
   },
 
   renderSchemaOutput(schema) {

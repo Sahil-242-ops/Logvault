@@ -24,6 +24,12 @@ const Utils = {
       .replace(/'/g, '&#039;');
   },
 
+  copyText(text) {
+    navigator.clipboard.writeText(text || '')
+      .then(() => this.showToast('Copied to clipboard.', 'success'))
+      .catch(() => this.showToast('Could not copy to clipboard.', 'error'));
+  },
+
   showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -60,8 +66,12 @@ const Utils = {
     const parent = canvas.parentElement;
     const parentW = parent ? parent.clientWidth : 0;
     const attrW = parseInt(canvas.getAttribute('width'), 10) || 0;
+    // Size from the container, never from the canvas itself: a pixel width set on an earlier
+    // render would otherwise stop the chart (and its grid row) from shrinking with the window.
+    canvas.style.width = '100%';
+    canvas.style.maxWidth = '100%';
     const rect = canvas.getBoundingClientRect();
-    
+
     let width = rect.width;
     if (!width || width < 20) {
       width = parentW > 20 ? parentW : (attrW > 20 ? attrW : 300);
@@ -81,7 +91,6 @@ const Utils = {
       canvas.height = targetH;
     }
     
-    canvas.style.width = `${Math.round(width)}px`;
     canvas.style.height = `${Math.round(height)}px`;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);

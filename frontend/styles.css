@@ -7317,3 +7317,40 @@ body.theme-dark .flowchart-stage-col {
   .batch-row { grid-template-columns: 36px 80px minmax(0, 1fr) 70px 30px; }
   .batch-ai, .batch-raw { display: none; }
 }
+
+/* Sign-in error and local-AI classification box */
+.login-error {
+  margin: 4px 0 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--status-red-bg);
+  color: var(--status-red);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+.ai-verdict-box {
+  padding: 10px 12px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  background: var(--bg-app);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Grid columns may shrink below their content's intrinsic width, so wide charts never push the page sideways */
+.dash-middle-grid,
+.dash-lower-grid { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.scroll-content,
+.screen-view,
+.surface-card,
+.kpi-stat-card,
+.kpi-card { min-width: 0; }
+.screen-view canvas { max-width: 100%; }
+.event-legend-row > span,
+.event-legend-row .legend-label-group { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.event-legend-row strong { flex-shrink: 0; padding-left: 8px; }
+@media (max-width: 1180px) {
+  .dash-middle-grid,
+  .dash-lower-grid { grid-template-columns: minmax(0, 1fr); }
+}

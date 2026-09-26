@@ -1,574 +1,322 @@
 /**
- * LOGVAULT — Log Sources & Ingestion Fleet Architecture Module (Stage 5)
- * 60 FPS Ingestion Pipeline Flowchart Canvas + Multi-Source Bar Graphs + Collector Fleet Deck
+ * LOGVAULT — Log Sources screen.
+ * Built from /api/collectors (one row per host-or-IP and format) and /api/dashboard (timeline, formats).
  */
 
-const SourcesModule = {
-  animFrameId: null,
-  hoveredNode: null,
+const SOURCE_COLORS = ['#74152A', '#9C1A30', '#C47A16', '#E09F3E', '#6E1B3E', '#B4233C', '#756568'];
 
-  fleetData: [
-    { id: 'SRC-01', name: 'server-01.prod.ec2', proto: 'SSH / Syslog (RFC 5424)', eps: 304, bufferPct: 18, bufferStr: '18.2K / min', tls: 'TLS 1.3 mTLS', status: 'HEALTHY', statusClass: 'green-pill', latency: '0.04 ms' },
-    { id: 'SRC-02', name: 'perimeter-fw01.dc', proto: 'CEF ArcSight v0.1', eps: 702, bufferPct: 42, bufferStr: '42.1K / min', tls: 'IPsec Tunnel', status: 'HEALTHY', statusClass: 'green-pill', latency: '0.08 ms' },
-    { id: 'SRC-03', name: 'aws-cloudtrail.s3', proto: 'AWS S3 JSON Stream', eps: 140, bufferPct: 12, bufferStr: '8.4K / min', tls: 'HTTPS SigV4', status: 'HEALTHY', statusClass: 'green-pill', latency: '0.12 ms' },
-    { id: 'SRC-04', name: 'win-domain-dc01', proto: 'Windows EventLog XML', eps: 213, bufferPct: 24, bufferStr: '12.8K / min', tls: 'WinRM Kerberos', status: 'HEALTHY', statusClass: 'green-pill', latency: '0.09 ms' },
-    { id: 'SRC-05', name: 'vpn-gateway-west', proto: 'Syslog RFC 5424', eps: 35, bufferPct: 68, bufferStr: '2.1K / min', tls: 'TLS 1.2', status: 'DELAYED', statusClass: 'gold-pill', latency: '0.24 ms' },
-    { id: 'SRC-06', name: 'suricata-eve-ids', proto: 'EVE JSON Unix Socket', eps: 85, bufferPct: 8, bufferStr: '5.1K / min', tls: 'Local Socket', status: 'HEALTHY', statusClass: 'green-pill', latency: '0.05 ms' },
-    { id: 'SRC-07', name: 'backup-vault-02', proto: 'Storage Replay Mirror', eps: 0, bufferPct: 0, bufferStr: '0 / min', tls: 'NFSv4 / SSH', status: 'STANDBY', statusClass: 'warn-pill', latency: '--' }
-  ],
+const SourcesModule = {
+  data: null,
+  dash: null,
+  pollTimer: null,
 
   init() {
-    this.renderFleetTable();
-    this.renderThroughputChart();
-    this.renderProtocolDonutChart();
-    this.renderEpsBarsChart();
-    this.renderLatencyBenchmarkBars();
-    this.renderBufferSaturationBars();
-    this.initFlowchart();
-    this.bindEvents();
+    this.refresh();
   },
 
   onScreenOpen() {
-    this.renderFleetTable();
-    this.renderThroughputChart();
-    this.renderProtocolDonutChart();
-    this.renderEpsBarsChart();
-    this.renderLatencyBenchmarkBars();
-    this.renderBufferSaturationBars();
-    this.initFlowchart();
+    this.refresh();
+    clearInterval(this.pollTimer);
+    this.pollTimer = setInterval(() => {
+      if (Navigation.activeScreen !== 'sources') {
+        clearInterval(this.pollTimer);
+        return;
+      }
+      if (!document.hidden) this.refresh();
+    }, 10000);
   },
 
-  bindEvents() {
-    const btnFlush = document.getElementById('btn-flush-buffers');
-    if (btnFlush) {
-      btnFlush.addEventListener('click', () => {
-        Utils.showToast('✓ All Edge Ring Buffers flushed to storage vault successfully.', 'success');
-      });
-    }
-
-    const btnDeploy = document.getElementById('btn-deploy-agent');
-    if (btnDeploy) {
-      btnDeploy.addEventListener('click', () => {
-        Utils.showToast('Generating one-line collector agent installation curl snippet...', 'warning');
-      });
-    }
-
-    // Canvas mouse move for interactive node hovering
-    const canvas = document.getElementById('sourcesFlowchartCanvas');
-    if (canvas) {
-      canvas.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        this.mouseX = e.clientX - rect.left;
-        this.mouseY = e.clientY - rect.top;
-      });
-      canvas.addEventListener('mouseleave', () => {
-        this.mouseX = -1;
-        this.mouseY = -1;
-      });
-    }
+  async refresh(notify = false) {
+    if (!window.LogVaultAPI) return;
+    const [data, dash] = await Promise.all([LogVaultAPI.getCollectors(), LogVaultAPI.getDashboard()]);
+    this.data = data;
+    this.dash = dash;
+    this.render();
+    if (notify) Utils.showToast(data ? 'Sources refreshed.' : 'Backend unavailable.', data ? 'success' : 'error');
   },
 
-  renderFleetTable() {
-    const tbody = document.getElementById('sources-fleet-tbody');
-    if (!tbody) return;
-
-    tbody.innerHTML = this.fleetData.map(s => `
-      <tr>
-        <td style="font-weight:800; color:var(--cherry-primary); font-family:var(--font-mono);">${s.id}</td>
-        <td>
-          <strong style="color:var(--text-ink);">${s.name}</strong>
-        </td>
-        <td style="color:var(--text-muted); font-family:var(--font-mono);">${s.proto}</td>
-        <td>
-          <strong style="color:var(--text-ink);">${s.eps} EPS</strong>
-        </td>
-        <td>
-          <div class="buffer-bar-wrap">
-            <div class="buffer-bar-fill ${s.bufferPct > 50 ? 'warn' : ''}" style="width: ${s.bufferPct}%;"></div>
-          </div>
-          <span style="font-size:0.68rem; color:var(--text-muted);">${s.bufferStr}</span>
-        </td>
-        <td style="font-family:var(--font-mono); font-size:0.68rem; color:var(--text-muted);">${s.tls}</td>
-        <td style="font-family:var(--font-mono); color:var(--cherry-primary); font-weight:700;">${s.latency}</td>
-        <td><span class="badge-pill ${s.statusClass}">${s.status}</span></td>
-      </tr>
-    `).join('');
+  set(id, html) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
   },
 
-  // 1. Throughput Spline Chart
-  renderThroughputChart() {
+  render() {
+    const d = this.data;
+    if (!d) {
+      this.set('sources-status-badge', '<span class="badge-dot"></span><span>Backend offline</span>');
+      return;
+    }
+    const rows = d.collectors;
+    const silent = rows.filter(r => r.status === 'SILENT').length;
+
+    this.set('sources-status-badge', `<span class="badge-dot ${d.active_collectors ? 'green' : ''}"></span><span>${
+      !rows.length ? 'No sources yet' : d.active_collectors ? `${d.active_collectors} sending now` : 'All sources quiet'}</span>`);
+    this.set('src-kpi-sources', rows.length.toLocaleString());
+    this.set('src-kpi-sources-sub', `<i data-lucide="layers"></i> ${d.formats.length} format${d.formats.length === 1 ? '' : 's'} &bull; ${d.total_events.toLocaleString()} events`);
+    this.set('src-kpi-active', d.active_collectors.toLocaleString());
+    this.set('src-kpi-active-sub', `<i data-lucide="clock"></i> ${rows.length - d.active_collectors - silent} idle &bull; ${silent} silent &gt;1 h`);
+    this.set('src-kpi-rate', d.events_last_minute.toLocaleString());
+    this.set('src-kpi-rate-sub', `<i data-lucide="database"></i> ${(d.events_last_minute / 60).toFixed(1)} events/sec average`);
+    this.set('src-kpi-latency', d.avg_latency_ms < 10 ? d.avg_latency_ms.toFixed(3) : d.avg_latency_ms.toFixed(0));
+
+    this.renderTimeline();
+    this.renderFormatDonut();
+    this.renderSourceBars();
+    this.renderPipeline();
+    this.renderLatencyBars();
+    this.renderAnomalyBars();
+    this.renderTable();
+    if (window.lucide) lucide.createIcons();
+  },
+
+  // Events per time bucket (same buckets as the dashboard)
+  renderTimeline() {
     const canvas = document.getElementById('sourcesThroughputCanvas');
+    const tl = this.dash && this.dash.timeline;
+    const buckets = (tl && tl.buckets) || [];
+    const max = Math.max(0, ...buckets.map(b => b.events));
+    const mins = tl && tl.bucket_seconds ? tl.bucket_seconds / 60 : 0;
+    this.set('src-timeline-peak', max.toLocaleString());
+    this.set('src-timeline-sub', mins ? `peak per ${mins >= 60 ? mins / 60 + ' h' : mins + ' min'}` : 'no events yet');
+    this.set('src-timeline-badge', buckets.length ? `${buckets.length} buckets` : '&mdash;');
     if (!canvas) return;
-    const scaled = Utils.setupHiDPICanvas(canvas, 80);
+    const scaled = Utils.setupHiDPICanvas(canvas, 75);
     if (!scaled) return;
     const { ctx, width: w, height: h } = scaled;
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-
     ctx.clearRect(0, 0, w, h);
-
-    ctx.beginPath();
-    ctx.setLineDash([4, 4]);
-    ctx.moveTo(30, h * 0.35);
-    ctx.lineTo(w - 10, h * 0.35);
-    ctx.strokeStyle = isDark ? 'rgba(232, 160, 170, 0.25)' : '#D4A8B0';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    const points = [
-      { x: 35, y: h * 0.80 },
-      { x: 75, y: h * 0.60 },
-      { x: 110, y: h * 0.50 },
-      { x: 145, y: h * 0.65 },
-      { x: 185, y: h * 0.32 },
-      { x: 220, y: h * 0.45 },
-      { x: 255, y: h * 0.25 },
-      { x: 285, y: h * 0.20 }
-    ];
-
+    if (!max) return;
+    const pts = buckets.map((b, i) => ({ x: buckets.length === 1 ? w / 2 : i / (buckets.length - 1) * w, y: h - 4 - (b.events / max) * (h - 10) }));
     const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, isDark ? 'rgba(212, 56, 83, 0.45)' : 'rgba(180, 35, 60, 0.35)');
-    grad.addColorStop(1, 'rgba(180, 35, 60, 0.0)');
-
+    grad.addColorStop(0, 'rgba(180, 35, 60, 0.30)');
+    grad.addColorStop(1, 'rgba(180, 35, 60, 0)');
     ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 0; i < points.length - 1; i++) {
-      const xc = (points[i].x + points[i + 1].x) / 2;
-      const yc = (points[i].y + points[i + 1].y) / 2;
-      ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
-    }
-    ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
-    ctx.lineTo(points[points.length - 1].x, h - 18);
-    ctx.lineTo(points[0].x, h - 18);
+    Charts.smoothPath(ctx, pts);
+    ctx.lineTo(pts[pts.length - 1].x, h);
+    ctx.lineTo(pts[0].x, h);
     ctx.closePath();
     ctx.fillStyle = grad;
     ctx.fill();
-
     ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 0; i < points.length - 1; i++) {
-      const xc = (points[i].x + points[i + 1].x) / 2;
-      const yc = (points[i].y + points[i + 1].y) / 2;
-      ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
-    }
-    ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
-    ctx.strokeStyle = isDark ? '#D43853' : '#B4233C';
+    Charts.smoothPath(ctx, pts);
+    ctx.strokeStyle = '#B4233C';
     ctx.lineWidth = 2;
     ctx.stroke();
-
-    const apex = points[points.length - 1];
-    ctx.beginPath();
-    ctx.arc(apex.x, apex.y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = isDark ? '#D43853' : '#74152A';
-    ctx.fill();
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    ctx.font = '600 8.5px Inter, sans-serif';
-    ctx.fillStyle = isDark ? '#A89094' : '#756568';
-    ctx.fillText('05:00', 35, h - 4);
-    ctx.fillText('06:00', 105, h - 4);
-    ctx.fillText('12:00', 190, h - 4);
-    ctx.fillText('12:00', 265, h - 4);
   },
 
-  // 2. Protocol Donut Chart
-  renderProtocolDonutChart() {
+  renderFormatDonut() {
+    const formats = (this.dash && this.dash.formats) || [];
+    this.set('src-format-count', `${formats.length} FORMAT${formats.length === 1 ? '' : 'S'}`);
+    this.set('src-format-legend', formats.length ? formats.slice(0, 5).map((f, i) =>
+      `<div><span style="color:${SOURCE_COLORS[i]}; font-weight:800;">●</span> ${Utils.escapeHtml(Charts.formatLabel(f.format))} (${f.pct}%)</div>`
+    ).join('') + (formats.length > 5 ? `<div style="color:var(--text-muted);">+${formats.length - 5} more</div>` : '')
+      : '<div style="color:var(--text-muted);">No events yet</div>');
+
     const canvas = document.getElementById('sourcesProtocolDonutCanvas');
     if (!canvas) return;
-    const scaled = Utils.setupHiDPICanvas(canvas, 85);
+    const scaled = Utils.setupHiDPICanvas(canvas, 75);
     if (!scaled) return;
-    const { ctx, width: w, height: h } = scaled;
-    const cx = w / 2;
-    const cy = h / 2;
-    const rOut = Math.min(w, h) * 0.44;
-    const rIn = Math.min(w, h) * 0.26;
-
-    ctx.clearRect(0, 0, w, h);
-
-    const slices = [
-      { pct: 0.38, color: '#74152A' },
-      { pct: 0.26, color: '#9C1A30' },
-      { pct: 0.18, color: '#C47A16' },
-      { pct: 0.12, color: '#E09F3E' },
-      { pct: 0.06, color: '#25855A' }
-    ];
-
-    let start = -Math.PI / 2;
-    slices.forEach(s => {
-      const angle = s.pct * Math.PI * 2;
+    const { ctx, width, height } = scaled;
+    ctx.clearRect(0, 0, width, height);
+    const total = formats.reduce((a, f) => a + f.count, 0);
+    const cx = width / 2, cy = height / 2, r = Math.min(width, height) * 0.46, inner = r * 0.58;
+    if (!total) return;
+    let angle = -Math.PI / 2;
+    formats.forEach((f, i) => {
+      const slice = f.count / total * Math.PI * 2;
       ctx.beginPath();
-      ctx.arc(cx, cy, rOut, start, start + angle);
-      ctx.arc(cx, cy, rIn, start + angle, start, true);
+      ctx.arc(cx, cy, r, angle, angle + slice);
+      ctx.arc(cx, cy, inner, angle + slice, angle, true);
       ctx.closePath();
-      ctx.fillStyle = s.color;
+      ctx.fillStyle = SOURCE_COLORS[Math.min(i, SOURCE_COLORS.length - 1)];
       ctx.fill();
-      start += angle;
+      angle += slice;
     });
   },
 
-  // 3. EPS Bars Chart (Vertical Bar Graph)
-  renderEpsBarsChart() {
+  // Events per origin (top 7), merged across formats
+  topOrigins() {
+    const byOrigin = {};
+    (this.data ? this.data.collectors : []).forEach(r => {
+      const o = byOrigin[r.origin] || (byOrigin[r.origin] = { origin: r.origin, events: 0, anomalies: 0 });
+      o.events += r.events;
+      o.anomalies += r.anomalies;
+    });
+    return Object.values(byOrigin).sort((a, b) => b.events - a.events);
+  },
+
+  renderSourceBars() {
+    const top = this.topOrigins().slice(0, 7);
+    this.set('src-bars-top', top.length ? top[0].events.toLocaleString() : '0');
+    this.set('src-bars-top-name', top.length ? Utils.escapeHtml(top[0].origin) : '&mdash;');
     const canvas = document.getElementById('sourcesEpsBarsCanvas');
     if (!canvas) return;
-    const scaled = Utils.setupHiDPICanvas(canvas, 65);
+    const scaled = Utils.setupHiDPICanvas(canvas, 75);
     if (!scaled) return;
     const { ctx, width: w, height: h } = scaled;
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-
     ctx.clearRect(0, 0, w, h);
-
-    const bars = [
-      { eps: '702', hPct: 0.95, color: isDark ? '#D43853' : '#4A0814', label: 'FW01' },
-      { eps: '304', hPct: 0.72, color: isDark ? '#E8A0AA' : '#74152A', label: 'SSH' },
-      { eps: '213', hPct: 0.60, color: isDark ? '#B4233C' : '#9C1A30', label: 'WIN' },
-      { eps: '140', hPct: 0.48, color: '#D43853', label: 'AWS' },
-      { eps: '85', hPct: 0.36, color: '#DD6B20', label: 'EVE' },
-      { eps: '35', hPct: 0.22, color: '#E09F3E', label: 'VPN' },
-      { eps: '0', hPct: 0.06, color: isDark ? '#68595B' : '#756568', label: 'BAK' }
-    ];
-
-    const barWidth = 14;
-    const gap = (w - (bars.length * barWidth)) / (bars.length + 1);
-
-    bars.forEach((b, i) => {
-      const x = gap + i * (barWidth + gap);
-      const barH = (h - 26) * b.hPct;
-      const y = h - 14 - barH;
-
-      ctx.fillStyle = b.color;
-      ctx.fillRect(x, y, barWidth, barH);
-
-      ctx.font = '700 8.5px "JetBrains Mono", monospace';
-      ctx.fillStyle = isDark ? '#FFF8F0' : '#24191B';
-      ctx.textAlign = 'center';
-      ctx.fillText(b.eps, x + barWidth / 2, y - 3);
-
-      ctx.font = '600 7.5px Inter, sans-serif';
+    if (!top.length) return;
+    const max = top[0].events;
+    const slot = w / top.length;
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    ctx.font = '9px "JetBrains Mono", monospace';
+    top.forEach((o, i) => {
+      const bh = Math.max(2, (o.events / max) * (h - 18));
+      ctx.fillStyle = o.anomalies ? '#B4233C' : (isDark ? '#E8A0AA' : '#74152A');
+      ctx.fillRect(i * slot + slot * 0.18, h - 12 - bh, slot * 0.64, bh);
       ctx.fillStyle = isDark ? '#A89094' : '#756568';
-      ctx.fillText(b.label, x + barWidth / 2, h - 3);
+      const label = o.origin.length > 8 ? o.origin.slice(0, 7) + '…' : o.origin;
+      ctx.fillText(label, i * slot + 2, h - 2);
     });
   },
 
-  // 4. Latency Benchmark Horizontal Bar Graph Stack
-  renderLatencyBenchmarkBars() {
-    const container = document.getElementById('latency-benchmarks-container');
-    if (!container) return;
-
-    const items = [
-      { name: 'C++ Deterministic (PAM/Syslog)', latency: '0.04 ms', pct: 6, color: '#25855A' },
-      { name: 'WASM CEF Parser (Palo Alto)', latency: '0.08 ms', pct: 14, color: '#25855A' },
-      { name: 'WASM CloudTrail Parser (AWS)', latency: '0.12 ms', pct: 20, color: '#25855A' },
-      { name: 'Windows EventLog XML Parser', latency: '0.09 ms', pct: 16, color: '#25855A' },
-      { name: 'Dynamic Schema Mapper', latency: '1.20 ms', pct: 85, color: '#B4233C' }
-    ];
-
-    container.innerHTML = items.map(item => `
-      <div class="latency-bench-item">
-        <span class="latency-bench-item-label">${item.name}</span>
-        <div class="latency-bench-bar-track">
-          <div class="latency-bench-bar-fill" style="width: ${item.pct}%; background-color: ${item.color};"></div>
+  renderPipeline() {
+    const d = this.data, dash = this.dash;
+    if (!d || !dash) return;
+    const total = dash.total_events;
+    const node = (title, sub, badge, cls, onclick) => `
+      <div class="flowchart-node-card"${onclick ? ` onclick="${onclick}"` : ''}>
+        <div class="flowchart-node-info">
+          <span class="flowchart-node-title">${Utils.escapeHtml(title)}</span>
+          <span class="flowchart-node-sub">${Utils.escapeHtml(sub)}</span>
         </div>
-        <span class="latency-bench-val" style="color: ${item.color};">${item.latency}</span>
-      </div>
-    `).join('');
+        <span class="flowchart-node-badge ${cls}">${Utils.escapeHtml(badge)}</span>
+      </div>`;
+    const stage = (title, badge, body) => `
+      <div class="flowchart-stage-col">
+        <div class="flowchart-stage-header"><span>${title}</span><span class="badge-pill green-pill" style="font-size:0.6rem;">${badge}</span></div>
+        ${body || '<div class="flowchart-node-sub" style="padding:8px;">Nothing yet</div>'}
+      </div>`;
+
+    const origins = this.topOrigins();
+    this._origins = origins;
+    const s1 = origins.slice(0, 5).map((o, i) => node(o.origin, `${o.anomalies} anomalies`, o.events.toLocaleString(), o.anomalies ? 'cherry' : 'green',
+      `SourcesModule.viewLogs(SourcesModule._origins[${i}].origin)`)).join('')
+      + (origins.length > 5 ? `<div class="flowchart-node-sub" style="padding:4px 8px;">+${origins.length - 5} more</div>` : '');
+
+    const detected = dash.formats.filter(f => f.format !== 'unknown');
+    const unknown = dash.formats.find(f => f.format === 'unknown');
+    const s2 = detected.slice(0, 5).map(f => node(Charts.formatLabel(f.format), `${f.pct}% of events`, f.count.toLocaleString(), 'green')).join('')
+      + (unknown ? node('Not recognised', 'Map it in the AI Schema Mapper', unknown.count.toLocaleString(), 'gold', "Navigation.navigateTo('ai-mapper')") : '');
+
+    const conf = dash.confidence;
+    const s3 = node('Parsed', 'matched a parser', `${dash.parsed_rate}%`, 'green')
+      + node('Mapped to OCSF class', 'class_uid assigned', `${conf.schema_mapping}%`, 'green')
+      + node('Fields extracted', 'IP, user or host found', `${conf.field_extraction}%`, 'green')
+      + node('Parser confidence', 'average', `${conf.parser}%`, 'green');
+
+    const sev = dash.severities || {};
+    const s4 = node('Anomalous', 'rule, entropy or AI finding', dash.anomalous_events.toLocaleString(), dash.anomalous_events ? 'cherry' : 'green', "Navigation.navigateTo('anomalies')")
+      + node('Critical', 'threat score 80+ or CRITICAL', dash.critical_anomalies.toLocaleString(), dash.critical_anomalies ? 'cherry' : 'green', "Navigation.navigateTo('alerts')")
+      + node('High severity', 'events', (sev.HIGH || 0).toLocaleString(), 'gold');
+
+    const s5 = node('SQLite event store', 'normalized JSON + raw log', total.toLocaleString(), 'green', "Navigation.navigateTo('settings')")
+      + node('Alert queue', 'anomalies awaiting triage', dash.anomalous_events.toLocaleString(), 'cherry', "Navigation.navigateTo('alerts')");
+
+    this.set('sources-pipeline',
+      stage('1. Sources', `${origins.length}`, s1)
+      + stage('2. Format Detection', `${detected.length} formats`, s2)
+      + stage('3. Parsing &amp; OCSF', `${dash.parsed_rate}%`, total ? s3 : '')
+      + stage('4. Threat Detection', `${dash.anomalous_events}`, total ? s4 : '')
+      + stage('5. Local Storage', 'SQLite', total ? s5 : ''));
   },
 
-  // 5. Buffer Saturation Capacity Bar Graph Stack
-  renderBufferSaturationBars() {
-    const container = document.getElementById('buffer-saturation-container');
-    if (!container) return;
-
-    const items = [
-      { name: 'Perimeter FW 01 Buffer (Ring 0)', load: '42.1%', pct: 42, color: '#25855A' },
-      { name: 'Linux SSH Auth Buffer (Ring 1)', load: '18.2%', pct: 18, color: '#25855A' },
-      { name: 'Windows Kerberos Buffer (Ring 2)', load: '24.0%', pct: 24, color: '#25855A' },
-      { name: 'AWS S3 CloudTrail (Ring 3)', load: '12.0%', pct: 12, color: '#25855A' },
-      { name: 'VPN Gateway Buffer (Ring 4)', load: '68.0%', pct: 68, color: '#C47A16' }
-    ];
-
-    container.innerHTML = items.map(item => `
-      <div class="latency-bench-item">
-        <span class="latency-bench-item-label">${item.name}</span>
-        <div class="latency-bench-bar-track">
-          <div class="latency-bench-bar-fill" style="width: ${item.pct}%; background-color: ${item.color};"></div>
+  barRow(name, detail, pct, value, color) {
+    return `
+      <div class="latency-bench-item" style="margin-bottom:10px;">
+        <div style="min-width: 150px;">
+          <span style="font-weight:800; color:var(--text-ink); display:block; font-size:0.74rem;">${Utils.escapeHtml(name)}</span>
+          <span style="font-size:0.65rem; color:var(--text-muted); font-family:var(--font-mono);">${Utils.escapeHtml(detail)}</span>
         </div>
-        <span class="latency-bench-val" style="color: ${item.color};">${item.load}</span>
-      </div>
-    `).join('');
+        <div class="latency-bench-bar-track" style="height:9px; background:var(--border-card);">
+          <div class="latency-bench-bar-fill" style="width:${Math.max(1, Math.min(100, pct)).toFixed(1)}%; background-color:${color}; border-radius:4px;"></div>
+        </div>
+        <div style="min-width: 70px; text-align:right;">
+          <span style="font-family:var(--font-mono); font-weight:800; color:${color}; font-size:0.75rem;">${value}</span>
+        </div>
+      </div>`;
   },
 
-  // Universal helper for rounded rectangle
-  drawBox(ctx, x, y, width, height, radius = 5) {
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
+  renderLatencyBars() {
+    const byFormat = {};
+    (this.data ? this.data.collectors : []).forEach(r => {
+      const f = byFormat[r.format] || (byFormat[r.format] = { format: r.format, events: 0, total: 0 });
+      f.events += r.events;
+      f.total += r.avg_latency_ms * r.events;
+    });
+    const list = Object.values(byFormat).map(f => ({ ...f, avg: f.events ? f.total / f.events : 0 })).sort((a, b) => b.avg - a.avg);
+    const max = Math.max(0, ...list.map(f => f.avg));
+    this.set('latency-benchmarks-container', list.length ? list.map(f =>
+      this.barRow(Charts.formatLabel(f.format), `${f.events.toLocaleString()} records`, max ? f.avg / max * 100 : 0,
+        `${f.avg < 10 ? f.avg.toFixed(3) : f.avg.toFixed(0)} ms`, f.avg > 1000 ? 'var(--status-amber)' : 'var(--status-green)')
+    ).join('') + '<div class="storage-footnote">Records analysed by the local AI take seconds; rule-only records take well under a millisecond.</div>'
+      : '<div class="analytics-empty">No events yet.</div>');
   },
 
-  // 6. 60 FPS Comprehensive Ingestion Pipeline Flowchart Canvas
-  initFlowchart() {
-    if (this.animFrameId) {
-      cancelAnimationFrame(this.animFrameId);
-      this.animFrameId = null;
-    }
-
-    const canvas = document.getElementById('sourcesFlowchartCanvas');
-    if (!canvas) return;
-
-    const renderLoop = () => {
-      try {
-        this.drawFlowchartFrame(canvas);
-      } catch (err) {
-        console.error('Flowchart draw error:', err);
-      }
-      this.animFrameId = requestAnimationFrame(renderLoop);
-    };
-
-    this.animFrameId = requestAnimationFrame(renderLoop);
+  renderAnomalyBars() {
+    const list = this.topOrigins().filter(o => o.events).sort((a, b) => (b.anomalies / b.events) - (a.anomalies / a.events) || b.anomalies - a.anomalies).slice(0, 7);
+    this.set('buffer-saturation-container', list.length ? list.map(o => {
+      const pct = o.anomalies / o.events * 100;
+      return this.barRow(o.origin, `${o.anomalies} of ${o.events.toLocaleString()} events`, pct, `${pct.toFixed(1)}%`,
+        pct >= 50 ? 'var(--cherry-primary)' : pct > 0 ? 'var(--status-amber)' : 'var(--status-green)');
+    }).join('') : '<div class="analytics-empty">No events yet.</div>');
   },
 
-  drawFlowchartFrame(canvas) {
-    if (!canvas) return;
-    const parent = canvas.parentElement;
-    const w = (parent && parent.clientWidth > 100) ? parent.clientWidth : 1000;
-    const h = 480;
-    const dpr = window.devicePixelRatio || 1;
-
-    const targetW = Math.floor(w * dpr);
-    const targetH = Math.floor(h * dpr);
-
-    if (canvas.width !== targetW || canvas.height !== targetH) {
-      canvas.width = targetW;
-      canvas.height = targetH;
+  renderTable() {
+    const tbody = document.getElementById('sources-fleet-tbody');
+    if (!tbody) return;
+    const rows = this.data ? this.data.collectors : [];
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--text-muted);">
+        No logs received yet. Upload a file or paste a log in the Normalizer.</td></tr>`;
+      return;
     }
+    const statusPill = { ACTIVE: 'green-pill', IDLE: 'gold-pill', SILENT: 'warn-pill' };
+    const isIp = v => /^\d{1,3}(\.\d{1,3}){3}$/.test(v) || v.includes(':');
+    tbody.innerHTML = rows.map((r, i) => {
+      const origin = Utils.escapeHtml(r.origin);
+      const kind = isIp(r.origin) ? 'ip' : 'host';
+      const ref = `SourcesModule.data.collectors[${i}].origin`;
+      const canContain = r.origin !== 'unattributed' && !r.contained;
+      return `
+        <tr>
+          <td><strong>${origin}</strong>${r.contained ? ' <span class="badge-pill crit-pill" style="font-size:0.55rem;">CONTAINED</span>' : ''}
+            <div style="font-size:0.62rem; color:var(--text-muted);">${r.distinct_source_ips} source IP${r.distinct_source_ips === 1 ? '' : 's'}</div></td>
+          <td>${Utils.escapeHtml(Charts.formatLabel(r.format))}</td>
+          <td style="font-family:var(--font-mono);">${r.events.toLocaleString()}</td>
+          <td style="font-family:var(--font-mono);">${r.events_per_minute.toLocaleString()} / min</td>
+          <td style="font-family:var(--font-mono); color:${r.anomalies ? 'var(--cherry-primary)' : 'inherit'};">${r.anomalies.toLocaleString()}</td>
+          <td style="font-family:var(--font-mono);">${r.max_threat}</td>
+          <td style="font-family:var(--font-mono); font-size:0.7rem;">${App.timeAgo(r.last_seen)}</td>
+          <td><span class="badge-pill ${statusPill[r.status]}">${r.status}</span></td>
+          <td style="white-space:nowrap;">
+            <button class="btn-outline-cherry btn-sm" onclick="SourcesModule.viewLogs(${ref})">Logs</button>
+            ${canContain ? `<button class="btn-cream-action btn-sm" onclick="SourcesModule.contain('${kind}', ${ref})">Contain</button>` : ''}
+          </td>
+        </tr>`;
+    }).join('');
+  },
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Guaranteed cross-browser scale & clear
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-
-    const now = Date.now();
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-
-    // 5 Architectural Tiers of Ingestion Pipeline
-    const stages = [
-      { name: 'Tier 1: Collector Fleet', x: w * 0.12 },
-      { name: 'Tier 2: Ring Buffers', x: w * 0.32 },
-      { name: 'Tier 3: Ingest Singularity', x: w * 0.52 },
-      { name: 'Tier 4: Parser Array', x: w * 0.72 },
-      { name: 'Tier 5: Standard Sinks', x: w * 0.90 }
-    ];
-
-    // Background Isometric Mesh Grid
-    ctx.strokeStyle = isDark ? 'rgba(232, 160, 170, 0.06)' : 'rgba(116, 21, 42, 0.05)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < w; x += 36) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-      ctx.stroke();
+  viewLogs(origin) {
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(origin)) {
+      LogStream.filterByIp(origin);
+      return;
     }
-    for (let y = 0; y < h; y += 36) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-      ctx.stroke();
+    const input = document.getElementById('stream-search-input');
+    if (input) input.value = origin;
+    LogStream.filters.searchQuery = origin.toLowerCase();
+    LogStream.filterByIp('');
+  },
+
+  async contain(kind, value) {
+    const reason = window.prompt(`Contain ${kind === 'ip' ? 'IP' : 'host'} ${value}?\n\nNew logs involving it will raise CRITICAL alerts, and it is added to the firewall export. Reason:`);
+    if (reason === null) return;
+    try {
+      await LogVaultAPI.contain(kind, value, reason);
+      Utils.showToast(`${value} contained.`, 'success');
+      this.refresh();
+    } catch (err) {
+      Utils.showToast(`Could not contain: ${err.message}`, 'error');
     }
-
-    // Tier 1 Sources Nodes (6 Nodes)
-    const sourcesNodes = [
-      { label: 'Linux SSH PAM', y: h * 0.16, icon: '', eps: '304 EPS' },
-      { label: 'Palo Alto FW01', y: h * 0.30, icon: '', eps: '702 EPS' },
-      { label: 'AWS S3 Trail', y: h * 0.44, icon: '', eps: '140 EPS' },
-      { label: 'WinEvent XML', y: h * 0.58, icon: '', eps: '213 EPS' },
-      { label: 'VPN Perimeter', y: h * 0.72, icon: '', eps: '35 EPS' },
-      { label: 'Suricata EVE', y: h * 0.86, icon: '', eps: '85 EPS' }
-    ];
-
-    // Tier 2: Ring Buffer Nodes
-    const bufferNode = { x: stages[1].x, y: h * 0.50, label: 'Lock-Free FIFO Ring Buffer' };
-
-    // Tier 3: Ingestion Singularity / Fast Dispatcher Core
-    const coreNode = { x: stages[2].x, y: h * 0.50, label: 'INGESTION SINGULARITY' };
-
-    // Tier 4: Zero-Copy Parser Engine Array (4 Parsers)
-    const parserNodes = [
-      { label: 'C++ RFC 5424 (0.04ms)', y: h * 0.20, icon: '' },
-      { label: 'WASM CEF v0.1 (0.08ms)', y: h * 0.40, icon: '' },
-      { label: 'WASM CloudTrail (0.12ms)', y: h * 0.60, icon: '' },
-      { label: 'Dynamic Mapper (1.2ms)', y: h * 0.80, icon: '' }
-    ];
-
-    // Tier 5: Output Sinks (3 Sinks)
-    const sinkNodes = [
-      { label: 'OCSF 1.1 Matrix', y: h * 0.28, icon: '' },
-      { label: 'Threat Correlator', y: h * 0.50, icon: '' },
-      { label: 'Storage Vault', y: h * 0.72, icon: '' }
-    ];
-
-    // 1. Draw Flow Conduits (Tier 1 Sources -> Tier 2 Buffer)
-    sourcesNodes.forEach((src, idx) => {
-      ctx.beginPath();
-      ctx.moveTo(stages[0].x + 40, src.y);
-      ctx.quadraticCurveTo((stages[0].x + bufferNode.x) / 2, src.y, bufferNode.x - 45, bufferNode.y);
-      ctx.strokeStyle = isDark ? 'rgba(180, 35, 60, 0.40)' : 'rgba(180, 35, 60, 0.28)';
-      ctx.lineWidth = 1.8;
-      ctx.stroke();
-
-      // Traveling Energy Packets
-      const t = ((now / 1300) + (idx * 0.18)) % 1;
-      const px = (1 - t) * (1 - t) * (stages[0].x + 40) + 2 * (1 - t) * t * ((stages[0].x + bufferNode.x) / 2) + t * t * (bufferNode.x - 45);
-      const py = (1 - t) * (1 - t) * src.y + 2 * (1 - t) * t * src.y + t * t * bufferNode.y;
-
-      ctx.beginPath();
-      ctx.arc(px, py, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#FFAA00';
-      ctx.shadowColor = '#FF3366';
-      ctx.shadowBlur = 8;
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    });
-
-    // 2. Tier 2 Buffer -> Tier 3 Core
-    ctx.beginPath();
-    ctx.moveTo(bufferNode.x + 45, bufferNode.y);
-    ctx.lineTo(coreNode.x - 45, coreNode.y);
-    ctx.strokeStyle = '#B4233C';
-    ctx.lineWidth = 2.6;
-    ctx.stroke();
-
-    const tBuf = (now / 900) % 1;
-    const pxBuf = bufferNode.x + 45 + (coreNode.x - 45 - (bufferNode.x + 45)) * tBuf;
-    ctx.beginPath();
-    ctx.arc(pxBuf, bufferNode.y, 4.5, 0, Math.PI * 2);
-    ctx.fillStyle = '#FF4D6D';
-    ctx.shadowColor = '#FF0033';
-    ctx.shadowBlur = 12;
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    // 3. Tier 3 Core -> Tier 4 Parsers
-    parserNodes.forEach((p, idx) => {
-      ctx.beginPath();
-      ctx.moveTo(coreNode.x + 45, coreNode.y);
-      ctx.quadraticCurveTo((coreNode.x + stages[3].x) / 2, p.y, stages[3].x - 45, p.y);
-      ctx.strokeStyle = isDark ? 'rgba(180, 35, 60, 0.40)' : 'rgba(180, 35, 60, 0.28)';
-      ctx.lineWidth = 1.8;
-      ctx.stroke();
-
-      const t = ((now / 1200) + (idx * 0.25)) % 1;
-      const px = (1 - t) * (1 - t) * (coreNode.x + 45) + 2 * (1 - t) * t * ((coreNode.x + stages[3].x) / 2) + t * t * (stages[3].x - 45);
-      const py = (1 - t) * (1 - t) * coreNode.y + 2 * (1 - t) * t * p.y + t * t * p.y;
-
-      ctx.beginPath();
-      ctx.arc(px, py, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#25855A';
-      ctx.shadowColor = '#2A9D8F';
-      ctx.shadowBlur = 8;
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    });
-
-    // 4. Tier 4 Parsers -> Tier 5 Sinks
-    parserNodes.forEach((p) => {
-      sinkNodes.forEach((sk) => {
-        ctx.beginPath();
-        ctx.moveTo(stages[3].x + 40, p.y);
-        ctx.quadraticCurveTo((stages[3].x + stages[4].x) / 2, (p.y + sk.y) / 2, stages[4].x - 40, sk.y);
-        ctx.strokeStyle = isDark ? 'rgba(37, 133, 90, 0.25)' : 'rgba(37, 133, 90, 0.18)';
-        ctx.lineWidth = 1.4;
-        ctx.stroke();
-      });
-    });
-
-    // Draw Helper: Pill Card
-    const drawCard = (text, x, y, icon = '', bgGrad = false, isEmerald = false, sub = '') => {
-      ctx.font = '700 9px JetBrains Mono, monospace';
-      const label = icon ? `${icon} ${text}` : text;
-      const tw = ctx.measureText(label).width;
-      const wCard = Math.max(tw + 20, 80);
-      const hCard = sub ? 30 : 24;
-
-      this.drawBox(ctx, x - wCard / 2, y - hCard / 2, wCard, hCard, 5);
-      ctx.fillStyle = bgGrad ? '#74152A' : isEmerald ? '#1B4D3E' : (isDark ? '#231B1E' : '#FFFFFF');
-      ctx.fill();
-      ctx.strokeStyle = isEmerald ? '#25855A' : '#B4233C';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      ctx.fillStyle = bgGrad || isEmerald ? '#FFF8F0' : (isDark ? '#FFF8F0' : '#24191B');
-      ctx.textAlign = 'center';
-      ctx.fillText(label, x, sub ? y - 2 : y + 3.5);
-
-      if (sub) {
-        ctx.font = '700 7.5px JetBrains Mono, monospace';
-        ctx.fillStyle = '#C47A16';
-        ctx.fillText(sub, x, y + 10);
-      }
-    };
-
-    // Render Tier 1 Source Cards
-    sourcesNodes.forEach(s => drawCard(s.label, stages[0].x, s.y, s.icon, false, false, s.eps));
-
-    // Render Tier 2 Buffer Card
-    drawCard(bufferNode.label, bufferNode.x, bufferNode.y, '', false);
-
-    // Render Tier 3 Ingestion Singularity Vortex Core
-    const pulse = Math.sin(now / 180) * 3;
-    const r = 28 + pulse;
-
-    for (let i = r + 6; i < r + 26; i += 6) {
-      ctx.beginPath();
-      ctx.arc(coreNode.x, coreNode.y, i, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(180, 35, 60, ${(1 - (i - r) / 26) * 0.4})`;
-      ctx.lineWidth = 1.4;
-      ctx.stroke();
-    }
-
-    const grad = ctx.createRadialGradient(coreNode.x - 4, coreNode.y - 4, 2, coreNode.x, coreNode.y, r);
-    grad.addColorStop(0, '#FFFFFF');
-    grad.addColorStop(0.3, '#FF3366');
-    grad.addColorStop(0.8, '#74152A');
-    grad.addColorStop(1, '#2A040C');
-
-    ctx.beginPath();
-    ctx.arc(coreNode.x, coreNode.y, r, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
-    ctx.shadowColor = '#FF2255';
-    ctx.shadowBlur = 22;
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    ctx.strokeStyle = '#FFF8F0';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    drawCard('INGESTION SINGULARITY', coreNode.x, coreNode.y + r + 16, '✦', true);
-
-    // Render Tier 4 Parser Cards
-    parserNodes.forEach(p => drawCard(p.label, stages[3].x, p.y, p.icon, false, true));
-
-    // Render Tier 5 Sinks Cards
-    sinkNodes.forEach(sk => drawCard(sk.label, stages[4].x, sk.y, sk.icon, false, true));
-
-    // Header Stage Labels
-    stages.forEach(st => {
-      ctx.font = '800 10px JetBrains Mono, monospace';
-      ctx.fillStyle = isDark ? '#E8A0AA' : '#756568';
-      ctx.textAlign = 'center';
-      ctx.fillText(st.name.toUpperCase(), st.x, 26);
-    });
   }
 };
 

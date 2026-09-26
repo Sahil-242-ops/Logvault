@@ -212,8 +212,8 @@
           <!-- Hero Greeting Banner -->
           <div class="hero-greeting-banner">
             <div class="banner-left">
-              <h2>Good afternoon, Security Team</h2>
-              <p>Here's what's happening across your infrastructure telemetry today</p>
+              <h2 id="dash-greeting">Welcome, Security Team</h2>
+              <p id="dash-greeting-sub">Here's what's happening across your infrastructure telemetry</p>
             </div>
             <div class="banner-right">
               <button class="btn-cream-action" onclick="Navigation.navigateTo('live-logs')">
@@ -233,8 +233,8 @@
                 <div>
                   <span class="kpi-label">Logs Processed</span>
                   <div class="kpi-big-number" id="kpi-logs-processed">0</div>
-                  <div class="kpi-trend-caption">
-                    <i data-lucide="trending-up"></i> Real-time local ingestion
+                  <div class="kpi-trend-caption" id="kpi-logs-caption">
+                    <i data-lucide="trending-up"></i> Stored this session
                   </div>
                 </div>
                 <div class="kpi-icon-box">
@@ -251,9 +251,9 @@
               <div class="kpi-top-row">
                 <div>
                   <span class="kpi-label">Parsed &amp; Normalized</span>
-                  <div class="kpi-big-number" id="kpi-norm-rate">100%</div>
-                  <div class="kpi-trend-caption">
-                    <i data-lucide="check-circle-2"></i> Common Schema Standardized
+                  <div class="kpi-big-number" id="kpi-norm-rate">0%</div>
+                  <div class="kpi-trend-caption" id="kpi-norm-caption">
+                    <i data-lucide="check-circle-2"></i> Matched by a parser
                   </div>
                 </div>
                 <div class="kpi-icon-box">
@@ -271,8 +271,8 @@
                 <div>
                   <span class="kpi-label">Suspicious Events</span>
                   <div class="kpi-big-number" id="kpi-suspicious-count">0</div>
-                  <div class="kpi-trend-caption">
-                    <i data-lucide="eye"></i> AI Threat Correlated
+                  <div class="kpi-trend-caption" id="kpi-suspicious-caption">
+                    <i data-lucide="eye"></i> Rule or AI flagged
                   </div>
                 </div>
                 <div class="kpi-icon-box">
@@ -290,8 +290,8 @@
                 <div>
                   <span class="kpi-label">Critical Anomalies</span>
                   <div class="kpi-big-number" id="kpi-anomalies-count">0</div>
-                  <div class="kpi-trend-caption red-trend">
-                    <i data-lucide="arrow-up-right"></i> Multi-layer AI Flagged
+                  <div class="kpi-trend-caption red-trend" id="kpi-critical-caption">
+                    <i data-lucide="arrow-up-right"></i> Threat score 80+ or CRITICAL
                   </div>
                 </div>
                 <div class="kpi-icon-box">
@@ -311,11 +311,11 @@
               <div class="card-header-flex">
                 <div class="card-heading-group">
                   <h3>Event Activity &amp; Ingestion Volume</h3>
-                  <p>Telemetry flow rate across active collector nodes</p>
+                  <p id="dash-activity-sub">Events stored over time (solid) and anomalies (dashed)</p>
                 </div>
                 <div class="d-flex align-center gap-2">
-                  <span class="badge-pill high-pill"><span class="badge-dot cherry" style="width:5px;height:5px;"></span>Ingestion Active</span>
-                  <span class="badge-pill green-pill"><span class="badge-dot green" style="width:5px;height:5px;"></span>Normalized 99.98%</span>
+                  <span class="badge-pill high-pill" id="dash-ingest-badge"><span class="badge-dot cherry" style="width:5px;height:5px;"></span>No events yet</span>
+                  <span class="badge-pill green-pill" id="dash-parsed-badge"><span class="badge-dot green" style="width:5px;height:5px;"></span>Parsed 0%</span>
                 </div>
               </div>
               <div class="spline-chart-wrap">
@@ -328,8 +328,7 @@
               <div class="card-header-flex">
                 <div class="card-heading-group">
                   <h3>Log Format Distribution</h3>
-                  <p>Telemetry Breakdown across <strong style="color:var(--cherry-primary);">5 Enterprise
-                      Formats</strong></p>
+                  <p>Stored events by detected format</p>
                 </div>
               </div>
 
@@ -338,52 +337,14 @@
                 <div class="donut-chart-container">
                   <canvas id="eventDonutCanvas" width="140" height="140"></canvas>
                   <div class="donut-center-text">
-                    <span class="donut-big-val" id="donut-center-count">5</span>
+                    <span class="donut-big-val" id="donut-center-count">0</span>
                     <span class="donut-sub-label">Log Formats</span>
                   </div>
                 </div>
 
                 <!-- 5 Log Formats Legend List -->
                 <div class="event-dist-legend-list" id="format-dist-legend">
-                  <div class="event-legend-row" data-format="syslog">
-                    <div class="legend-label-group">
-                      <span class="legend-color-dot" style="background-color: #8F1127;"></span>
-                      <span>Syslog RFC 5424</span>
-                    </div>
-                    <strong id="legend-pct-syslog">28%</strong>
-                  </div>
-
-                  <div class="event-legend-row" data-format="nginx">
-                    <div class="legend-label-group">
-                      <span class="legend-color-dot" style="background-color: #4A0B18;"></span>
-                      <span>Nginx / Apache Web</span>
-                    </div>
-                    <strong id="legend-pct-nginx">24%</strong>
-                  </div>
-
-                  <div class="event-legend-row" data-format="json">
-                    <div class="legend-label-group">
-                      <span class="legend-color-dot" style="background-color: #924C00;"></span>
-                      <span>JSON / CloudTrail</span>
-                    </div>
-                    <strong id="legend-pct-json">18%</strong>
-                  </div>
-
-                  <div class="event-legend-row" data-format="cef">
-                    <div class="legend-label-group">
-                      <span class="legend-color-dot" style="background-color: #6E1B3E;"></span>
-                      <span>ArcSight CEF</span>
-                    </div>
-                    <strong id="legend-pct-cef">16%</strong>
-                  </div>
-
-                  <div class="event-legend-row" data-format="windows">
-                    <div class="legend-label-group">
-                      <span class="legend-color-dot" style="background-color: #3D3537;"></span>
-                      <span>Windows Security</span>
-                    </div>
-                    <strong id="legend-pct-windows">14%</strong>
-                  </div>
+                  <div class="event-legend-row"><span style="color:var(--text-muted);">No events yet</span></div>
                 </div>
               </div>
             </div>
@@ -431,33 +392,8 @@
                 </button>
               </div>
 
-              <div class="threat-mini-feed">
-                <div class="threat-card-item" onclick="Navigation.navigateTo('anomalies')">
-                  <div class="threat-card-head">
-                    <span class="threat-card-title">Possible Brute Force Attack</span>
-                    <span class="badge-pill crit-pill">CRITICAL</span>
-                  </div>
-                  <div class="threat-card-ip">192.168.1.45 &bull; Server-07</div>
-                  <div class="threat-card-time">4,821 failures &bull; 7 mins ago</div>
-                </div>
-
-                <div class="threat-card-item" onclick="Navigation.navigateTo('anomalies')">
-                  <div class="threat-card-head">
-                    <span class="threat-card-title">Tor Exit Ingress Probe</span>
-                    <span class="badge-pill crit-pill">CRITICAL</span>
-                  </div>
-                  <div class="threat-card-ip">185.220.101.5 &bull; VPN Gateway</div>
-                  <div class="threat-card-time">ACL Blocked &bull; 11 mins ago</div>
-                </div>
-
-                <div class="threat-card-item" onclick="Navigation.navigateTo('anomalies')">
-                  <div class="threat-card-head">
-                    <span class="threat-card-title">Impossible Travel Vector</span>
-                    <span class="badge-pill high-pill">HIGH</span>
-                  </div>
-                  <div class="threat-card-ip">user@company.com &bull; Mumbai &rarr; Frankfurt</div>
-                  <div class="threat-card-time">34 mins delta &bull; 18 mins ago</div>
-                </div>
+              <div class="threat-mini-feed" id="dash-threat-feed">
+                <div class="threat-card-item"><div class="threat-card-time">No anomalies detected yet</div></div>
               </div>
             </div>
           </div>
@@ -489,11 +425,11 @@
               </button>
 
               <!-- Stream Rate Selector -->
-              <select class="filter-select" id="stream-speed-select" title="Telemetry Ingestion Rate">
-                <option value="1000">1x (1 log/sec)</option>
-                <option value="500">2x (2 logs/sec)</option>
-                <option value="200">5x (5 logs/sec)</option>
-                <option value="100">10x (10 logs/sec)</option>
+              <select class="filter-select" id="stream-speed-select" title="How often to check for new events">
+                <option value="2000">Refresh every 2 s</option>
+                <option value="5000">Refresh every 5 s</option>
+                <option value="15000">Refresh every 15 s</option>
+                <option value="60000">Refresh every 60 s</option>
               </select>
 
               <!-- Clear Buffer Button -->
@@ -513,17 +449,17 @@
                 <i data-lucide="layers" style="width:14px;"></i>
               </div>
               <div style="font-size:0.75rem; line-height:1.6; margin-top:2px;">
-                <div style="color:var(--text-muted);">ACTIVE NODE: <strong
-                    style="color:var(--text-ink);">NODE_WEST_03</strong></div>
+                <div style="color:var(--text-muted);">STORE: <strong
+                    style="color:var(--text-ink);">Local SQLite</strong></div>
                 <div style="color:var(--text-muted);">STREAM SOURCE: <strong style="color:var(--text-ink);">All
-                    Collectors</strong></div>
+                    stored events</strong></div>
                 <div style="color:var(--text-muted); margin-top:2px;">INGESTED: <strong
                     style="color:var(--cherry-primary);" id="stream-card-ingested">0 logs (Session)</strong></div>
               </div>
               <div
                 style="display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:8px; font-size:0.68rem; color:var(--text-muted);">
-                <span>Cluster State</span>
-                <span class="badge-pill green-pill">Healthy (0.04ms)</span>
+                <span>Backend</span>
+                <span class="badge-pill green-pill" id="stream-backend-badge">Checking&hellip;</span>
               </div>
             </div>
 
@@ -624,18 +560,9 @@
           <div class="filter-bar-capsule">
             <!-- Source Filter -->
             <select class="filter-select" id="stream-filter-source">
-              <option value="ALL">All Sources</option>
-              <option value="FIREWALL">Firewall (NGFW)</option>
-              <option value="SSH">Linux SSH</option>
-              <option value="WINDOWS">Windows Event</option>
-              <option value="AWS">AWS CloudTrail</option>
-              <option value="LINUX">Linux Syslog</option>
-              <option value="APACHE">Apache Web</option>
-              <option value="OKTA">Okta SSO</option>
-              <option value="SURICATA">Suricata IDS</option>
-              <option value="KUBERNETES">Kubernetes</option>
-              <option value="DNS">DNS Query</option>
+              <option value="ALL">All Formats</option>
             </select>
+            <span class="badge-pill cherry-pill" id="stream-ip-filter-badge" style="display:none;"></span>
 
             <!-- Severity Filter -->
             <select class="filter-select" id="stream-filter-severity">
@@ -649,9 +576,10 @@
 
             <!-- Time Range -->
             <select class="filter-select" id="stream-filter-timerange">
-              <option value="1h">Last 1 hour</option>
-              <option value="24h">Last 24 hours</option>
-              <option value="all">All Events</option>
+              <option value="all" selected>All Events</option>
+              <option value="15m">Received in last 15 min</option>
+              <option value="1h">Received in last 1 hour</option>
+              <option value="24h">Received in last 24 hours</option>
             </select>
 
             <!-- Real-time Filter Search Box -->
@@ -689,7 +617,7 @@
                   id="stream-total-count">0</strong>
               </div>
               <div>
-                Ingestion Buffer: <strong id="stream-throughput">Measuring...</strong> &bull; Latency: <strong>0.04ms</strong>
+                Rate: <strong id="stream-throughput">Measuring...</strong> &bull; Avg processing: <strong id="stream-latency">&mdash;</strong>
               </div>
             </div>
           </div>
@@ -716,20 +644,20 @@
             <!-- Normalizer Hero Telemetry Ribbon -->
             <div class="normalizer-telemetry-ribbon">
               <div class="norm-stat-tile">
-                <span class="norm-stat-label">Execution Engine</span>
-                <span class="norm-stat-val" style="color:var(--cherry-primary);">0.04 ms</span>
+                <span class="norm-stat-label">Last Record Processing</span>
+                <span class="norm-stat-val" style="color:var(--cherry-primary);" id="norm-ribbon-latency">&mdash;</span>
               </div>
               <div class="norm-stat-tile">
-                <span class="norm-stat-label">OCSF Schema Conformance</span>
-                <span class="norm-stat-val" style="color:var(--status-green);">100%</span>
+                <span class="norm-stat-label">Stored Events Mapped to OCSF</span>
+                <span class="norm-stat-val" style="color:var(--status-green);" id="norm-ribbon-ocsf">&mdash;</span>
               </div>
               <div class="norm-stat-tile">
-                <span class="norm-stat-label">Noise Filter Loss</span>
-                <span class="norm-stat-val">0.01%</span>
+                <span class="norm-stat-label">Not Recognised</span>
+                <span class="norm-stat-val" id="norm-ribbon-unparsed">&mdash;</span>
               </div>
               <div class="norm-stat-tile">
-                <span class="norm-stat-label">Pattern Fallback</span>
-                <span class="norm-stat-val" style="color:var(--status-amber);">Active</span>
+                <span class="norm-stat-label">Custom Mapping Rules</span>
+                <span class="norm-stat-val" style="color:var(--status-amber);" id="norm-ribbon-rules">&mdash;</span>
               </div>
             </div>
 
@@ -738,7 +666,7 @@
               <div class="d-flex justify-between align-center mb-2">
                 <span
                   style="font-family:var(--font-heading); font-size:0.75rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Real-Time Normalization Pipeline Flow</span>
-                <span class="badge-pill green-pill"><span class="pulse-dot"></span> 18.4K eps</span>
+                <span class="badge-pill green-pill" id="norm-flow-badge">&mdash;</span>
               </div>
               <div style="width:100%; height:130px; position:relative;">
                 <canvas id="normalizerPipelineCanvas" width="800" height="130"
@@ -786,7 +714,7 @@
                     <button class="norm-mode-btn" data-norm-raw-mode="entropy">Shannon Entropy</button>
                   </div>
                 </div>
-                <span class="badge-pill green-pill" id="norm-format-confidence">100% Confidence</span>
+                <span class="badge-pill green-pill" id="norm-format-confidence">&mdash;</span>
               </div>
 
               <!-- View 1: Tokens Container with Laser Scanner Bar -->
@@ -826,7 +754,7 @@
                       style="padding:2px 8px; font-size:0.68rem;">
                       <i data-lucide="copy" style="width:12px;"></i> Copy Regex
                     </button>
-                    <span class="badge-pill green-pill" style="font-size:0.6rem;">WASM Engine</span>
+                    <span class="badge-pill green-pill" style="font-size:0.6rem;">Python re</span>
                   </div>
                 </div>
                 <div class="regex-code-snippet" id="norm-regex-pattern-display">
@@ -848,7 +776,7 @@
                   <span class="det-meta-label">Execution Latency</span>
                   <div class="det-meta-val">
                     <i data-lucide="zap" style="width: 14px; color: var(--cherry-primary);"></i>
-                    <strong id="norm-parser-latency">0.04 ms</strong>
+                    <strong id="norm-parser-latency">&mdash;</strong>
                   </div>
                 </div>
               </div>
@@ -1021,8 +949,8 @@
                   <span>OCSF Schema v1.1.0</span>
                 </div>
                 <div class="d-flex gap-2">
-                  <span class="badge-pill green-pill">Class 3002: IAM</span>
-                  <span class="badge-pill gold-pill">100% Conformance</span>
+                  <span class="badge-pill green-pill" id="norm-ocsf-class-pill">&mdash;</span>
+                  <span class="badge-pill gold-pill" id="norm-ocsf-fields-pill">&mdash;</span>
                 </div>
               </div>
 
@@ -1070,84 +998,58 @@
         <!-- SCREEN: ANOMALY INVESTIGATION DOSSIER (STAGE 2)               -->
         <!-- ============================================================= -->
         <section class="screen-view" id="screen-anomalies">
-          <!-- Back Link & Header -->
-          <div class="d-flex justify-between align-center">
+          <!-- Back Link, incident picker -->
+          <div class="d-flex justify-between align-center" style="flex-wrap:wrap; gap:8px;">
             <button class="btn-cream-action btn-sm" onclick="Navigation.navigateTo('dashboard')">
               <i data-lucide="arrow-left"></i> &larr; Back to Dashboard
             </button>
-            <span class="badge-pill crit-pill">CORRELATED INCIDENT &bull; INC-8421</span>
+            <div class="d-flex align-center gap-2" style="flex-wrap:wrap;">
+              <label for="incident-select" style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">Incident</label>
+              <select id="incident-select" class="filter-select" style="max-width:420px;"></select>
+              <span class="badge-pill crit-pill" id="incident-id-badge">&mdash;</span>
+            </div>
           </div>
 
-          <!-- Hero Anomaly Banner -->
+          <!-- Hero -->
           <div class="anomaly-hero-card">
             <div>
               <div class="d-flex align-center gap-2 mb-1">
-                <span class="badge-pill crit-pill"><i data-lucide="shield-alert"></i> CRITICAL ANOMALY</span>
-                <small style="color:var(--text-muted);">Detected 7 minutes ago</small>
+                <span class="badge-pill crit-pill" id="incident-sev-badge"><i data-lucide="shield-alert"></i> &mdash;</span>
+                <small style="color:var(--text-muted);" id="incident-detected">&mdash;</small>
               </div>
-              <h2 style="font-family:var(--font-heading); font-size:1.4rem; font-weight:800; color:var(--text-ink);">
-                Possible Brute Force Attack on Server-07
+              <h2 style="font-family:var(--font-heading); font-size:1.4rem; font-weight:800; color:var(--text-ink);" id="incident-title">
+                No anomalies yet
               </h2>
-              <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">
-                Correlation rule detected exponential authentication failures targeting internal SSH daemon
-                on port 22.
+              <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;" id="incident-desc">
+                Upload or paste logs in the Normalizer. Events that match a detection rule, look obfuscated, or that the local AI
+                flags will appear here.
               </p>
             </div>
-
             <div class="anomaly-badge-block">
-              <span class="crit-tag">CRITICAL</span>
-              <span class="pct-num">97%</span>
-              <span class="conf-label">CONFIDENCE</span>
+              <span class="crit-tag" id="incident-sev-tag">&mdash;</span>
+              <span class="pct-num" id="incident-score">&mdash;</span>
+              <span class="conf-label">THREAT SCORE</span>
             </div>
           </div>
 
-          <!-- 3D / Force Threat Graph with Timeline Scrub (From Reference UI) -->
+          <!-- Relationship graph -->
           <div class="surface-card">
             <div class="card-header-flex">
               <div class="card-heading-group">
                 <h3>3D Threat Graph &amp; Containment Topology</h3>
-                <p>Interactive threat propagation mesh with timeline scrubbing</p>
+                <p>Gold = alert source, summit = its most-hit target (host, destination or detection rule), teal = detection rules. Height = share of anomalous events; numbers on arcs = events seen together</p>
               </div>
               <div class="d-flex align-center gap-2">
-                <span class="threat-hud-subtag"><i data-lucide="radio" style="width:12px; color:var(--status-red);"></i>
-                  SSH Auth Burst</span>
-                <span class="threat-hud-telemetry-badge"><i data-lucide="activity"></i> ACTIVE INGRESS INCIDENT</span>
+                <span class="threat-hud-subtag" id="incident-graph-tag"><i data-lucide="radio" style="width:12px; color:var(--status-red);"></i> &mdash;</span>
               </div>
             </div>
-
-            <!-- Threat Graph Canvas with Overlays -->
             <div class="threat-graph-wrapper">
               <canvas id="threatGraphCanvas"></canvas>
-
-              <!-- Floating Quick Containment Card (from reference image) -->
               <div class="threat-quick-containment-card">
                 <span>Quick containment</span>
-                <button class="qc-btn" id="btn-qc-isolate">[Isolate Node]</button>
+                <button class="qc-btn" id="btn-qc-isolate">[Isolate Host]</button>
                 <button class="qc-btn" id="btn-qc-logs">[View Logs]</button>
-                <button class="qc-btn" id="btn-qc-acl">[Update ACL]</button>
-              </div>
-            </div>
-
-            <!-- Timeline Scrub Controller with Ticks -->
-            <div class="timeline-scrubber-widget">
-              <div class="scrubber-slider-row">
-                <input type="range" class="scrub-track-range" id="anomaly-timeline-slider" min="10" max="100"
-                  value="85" />
-                <button class="scrub-btn" id="btn-scrub-play" title="Play / Replay Timeline">
-                  <i data-lucide="play"></i>
-                </button>
-              </div>
-              <div class="timeline-ticks-row">
-                <span>09:15</span>
-                <span>09:30</span>
-                <span>09:45</span>
-                <span>10:00</span>
-                <span>10:15</span>
-                <span>10:30</span>
-                <span style="color:var(--cherry-primary); font-weight:700;" id="scrub-time-label">Current</span>
-              </div>
-              <div style="text-align:center; font-size:0.68rem; color:var(--text-muted); margin-top:2px;">
-                Drag scrubber to rewind threat propagation
+                <button class="qc-btn" id="btn-qc-acl">[Block IP]</button>
               </div>
             </div>
           </div>
@@ -1156,114 +1058,52 @@
           <div class="anomaly-metrics-strip">
             <div class="anom-metric-box">
               <label>Source IP Address</label>
-              <strong style="color:var(--cherry-primary);">192.168.1.45</strong>
-              <small>AS48281 &bull; Moscow / Tor</small>
+              <strong style="color:var(--cherry-primary);" id="incident-src-ip">&mdash;</strong>
+              <small id="incident-src-sub">&mdash;</small>
             </div>
-
             <div class="anom-metric-box">
               <label>Target System</label>
-              <strong>server-07</strong>
-              <small>Production DB Gateway (10.0.4.92)</small>
+              <strong id="incident-target">&mdash;</strong>
+              <small id="incident-target-sub">&mdash;</small>
             </div>
-
             <div class="anom-metric-box">
-              <label>Failed Attempts</label>
-              <strong style="color:var(--status-red);">4,821</strong>
-              <small>Burst Peak: 85 req/sec</small>
+              <label>Related Events</label>
+              <strong style="color:var(--status-red);" id="incident-related">&mdash;</strong>
+              <small id="incident-related-sub">&mdash;</small>
             </div>
-
             <div class="anom-metric-box">
-              <label>Attack Duration</label>
-              <strong>7 minutes</strong>
-              <small>Window: 10:24 &mdash; 10:31</small>
+              <label>Activity Window</label>
+              <strong id="incident-duration">&mdash;</strong>
+              <small id="incident-duration-sub">&mdash;</small>
             </div>
           </div>
 
-          <!-- Attack Progression Timeline -->
+          <!-- Timeline of related events -->
           <div class="surface-card">
             <div class="card-header-flex">
               <div class="card-heading-group">
-                <h3>Attack Progression Timeline</h3>
-                <p>Granular chronological failure sequence captured by correlation engine</p>
+                <h3>Activity Timeline</h3>
+                <p>Related events (same source IP, user or host) grouped by minute of arrival</p>
               </div>
-              <span class="badge-pill gold-pill">Correlated Event Sequence</span>
+              <span class="badge-pill gold-pill" id="incident-timeline-badge">&mdash;</span>
             </div>
+            <div class="attack-timeline-list" id="incident-timeline"></div>
 
-            <div class="attack-timeline-list">
-              <div class="timeline-step-item" onclick="AnomalyModule.selectTimelineNode(1)">
-                <span class="timeline-time-col">10:24</span>
-                <span class="step-node-dot"></span>
-                <div class="step-details-card">
-                  <div><strong>Initial Reconnaissance</strong> <span class="step-note-text">&bull; Port scan &amp; SSH
-                      handshake probe</span></div>
-                  <span class="step-fail-count">12 failures</span>
-                </div>
-              </div>
+            <div class="storage-section-label" style="margin-top:12px;">Containment for this incident</div>
+            <div id="incident-containment" style="font-size:0.74rem; color:var(--text-muted);">None</div>
 
-              <div class="timeline-step-item" onclick="AnomalyModule.selectTimelineNode(2)">
-                <span class="timeline-time-col">10:25</span>
-                <span class="step-node-dot"></span>
-                <div class="step-details-card">
-                  <div><strong>Dictionary Spray Initiated</strong> <span class="step-note-text">&bull; Standard password
-                      wordlist spray against port 22</span></div>
-                  <span class="step-fail-count">184 failures</span>
-                </div>
-              </div>
-
-              <div class="timeline-step-item" onclick="AnomalyModule.selectTimelineNode(3)">
-                <span class="timeline-time-col">10:26</span>
-                <span class="step-node-dot"></span>
-                <div class="step-details-card">
-                  <div><strong>Multi-Threaded Spray</strong> <span class="step-note-text">&bull; Concurrency escalated
-                      across 16 parallel threads</span></div>
-                  <span class="step-fail-count">621 failures</span>
-                </div>
-              </div>
-
-              <div class="timeline-step-item" onclick="AnomalyModule.selectTimelineNode(4)">
-                <span class="timeline-time-col">10:27</span>
-                <span class="step-node-dot"></span>
-                <div class="step-details-card">
-                  <div><strong>Targeted Privilege Spray</strong> <span class="step-note-text">&bull; Root, postgres, and
-                      admin account brute-force targeted</span></div>
-                  <span class="step-fail-count">1,104 failures</span>
-                </div>
-              </div>
-
-              <div class="timeline-step-item" onclick="AnomalyModule.selectTimelineNode(5)">
-                <span class="timeline-time-col">10:28</span>
-                <span class="step-node-dot"></span>
-                <div class="step-details-card">
-                  <div><strong>Volumetric Rate Peak</strong> <span class="step-note-text">&bull; Peak throughput reached
-                      (85 auth attempts/sec)</span></div>
-                  <span class="step-fail-count">2,900 failures</span>
-                </div>
-              </div>
-
-              <div class="timeline-step-item" onclick="AnomalyModule.selectTimelineNode(6)">
-                <span class="timeline-time-col">10:31</span>
-                <span class="step-node-dot"></span>
-                <div class="step-details-card" style="border-left: 3px solid var(--status-red);">
-                  <div><strong>SOC Anomaly Triggered</strong> <span class="step-note-text">&bull; Threshold exceeded
-                      (4,821 attempts) &mdash; Containment Ready</span></div>
-                  <span class="step-fail-count">4,821 failures</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Recommended Actions Bar (Single Line) -->
-            <div class="dossier-actions-single-row" style="display:flex; flex-direction:row; flex-wrap:nowrap; align-items:center; gap:8px; width:100%; overflow-x:auto; border-top:1px solid var(--border-card); padding-top:14px; margin-top:14px;">
-              <button class="btn-cherry-primary" id="btn-contain-server" style="white-space:nowrap; flex-shrink:0; font-size:0.78rem; padding:7px 12px; display:inline-flex; align-items:center; gap:6px;">
-                <i data-lucide="shield-ban" style="width:14px; height:14px;"></i> Trigger Automated Containment
+            <div class="dossier-actions-single-row" style="display:flex; flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px; width:100%; border-top:1px solid var(--border-card); padding-top:12px; margin-top:12px;">
+              <button class="btn-cherry-primary" id="btn-contain-server" style="white-space:nowrap; font-size:0.78rem; padding:7px 12px; display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="shield-ban" style="width:14px; height:14px;"></i> <span id="btn-contain-server-label">Isolate Host</span>
               </button>
-              <button class="btn-outline-cherry" id="btn-block-source-ip" style="white-space:nowrap; flex-shrink:0; font-size:0.78rem; padding:7px 12px; display:inline-flex; align-items:center; gap:6px;">
-                <i data-lucide="lock" style="width:14px; height:14px;"></i> Block IP 192.168.1.45
+              <button class="btn-outline-cherry" id="btn-block-source-ip" style="white-space:nowrap; font-size:0.78rem; padding:7px 12px; display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="lock" style="width:14px; height:14px;"></i> <span id="btn-block-source-ip-label">Block IP</span>
               </button>
-              <button class="btn-cream-action" id="btn-export-dossier" style="white-space:nowrap; flex-shrink:0; font-size:0.78rem; padding:7px 12px; display:inline-flex; align-items:center; gap:6px;">
-                <i data-lucide="file-text" style="width:14px; height:14px;"></i> Export Forensic Dossier JSON
+              <button class="btn-cream-action" id="btn-export-dossier" style="white-space:nowrap; font-size:0.78rem; padding:7px 12px; display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="file-text" style="width:14px; height:14px;"></i> Download Forensic Dossier (JSON)
               </button>
-              <button class="btn-cream-action" onclick="Navigation.navigateTo('live-logs')" style="white-space:nowrap; flex-shrink:0; font-size:0.78rem; padding:7px 12px; display:inline-flex; align-items:center; gap:6px;">
-                <i data-lucide="activity" style="width:14px; height:14px;"></i> View Live Logs
+              <button class="btn-cream-action" onclick="AnomalyModule.openInAlertCenter()" style="white-space:nowrap; font-size:0.78rem; padding:7px 12px; display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="bell" style="width:14px; height:14px;"></i> Triage in Alert Center
               </button>
             </div>
           </div>
@@ -1380,14 +1220,14 @@
                 <div>
                   <h3 id="dossier-main-title"
                     style="font-family:var(--font-heading); font-size:1.05rem; font-weight:800; color:var(--text-ink);">
-                    Critical: Possible Brute Force Attack on Server-07
+                    No Incident Selected
                   </h3>
                   <div class="d-flex align-center gap-2 mt-1">
                     <span class="badge-pill crit-pill" id="dossier-status-pill">Active</span>
-                    <span style="font-size:0.72rem; color:var(--text-muted);" id="dossier-time-range">7 mins ago</span>
+                    <span style="font-size:0.72rem; color:var(--text-muted);" id="dossier-time-range"></span>
                   </div>
                 </div>
-                <button class="btn-cream-action btn-sm" onclick="AnomalyModule.exportDossier()">
+                <button class="btn-cream-action btn-sm" onclick="AnomalyModule.downloadDossier()">
                   <i data-lucide="share-2"></i> Export
                 </button>
               </div>
@@ -1463,162 +1303,161 @@
           <div class="ai-mapper-hero-banner">
             <div>
               <div class="d-flex align-center gap-2 mb-1">
-                <span class="badge-pill cherry-pill"><i data-lucide="sparkles"></i> Pattern Engine</span>
+                <span class="badge-pill cherry-pill"><i data-lucide="sparkles"></i> Schema Mapper</span>
                 <span class="badge-pill green-pill" id="ai-inference-status-badge">
-                  <span class="status-dot green-dot"></span> Schema Inferred
+                  <span class="status-dot green-dot"></span> Ready
                 </span>
               </div>
               <h2 style="font-family:var(--font-heading); font-size:1.25rem; font-weight:800; color:var(--text-ink);">
-                Unparsed Log Discovery &amp; Dynamic Schema Mapping
+                Unparsed Log Discovery &amp; Schema Mapping
               </h2>
               <p style="font-size:0.76rem; color:var(--text-muted);">
-                Semantic field extraction and automatic schema normalization for custom, legacy, and proprietary log streams into OCSF 1.1.
+                Paste one record of a format LOGVAULT does not know. Review the proposed field mapping, then save it as a rule:
+                every later record of that format is parsed with it.
               </p>
             </div>
-
             <div class="air-gapped-notice-badge">
               <i data-lucide="lock"></i>
-              <span>Air-Gapped On-Premise Execution</span>
+              <span>Runs on this server; AI is the local Ollama model</span>
             </div>
           </div>
 
-          <!-- AI Inference Telemetry Ribbon -->
+          <!-- Telemetry Ribbon -->
           <div class="ai-telemetry-ribbon">
             <div class="norm-stat-tile">
-              <span class="norm-stat-label">Pattern Match Latency</span>
-              <span class="norm-stat-val" style="color:var(--cherry-primary);">1.20 ms</span>
+              <span class="norm-stat-label">Inference Time</span>
+              <span class="norm-stat-val" style="color:var(--cherry-primary);" id="ai-ribbon-latency">&mdash;</span>
             </div>
             <div class="norm-stat-tile">
-              <span class="norm-stat-label">Extraction Accuracy</span>
-              <span class="norm-stat-val" style="color:var(--status-green);">98.2%</span>
+              <span class="norm-stat-label">Fields Mapped</span>
+              <span class="norm-stat-val" style="color:var(--status-green);" id="ai-ribbon-fields">&mdash;</span>
             </div>
             <div class="norm-stat-tile">
-              <span class="norm-stat-label">Data Privacy</span>
-              <span class="norm-stat-val" style="color:var(--status-green);">100% OFFLINE</span>
+              <span class="norm-stat-label">Parsed Today By</span>
+              <span class="norm-stat-val" style="color:var(--status-amber);" id="ai-ribbon-current">&mdash;</span>
             </div>
             <div class="norm-stat-tile">
-              <span class="norm-stat-label">Target Standard</span>
-              <span class="norm-stat-val" style="color:var(--status-amber);">OCSF v1.1.0</span>
+              <span class="norm-stat-label">Saved Mapping Rules</span>
+              <span class="norm-stat-val" id="ai-ribbon-rules">0</span>
             </div>
           </div>
 
-          <!-- Interactive Field Extraction Canvas -->
+          <!-- Field mapping graph -->
           <div class="neural-mesh-card mt-3">
             <div class="d-flex justify-between align-center mb-2">
-              <span
-                style="font-family:var(--font-heading); font-size:0.75rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Dynamic Field Mapping Graph</span>
-              <span class="badge-pill green-pill"><span class="pulse-dot"></span> MAPPING MATRIX ACTIVE</span>
+              <span style="font-family:var(--font-heading); font-size:0.75rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Field Mapping Graph</span>
+              <span class="badge-pill green-pill" id="ai-mesh-badge">raw field &rarr; normalized field</span>
             </div>
             <div style="width:100%; height:140px;">
-              <canvas id="aiNeuralMeshCanvas" width="750" height="140"
-                style="width:100%; height:140px; display:block;"></canvas>
+              <canvas id="aiNeuralMeshCanvas" width="750" height="140" style="width:100%; height:140px; display:block;"></canvas>
             </div>
           </div>
 
-          <!-- 6 Enterprise Presets Toolbar -->
+          <!-- Sample records -->
           <div class="presets-toolbar-3d">
-            <span class="presets-label">Custom Format Presets:</span>
-            <button class="btn-preset-3d active" data-ai-preset="kv_custom">
-              <span class="preset-icon-3d">📟</span> Custom Key-Value
-            </button>
-            <button class="btn-preset-3d" data-ai-preset="cisco_asa">
-              <span class="preset-icon-3d"></span> Cisco ASA Firewall
-            </button>
-            <button class="btn-preset-3d" data-ai-preset="iot_sensor">
-              <span class="preset-icon-3d">🏭</span> SCADA / IoT
-            </button>
-            <button class="btn-preset-3d" data-ai-preset="iso_8583">
-              <span class="preset-icon-3d">💳</span> ISO 8583 FinTech
-            </button>
-            <button class="btn-preset-3d" data-ai-preset="grpc_trace">
-              <span class="preset-icon-3d"></span> gRPC OpenTelemetry
-            </button>
-            <button class="btn-preset-3d" data-ai-preset="kernel_syslog">
-              <span class="preset-icon-3d"></span> Kernel Syslog
-            </button>
+            <span class="presets-label">Sample Formats:</span>
+            <button class="btn-preset-3d active" data-ai-preset="kv_custom"><span class="preset-icon-3d">📟</span> Custom Key-Value</button>
+            <button class="btn-preset-3d" data-ai-preset="cisco_asa"><span class="preset-icon-3d"></span> Cisco ASA Firewall</button>
+            <button class="btn-preset-3d" data-ai-preset="iot_sensor"><span class="preset-icon-3d">🏭</span> SCADA / IoT</button>
+            <button class="btn-preset-3d" data-ai-preset="iso_8583"><span class="preset-icon-3d">💳</span> ISO 8583 FinTech</button>
+            <button class="btn-preset-3d" data-ai-preset="grpc_trace"><span class="preset-icon-3d"></span> gRPC Trace</button>
+            <button class="btn-preset-3d" data-ai-preset="kernel_syslog"><span class="preset-icon-3d"></span> Kernel Audit</button>
           </div>
 
-          <!-- Split 2-Column Grid -->
           <div class="ai-mapper-split-grid mt-3">
-            <!-- Left: Raw Input & Engine Stats -->
+            <!-- Left: input -->
             <div class="surface-card">
               <div class="card-header-flex">
                 <div class="card-heading-group">
-                  <h3>Unparsed Format Stream</h3>
-                  <p>Raw non-standard telemetry payload</p>
+                  <h3>Sample Record</h3>
+                  <p>One record of the unknown format</p>
                 </div>
               </div>
+              <div class="tokens-container-box" id="ai-raw-preview-box"></div>
 
-              <!-- Raw Code Container with Laser Scanner -->
-              <div class="tokens-container-box" id="ai-raw-preview-box">
-                <!-- Rendered by AiMapper.js -->
-              </div>
-
-              <!-- Engine Performance Stats -->
               <div class="detection-meta-box mt-2">
                 <div class="det-meta-item">
-                  <span class="det-meta-label">Overall Match Rate</span>
-                  <div class="det-meta-val">
-                    <span class="badge-pill green-pill" id="ai-overall-confidence">96.8%</span>
-                  </div>
+                  <span class="det-meta-label">Mean Mapping Confidence</span>
+                  <div class="det-meta-val"><span class="badge-pill green-pill" id="ai-overall-confidence">&mdash;</span></div>
                 </div>
-
                 <div class="det-meta-item">
-                  <span class="det-meta-label">Engine Latency</span>
-                  <div class="det-meta-val">
-                    <i data-lucide="zap" style="width:14px; color:var(--cherry-primary);"></i>
-                    <strong id="ai-engine-latency">1.20 ms</strong>
-                  </div>
+                  <span class="det-meta-label">Record Shape</span>
+                  <div class="det-meta-val"><strong id="ai-engine-latency">&mdash;</strong></div>
                 </div>
               </div>
 
-              <!-- Custom Test Input Box -->
               <div class="custom-input-group mt-2">
-                <label>Test Sample Log String:</label>
-                <textarea id="ai-raw-input-box" class="clean-textarea" rows="3"
-                  placeholder="USR=john ACT=LOGIN RES=FAIL SRC=10.2.4.5..."></textarea>
-                <button class="btn-cherry-primary btn-block mt-2" id="btn-run-ai-inference">
-                  <i data-lucide="sparkles"></i> Extract &amp; Map Schema
-                </button>
+                <label for="ai-raw-input-box">Record to map:</label>
+                <textarea id="ai-raw-input-box" class="clean-textarea" rows="3" placeholder="USR=john ACT=LOGIN RES=FAIL SRC=10.2.4.5..."></textarea>
+                <div class="d-flex gap-2 mt-2">
+                  <button class="btn-cherry-primary" style="flex:1;" id="btn-run-ai-inference">
+                    <i data-lucide="search"></i> Extract &amp; Map Fields
+                  </button>
+                  <button class="btn-cream-action" id="btn-run-ai-classify" title="Also ask the local AI model to classify the event">
+                    <i data-lucide="sparkles"></i> + Local AI
+                  </button>
+                </div>
               </div>
+
+              <div class="ai-verdict-box mt-2" id="ai-classify-box" style="display:none;"></div>
             </div>
 
-            <!-- Right: Inferred Field Mappings with Confidence Progress Bars -->
+            <!-- Right: mappings -->
             <div class="surface-card">
               <div class="card-header-flex">
                 <div class="card-heading-group">
-                  <h3>Inferred Field Mapping Matrix</h3>
-                  <p>Deterministic field correspondence with confidence scoring</p>
+                  <h3>Proposed Field Mapping</h3>
+                  <p>Change any target before saving. "ignore" drops the field.</p>
                 </div>
-                <button class="btn-cream-action btn-sm" id="btn-export-regex" title="Export Regex Pattern">
-                  <i data-lucide="code"></i> Export Regex
+                <button class="btn-cream-action btn-sm" id="btn-export-regex" title="Copy a regex that matches this format">
+                  <i data-lucide="code"></i> Copy Regex
                 </button>
               </div>
 
-              <!-- Field Mapping Rows List -->
-              <div class="ai-mapping-rows-list" id="ai-mapping-rows-container">
-                <!-- Rendered by AiMapper.js with confidence progress bars -->
+              <div class="ai-mapping-rows-list" id="ai-mapping-rows-container"></div>
+
+              <div class="operator-form-grid mt-3">
+                <div class="operator-input-group">
+                  <label for="ai-rule-name">Rule name</label>
+                  <input type="text" id="ai-rule-name" placeholder="e.g. Cisco ASA firewall" maxlength="60" />
+                </div>
+                <div class="operator-input-group">
+                  <label for="ai-rule-event-type">Event type for matched records</label>
+                  <input type="text" id="ai-rule-event-type" placeholder="GENERIC_EVENT" maxlength="48" />
+                </div>
               </div>
 
-              <!-- Actions: Accept Mapping & Review -->
-              <div class="d-flex justify-between align-center mt-3 pt-3"
-                style="border-top:1px solid var(--border-card);">
+              <div class="d-flex justify-between align-center mt-3 pt-3" style="border-top:1px solid var(--border-card);">
                 <button class="btn-cherry-primary" id="btn-accept-mapping">
-                  <i data-lucide="check"></i> Accept Mapping &amp; Compile Parser
+                  <i data-lucide="check"></i> Save as Mapping Rule
                 </button>
-                <button class="btn-cream-action" onclick="Navigation.navigateTo('normalizer')">
+                <button class="btn-cream-action" onclick="AiMapper.testInNormalizer()">
                   Test in Normalizer &rarr;
                 </button>
               </div>
 
-              <!-- OCSF JSON Output Preview -->
               <div class="mt-2">
-                <span
-                  style="font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Inferred
-                  OCSF Schema Output:</span>
-                <pre class="code-box-pre mt-1"
-                  style="max-height:140px;"><code id="ai-schema-preview-code">{}</code></pre>
+                <span style="font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Normalized output for this record:</span>
+                <pre class="code-box-pre mt-1" style="max-height:140px;"><code id="ai-schema-preview-code">{}</code></pre>
               </div>
+            </div>
+          </div>
+
+          <!-- Saved rules -->
+          <div class="surface-card mt-3">
+            <div class="card-header-flex">
+              <div class="card-heading-group">
+                <h3>Saved Mapping Rules</h3>
+                <p>Checked before the built-in parsers on every new record</p>
+              </div>
+            </div>
+            <div class="table-scroll-container">
+              <table class="logvault-table">
+                <thead>
+                  <tr><th>Name</th><th>Kind</th><th>Matches on</th><th>Fields</th><th>Records matched</th><th>Created</th><th></th></tr>
+                </thead>
+                <tbody id="ai-rules-tbody"></tbody>
+              </table>
             </div>
           </div>
         </section>
@@ -1733,381 +1572,168 @@
           <!-- Header Banner -->
           <div class="hero-greeting-banner">
             <div class="banner-left">
-              <h2>Log Sources &amp; Collector Fleet Health</h2>
-              <p>Multi-source ingestion pipeline flowchart, ring buffer load, and collector fleet telemetry</p>
+              <h2>Log Sources &amp; Ingestion Health</h2>
+              <p>Every system that has sent logs this session, grouped by host (or source IP) and log format</p>
             </div>
             <div class="banner-right">
-              <span class="header-status-badge green">
+              <span class="header-status-badge green" id="sources-status-badge">
                 <span class="badge-dot green"></span>
-                <span>Fleet Ingestion Live</span>
+                <span>Loading&hellip;</span>
               </span>
+              <button class="btn-cream-action btn-sm" onclick="SourcesModule.refresh(true)">
+                <i data-lucide="refresh-cw"></i> Refresh
+              </button>
             </div>
           </div>
 
           <!-- Top 4 Ingestion KPIs -->
           <div class="kpi-grid-4 mb-3">
             <div class="kpi-card">
-              <div class="kpi-icon-wrap" style="color:var(--cherry-primary);"><i data-lucide="zap"></i></div>
-              <span class="kpi-label">TOTAL INGESTION RATE</span>
+              <div class="kpi-icon-wrap" style="color:var(--cherry-primary);"><i data-lucide="server"></i></div>
+              <span class="kpi-label">REPORTING SOURCES</span>
               <div class="kpi-val-group">
-                <span class="kpi-value">18,420</span>
-                <span class="kpi-unit">EPS</span>
+                <span class="kpi-value" id="src-kpi-sources">0</span>
+                <span class="kpi-unit">host / format pairs</span>
               </div>
-              <span class="kpi-trend positive"><i data-lucide="trending-up"></i> +8.4% Peak</span>
+              <span class="kpi-trend positive" id="src-kpi-sources-sub"><i data-lucide="layers"></i> &mdash;</span>
             </div>
-
             <div class="kpi-card">
-              <div class="kpi-icon-wrap" style="color:var(--status-green);"><i data-lucide="server"></i></div>
-              <span class="kpi-label">ACTIVE FLEET COLLECTORS</span>
+              <div class="kpi-icon-wrap" style="color:var(--status-green);"><i data-lucide="radio"></i></div>
+              <span class="kpi-label">ACTIVE IN LAST 5 MIN</span>
               <div class="kpi-val-group">
-                <span class="kpi-value">6 / 6</span>
-                <span class="kpi-unit">Agents</span>
+                <span class="kpi-value" id="src-kpi-active">0</span>
+                <span class="kpi-unit">sources</span>
               </div>
-              <span class="kpi-trend positive"><i data-lucide="check"></i> 100% Online</span>
+              <span class="kpi-trend positive" id="src-kpi-active-sub"><i data-lucide="clock"></i> &mdash;</span>
             </div>
-
             <div class="kpi-card">
-              <div class="kpi-icon-wrap" style="color:var(--status-amber);"><i data-lucide="hard-drive"></i></div>
-              <span class="kpi-label">RING BUFFER LOAD</span>
+              <div class="kpi-icon-wrap" style="color:var(--status-amber);"><i data-lucide="zap"></i></div>
+              <span class="kpi-label">EVENTS IN LAST MINUTE</span>
               <div class="kpi-val-group">
-                <span class="kpi-value">28.4%</span>
-                <span class="kpi-unit">Utilized</span>
+                <span class="kpi-value" id="src-kpi-rate">0</span>
+                <span class="kpi-unit">events</span>
               </div>
-              <span class="kpi-trend positive"><i data-lucide="shield-check"></i> Zero-Drop Loss</span>
+              <span class="kpi-trend positive" id="src-kpi-rate-sub"><i data-lucide="database"></i> &mdash;</span>
             </div>
-
             <div class="kpi-card">
               <div class="kpi-icon-wrap" style="color:var(--cherry-primary);"><i data-lucide="activity"></i></div>
-              <span class="kpi-label">MEAN INGEST LATENCY</span>
+              <span class="kpi-label">MEAN PROCESSING TIME</span>
               <div class="kpi-val-group">
-                <span class="kpi-value">0.08</span>
-                <span class="kpi-unit">ms</span>
+                <span class="kpi-value" id="src-kpi-latency">0</span>
+                <span class="kpi-unit">ms / record</span>
               </div>
-              <span class="kpi-trend positive"><i data-lucide="cpu"></i> WASM Native</span>
+              <span class="kpi-trend positive"><i data-lucide="cpu"></i> Parse + detect + mask, measured</span>
             </div>
           </div>
 
           <!-- Top Row 3 Telemetry Cards -->
           <div class="sources-telemetry-deck mb-3">
-            <!-- Card 1: Throughput Spline -->
             <div class="sources-telemetry-card">
               <div class="d-flex justify-between align-center mb-1">
-                <span class="kpi-label">Ingestion Throughput (Last 60m)</span>
-                <span class="badge-pill green-pill" style="font-size:0.6rem;"><span class="pulse-dot"></span> LIVE</span>
+                <span class="kpi-label">Events Received Over Time</span>
+                <span class="badge-pill green-pill" style="font-size:0.6rem;" id="src-timeline-badge">&mdash;</span>
               </div>
               <div class="d-flex align-baseline gap-2 mb-1">
-                <span style="font-family:var(--font-heading); font-size:1.3rem; font-weight:800; color:var(--cherry-primary);">18.4K EPS</span>
-                <span style="font-size:0.70rem; color:var(--text-muted); font-family:var(--font-mono);">Avg: 14.2K</span>
+                <span style="font-family:var(--font-heading); font-size:1.3rem; font-weight:800; color:var(--cherry-primary);" id="src-timeline-peak">0</span>
+                <span style="font-size:0.70rem; color:var(--text-muted); font-family:var(--font-mono);" id="src-timeline-sub">peak per bucket</span>
               </div>
               <div style="width:100%; height:75px; position:relative; margin-top:4px;">
-                <canvas id="sourcesThroughputCanvas" width="320" height="75"
-                  style="width:100%; height:75px; display:block;"></canvas>
+                <canvas id="sourcesThroughputCanvas" width="320" height="75" style="width:100%; height:75px; display:block;"></canvas>
               </div>
             </div>
 
-            <!-- Card 2: Protocol Donut -->
             <div class="sources-telemetry-card">
               <div class="d-flex justify-between align-center mb-1">
-                <span class="kpi-label">Protocol Ingestion Share</span>
-                <span class="badge-pill cherry-pill" style="font-size:0.6rem;">4 FORMATS</span>
+                <span class="kpi-label">Format Share</span>
+                <span class="badge-pill cherry-pill" style="font-size:0.6rem;" id="src-format-count">0 FORMATS</span>
               </div>
               <div style="display:flex; align-items:center; gap:14px; margin-top:4px;">
                 <div style="width:75px; height:75px; flex-shrink:0;">
-                  <canvas id="sourcesProtocolDonutCanvas" width="75" height="75"
-                    style="width:75px; height:75px;"></canvas>
+                  <canvas id="sourcesProtocolDonutCanvas" width="75" height="75" style="width:75px; height:75px;"></canvas>
                 </div>
-                <div style="font-family:var(--font-mono); font-size:0.66rem; line-height:1.5;">
-                  <div><span style="color:#74152A; font-weight:800;">●</span> SYSLOG RFC 5424 (38%)</div>
-                  <div><span style="color:#9C1A30; font-weight:800;">●</span> CEF ArcSight (26%)</div>
-                  <div><span style="color:#C47A16; font-weight:800;">●</span> AWS CloudTrail (18%)</div>
-                  <div><span style="color:#E09F3E; font-weight:800;">●</span> WinEvent XML (12%)</div>
+                <div style="font-family:var(--font-mono); font-size:0.66rem; line-height:1.5;" id="src-format-legend">
+                  <div style="color:var(--text-muted);">No events yet</div>
                 </div>
               </div>
             </div>
 
-            <!-- Card 3: EPS Bars by Source -->
             <div class="sources-telemetry-card">
               <div class="d-flex justify-between align-center mb-1">
-                <span class="kpi-label">EPS Throughput by Source</span>
-                <span style="font-size:0.68rem; color:var(--text-muted); font-family:var(--font-mono);">Max: 702 EPS</span>
+                <span class="kpi-label">Events by Source</span>
+                <span style="font-size:0.68rem; color:var(--text-muted); font-family:var(--font-mono);">Top 7</span>
               </div>
               <div class="d-flex align-baseline gap-2 mb-1">
-                <span style="font-family:var(--font-heading); font-size:1.3rem; font-weight:800; color:var(--text-ink);">702</span>
-                <span style="font-size:0.72rem; color:var(--cherry-primary); font-weight:700;"><i data-lucide="trending-up"></i> Peak FW</span>
+                <span style="font-family:var(--font-heading); font-size:1.3rem; font-weight:800; color:var(--text-ink);" id="src-bars-top">0</span>
+                <span style="font-size:0.72rem; color:var(--cherry-primary); font-weight:700;" id="src-bars-top-name">&mdash;</span>
               </div>
               <div style="width:100%; height:75px; position:relative; margin-top:4px;">
-                <canvas id="sourcesEpsBarsCanvas" width="300" height="75"
-                  style="width:100%; height:75px; display:block;"></canvas>
+                <canvas id="sourcesEpsBarsCanvas" width="300" height="75" style="width:100%; height:75px; display:block;"></canvas>
               </div>
             </div>
           </div>
 
-          <!-- Interactive 5-Stage Ingestion Pipeline Flowchart & Architecture Board -->
+          <!-- Real processing pipeline, stage by stage -->
           <div class="ingestion-flowchart-board mt-3">
             <div class="d-flex justify-between align-center mb-3">
               <div>
-                <h3
-                  style="font-family:var(--font-heading); font-size:0.92rem; font-weight:800; color:var(--text-ink); text-transform:uppercase; letter-spacing:0.5px;">
-                  <i data-lucide="git-merge"
-                    style="vertical-align:middle; color:var(--cherry-primary); margin-right:4px;"></i>
-                  Ingestion Pipeline Flowchart &amp; Architectural Mesh
+                <h3 style="font-family:var(--font-heading); font-size:0.92rem; font-weight:800; color:var(--text-ink); text-transform:uppercase; letter-spacing:0.5px;">
+                  <i data-lucide="git-merge" style="vertical-align:middle; color:var(--cherry-primary); margin-right:4px;"></i>
+                  Processing Pipeline
                 </h3>
-                <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Real-time packet propagation
-                  across 5 architectural tiers: Edge Collector Fleet &rarr; Ring Buffers &rarr; Singularity Core &rarr;
-                  Parser Array &rarr; OCSF Sinks</p>
-              </div>
-              <div class="d-flex gap-2">
-                <span class="badge-pill green-pill"><span class="pulse-dot"></span> 18.4K EPS STREAMING</span>
-                <span class="badge-pill cherry-pill">ZERO-DROP BUFFER</span>
+                <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">What happened to this session's events at each stage:
+                  sources &rarr; format detection &rarr; parsing &rarr; threat detection &rarr; local storage</p>
               </div>
             </div>
-
-            <div class="flowchart-stages-grid">
-              <!-- Tier 1: Collector Fleet -->
-              <div class="flowchart-stage-col">
-                <div class="flowchart-stage-header">
-                  <span>1. Collector Fleet</span>
-                  <span class="badge-pill green-pill" style="font-size:0.6rem;">6 Active</span>
-                </div>
-
-                <div class="flowchart-node-card"
-                  onclick="Utils.showToast('SRC-01: Linux SSH PAM | Rate: 304 EPS | Protocol: Syslog RFC 5424')">
-                  <div class="flowchart-node-info">
-                    <span class="flowchart-node-title">Linux SSH PAM</span>
-                    <span class="flowchart-node-sub">Syslog RFC 5424</span>
-                  </div>
-                  <span class="flowchart-node-badge green">304 EPS</span>
-                </div>
-
-                <div class="flowchart-node-card"
-                  onclick="Utils.showToast('SRC-02: Palo Alto NGFW | Rate: 702 EPS | Protocol: ArcSight CEF')">
-                  <div class="flowchart-node-info">
-                    <span class="flowchart-node-title">Palo Alto FW01</span>
-                    <span class="flowchart-node-sub">CEF ArcSight v0.1</span>
-                  </div>
-                  <span class="flowchart-node-badge green">702 EPS</span>
-                </div>
-
-                <div class="flowchart-node-card"
-                  onclick="Utils.showToast('SRC-03: AWS CloudTrail | Rate: 140 EPS | Protocol: S3 JSON Stream')">
-                  <div class="flowchart-node-info">
-                    <span class="flowchart-node-title">AWS S3 Trail</span>
-                    <span class="flowchart-node-sub">CloudTrail JSON</span>
-                  </div>
-                  <span class="flowchart-node-badge green">140 EPS</span>
-                </div>
-
-                <div class="flowchart-node-card"
-                  onclick="Utils.showToast('SRC-04: Windows Domain Controller | Rate: 213 EPS | Protocol: EventLog XML')">
-                  <div class="flowchart-node-info">
-                    <span class="flowchart-node-title">WinEvent XML</span>
-                    <span class="flowchart-node-sub">Security Log 4624</span>
-                  </div>
-                  <span class="flowchart-node-badge green">213 EPS</span>
-                </div>
-
-                <div class="flowchart-node-card"
-                  onclick="Utils.showToast('SRC-05: VPN Gateway | Rate: 35 EPS | Protocol: Syslog RFC 5424')">
-                  <div class="flowchart-node-info">
-                    <span class="flowchart-node-title">VPN Perimeter</span>
-                    <span class="flowchart-node-sub">IPsec Auth Logs</span>
-                  </div>
-                  <span class="flowchart-node-badge gold">35 EPS</span>
-                </div>
-
-                <div class="flowchart-node-card"
-                  onclick="Utils.showToast('SRC-06: Suricata EVE | Rate: 85 EPS | Protocol: Unix Socket JSON')">
-                  <div class="flowchart-node-info">
-                    <span class="flowchart-node-title">Suricata EVE</span>
-                    <span class="flowchart-node-sub">Network IDS JSON</span>
-                  </div>
-                  <span class="flowchart-node-badge green">85 EPS</span>
-                </div>
-              </div>
-
-              <!-- Tier 2: Edge Ring Buffers -->
-              <div class="flowchart-stage-col">
-                <div class="flowchart-stage-header">
-                  <span>2. Ring Buffers</span>
-                  <span class="badge-pill cherry-pill" style="font-size:0.6rem;">Lock-Free</span>
-                </div>
-
-                <div class="flowchart-node-card"
-                  style="flex:1; flex-direction:column; justify-content:center; text-align:center; padding:18px 12px;"
-                  onclick="Utils.showToast('In-Memory FIFO Queue: 28.4% capacity load | Loss: 0.00%')">
-                  <div style="font-size:1.6rem; color:var(--cherry-primary);"><i data-lucide="layers"></i></div>
-                  <div class="flowchart-node-title" style="justify-content:center; margin-top:8px;">FIFO Memory Queue
-                  </div>
-                  <div class="flowchart-node-sub" style="margin-top:4px;">Measuring...</div>
-                  <div class="flowchart-node-sub" style="color:var(--status-green); font-weight:700; margin-top:6px;">
-                    0.00% Packet Loss</div>
-                  <div
-                    style="width:100%; height:6px; background:var(--border-card); border-radius:3px; margin-top:12px; overflow:hidden;">
-                    <div style="width:28.4%; height:100%; background:var(--status-green); border-radius:3px;"></div>
-                  </div>
-                  <span class="flowchart-node-sub" style="margin-top:4px;">28.4% Buffer Capacity</span>
-                </div>
-              </div>
-
-              <!-- Tier 3: Ingestion Singularity / Router Core -->
-              <div class="flowchart-stage-col" style="justify-content:center;">
-                <div class="flowchart-stage-header">
-                  <span>3. Router Singularity</span>
-                  <span class="badge-pill cherry-pill" style="font-size:0.6rem;">Core</span>
-                </div>
-
-                <div class="flowchart-singularity-card"
-                  onclick="Utils.showToast('INGESTION SINGULARITY: 60 FPS Multi-Protocol Router & Dispatcher active.')">
-                  <div class="singularity-pulse-core"></div>
-                  <div class="singularity-title">INGESTION SINGULARITY</div>
-                  <div class="singularity-sub">Multi-Protocol Dispatcher</div>
-                  <div style="font-size:0.68rem; color:#FFAA00; margin-top:6px; font-weight:700;">Zero-Copy Router</div>
-                </div>
-              </div>
-
-              <!-- Tier 4: Parser Array -->
-              <div class="flowchart-stage-col">
-                <div class="flowchart-stage-header">
-                  <span>4. Parser Engines</span>
-                  <span class="badge-pill green-pill" style="font-size:0.6rem;">4 Active</span>
-                </div>
-
-                <div class="flowchart-node-card"
-                  onclick="Utils.showToast('C++ RFC 5424 Parser: 0.04 ms latency | 100% Deterministic')">
-                  <div class="flowchart-node-info">
-                    <span class="flowchart-node-title">C++ RFC 5424</span>
-                    <span class="flowchart-node-sub">Native PAM Parser</span>
-                  </div>
-                  <span class="flowchart-node-badge green">0.04 ms</span>
-                </div>
-
-                <div class="flowchart-node-card"
-                  onclick="Utils.showToast('WASM CEF Parser: 0.08 ms latency | Palo Alto Certified')">
-                  <div class="flowchart-node-info">
-                    <span class="flowchart-node-title">WASM ArcSight</span>
-                    <span class="flowchart-node-sub">CEF v0.1 Engine</span>
-                  </div>
-                  <span class="flowchart-node-badge green">0.08 ms</span>
-                </div>
-
-                <div class="flowchart-node-card"
-                  onclick="Utils.showToast('WASM CloudTrail Parser: 0.12 ms latency | AWS S3 Schema')">
-                  <div class="flowchart-node-info">
-                    <span class="flowchart-node-title">WASM CloudTrail</span>
-                    <span class="flowchart-node-sub">AWS S3 Parser</span>
-                  </div>
-                  <span class="flowchart-node-badge green">0.12 ms</span>
-                </div>
-
-                <div class="flowchart-node-card"
-                  onclick="Utils.showToast('Dynamic Schema Mapper: 1.20 ms latency | AST Synthesizer')">
-                  <div class="flowchart-node-info">
-                    <span class="flowchart-node-title">Dynamic Mapper</span>
-                    <span class="flowchart-node-sub">Pattern Engine</span>
-                  </div>
-                  <span class="flowchart-node-badge cherry">1.20 ms</span>
-                </div>
-              </div>
-
-              <!-- Tier 5: Standard Sinks -->
-              <div class="flowchart-stage-col">
-                <div class="flowchart-stage-header">
-                  <span>5. Standard Sinks</span>
-                  <span class="badge-pill green-pill" style="font-size:0.6rem;">Storage</span>
-                </div>
-
-                <div class="flowchart-node-card"
-                  onclick="Utils.showToast('OCSF 1.1 Matrix: Normalized Security Event Stream active.')">
-                  <div class="flowchart-node-info">
-                    <span class="flowchart-node-title">OCSF 1.1 Matrix</span>
-                    <span class="flowchart-node-sub">Class 3002, 4001, 2001</span>
-                  </div>
-                  <span class="flowchart-node-badge green">LIVE</span>
-                </div>
-
-                <div class="flowchart-node-card"
-                  onclick="Utils.showToast('Threat Correlator: Cross-source impossible travel & brute force detection active.')">
-                  <div class="flowchart-node-info">
-                    <span class="flowchart-node-title">Threat Correlator</span>
-                    <span class="flowchart-node-sub">Geo & Anomaly Engine</span>
-                  </div>
-                  <span class="flowchart-node-badge cherry">ACTIVE</span>
-                </div>
-
-                <div class="flowchart-node-card"
-                  onclick="Utils.showToast('Air-Gapped Storage Vault: Zero cloud egress | AES-256 local IndexedDB.')">
-                  <div class="flowchart-node-info">
-                    <span class="flowchart-node-title">Storage Vault</span>
-                    <span class="flowchart-node-sub">Air-Gapped Local DB</span>
-                  </div>
-                  <span class="flowchart-node-badge green">SECURE</span>
-                </div>
-              </div>
+            <div class="flowchart-stages-grid" id="sources-pipeline">
+              <div style="color:var(--text-muted); font-size:0.75rem;">Loading&hellip;</div>
             </div>
           </div>
 
-          <!-- Dual Bar Graphs Deck: Latency Benchmarks + Buffer Saturation -->
+          <!-- Per-format timing and per-source anomalies -->
           <div class="sources-benchmarks-grid">
-            <!-- Bar Graph Card 1: Parser Latency Benchmark -->
             <div class="sources-benchmark-card">
               <div class="d-flex justify-between align-center mb-2">
-                <span
-                  style="font-family:var(--font-heading); font-size:0.78rem; font-weight:800; color:var(--text-ink); text-transform:uppercase;">Parser
-                  Latency Benchmark (Bar Graph)</span>
-                <span class="badge-pill green-pill" style="font-size:0.6rem;">WASM Zero-Copy</span>
+                <span style="font-family:var(--font-heading); font-size:0.78rem; font-weight:800; color:var(--text-ink); text-transform:uppercase;">Mean Processing Time by Format</span>
+                <span class="badge-pill green-pill" style="font-size:0.6rem;">Measured per record</span>
               </div>
-              <div class="latency-bench-stack" id="latency-benchmarks-container">
-                <!-- Rendered dynamically by SourcesModule.renderLatencyBenchmarkBars() -->
-              </div>
+              <div class="latency-bench-stack" id="latency-benchmarks-container"></div>
             </div>
-
-            <!-- Bar Graph Card 2: Buffer Capacity Saturation -->
             <div class="sources-benchmark-card">
               <div class="d-flex justify-between align-center mb-2">
-                <span
-                  style="font-family:var(--font-heading); font-size:0.78rem; font-weight:800; color:var(--text-ink); text-transform:uppercase;">Ring
-                  Buffer Capacity Load (Bar Graph)</span>
-                <span class="badge-pill green-pill" style="font-size:0.6rem;">0% Drop Rate</span>
+                <span style="font-family:var(--font-heading); font-size:0.78rem; font-weight:800; color:var(--text-ink); text-transform:uppercase;">Anomaly Share by Source</span>
+                <span class="badge-pill cherry-pill" style="font-size:0.6rem;">Anomalous / total</span>
               </div>
-              <div class="latency-bench-stack" id="buffer-saturation-container">
-                <!-- Rendered dynamically by SourcesModule.renderBufferSaturationBars() -->
-              </div>
+              <div class="latency-bench-stack" id="buffer-saturation-container"></div>
             </div>
           </div>
 
-          <!-- Collector Fleet Detailed Table -->
+          <!-- Source table -->
           <div class="sources-fleet-card mt-3">
             <div class="anom-records-header-row">
-              <h3
-                style="font-family:var(--font-heading); font-size:0.92rem; font-weight:800; color:var(--text-ink); text-transform:uppercase; letter-spacing:0.5px;">
-                Active Collector Fleet Status</h3>
+              <h3 style="font-family:var(--font-heading); font-size:0.92rem; font-weight:800; color:var(--text-ink); text-transform:uppercase; letter-spacing:0.5px;">
+                Reporting Sources</h3>
               <div class="d-flex gap-2">
-                <button class="btn-cream-action btn-sm" id="btn-flush-buffers">
-                  <i data-lucide="refresh-cw"></i> Flush Ring Buffers
-                </button>
-                <button class="btn-cherry-primary btn-sm" id="btn-deploy-agent">
-                  <i data-lucide="plus"></i> Deploy Collector
+                <button class="btn-cherry-primary btn-sm" onclick="Navigation.navigateTo('normalizer')">
+                  <i data-lucide="upload"></i> Ingest Logs
                 </button>
               </div>
             </div>
-
             <div style="overflow-x:auto;">
               <table class="anom-records-table">
                 <thead>
                   <tr>
-                    <th>COLLECTOR_ID</th>
-                    <th>SOURCE_HOSTNAME</th>
-                    <th>PROTOCOL_TYPE</th>
-                    <th>THROUGHPUT</th>
-                    <th>BUFFER_UTILIZATION</th>
-                    <th>TRANSPORT_SECURITY</th>
-                    <th>LATENCY</th>
-                    <th>FLEET_STATUS</th>
+                    <th>SOURCE (HOST / IP)</th>
+                    <th>FORMAT</th>
+                    <th>EVENTS</th>
+                    <th>RATE WHILE SENDING</th>
+                    <th>ANOMALIES</th>
+                    <th>MAX THREAT</th>
+                    <th>LAST SEEN</th>
+                    <th>STATUS</th>
+                    <th>ACTIONS</th>
                   </tr>
                 </thead>
-                <tbody id="sources-fleet-tbody">
-                  <!-- Rendered dynamically by SourcesModule.renderFleetTable() -->
-                </tbody>
+                <tbody id="sources-fleet-tbody"></tbody>
               </table>
             </div>
           </div>
@@ -2118,355 +1744,204 @@
           <!-- Hero Header -->
           <div class="screen-header mb-3">
             <div>
-              <h2 class="screen-title">Parser Engine Registry &amp; Performance Lab</h2>
-              <p class="screen-subtitle">Modular zero-copy deterministic parsers, WebAssembly JIT engines, and
-                microsecond benchmarks</p>
+              <h2 class="screen-title">Parser Registry &amp; Test Lab</h2>
+              <p class="screen-subtitle">The parsers LOGVAULT runs on every record, how often each one matched, and their speed measured
+                on this machine</p>
             </div>
             <div class="screen-header-actions">
-              <span class="badge-pill green-pill"><span class="pulse-dot"></span> 14 ENGINES ONLINE</span>
-              <button class="btn-cream-action btn-sm"
-                onclick="ParsersModule.renderThroughputBars(); ParsersModule.renderLatencyBars(); Utils.showToast('✓ Refreshed parser benchmarks and telemetry caches.', 'success');">
-                <i data-lucide="refresh-cw"></i> Refresh Benchmarks
+              <span class="badge-pill green-pill" id="parsers-count-badge">&mdash;</span>
+              <button class="btn-cream-action btn-sm" onclick="ParsersModule.refresh(true)">
+                <i data-lucide="refresh-cw"></i> Re-measure
               </button>
             </div>
           </div>
 
-          <!-- 4 Telemetry KPI Cards -->
+          <!-- 4 KPI Cards -->
           <div class="kpi-grid-4 mb-3">
             <div class="kpi-card">
               <div class="kpi-icon-wrap"><i data-lucide="cpu"></i></div>
-              <span class="kpi-label">Registered Engines</span>
-              <span class="kpi-value">14 <small
-                  style="font-size:0.75rem; color:var(--status-green);">Active</small></span>
-              <span class="kpi-trend positive"><i data-lucide="check"></i> 8 Native C++ • 4 WASM • 2 AI</span>
+              <span class="kpi-label">Registered Parsers</span>
+              <span class="kpi-value" id="parsers-kpi-count">0</span>
+              <span class="kpi-trend positive" id="parsers-kpi-count-sub"><i data-lucide="check"></i> &mdash;</span>
             </div>
-
             <div class="kpi-card">
               <div class="kpi-icon-wrap"><i data-lucide="zap"></i></div>
-              <span class="kpi-label">Peak Compilation Throughput</span>
-              <span class="kpi-value" id="kpi-total-throughput">Measuring...</span>
-              <span class="kpi-trend positive"><i data-lucide="trending-up"></i> +14.2% SIMD Acceleration</span>
+              <span class="kpi-label">Fastest Measured Parser</span>
+              <span class="kpi-value" id="parsers-kpi-fastest">&mdash;</span>
+              <span class="kpi-trend positive" id="parsers-kpi-fastest-sub"><i data-lucide="gauge"></i> Measuring&hellip;</span>
             </div>
-
             <div class="kpi-card">
-              <div class="kpi-icon-wrap"><i data-lucide="gauge"></i></div>
-              <span class="kpi-label">Lowest Engine Latency</span>
-              <span class="kpi-value" style="color:var(--status-green);">0.038 <small
-                  style="font-size:0.75rem;">ms</small></span>
-              <span class="kpi-trend positive"><i data-lucide="check-circle-2"></i> Sub-Millisecond Zero-Copy</span>
+              <div class="kpi-icon-wrap"><i data-lucide="check-circle-2"></i></div>
+              <span class="kpi-label">Events Parsed</span>
+              <span class="kpi-value" id="parsers-kpi-parsed">&mdash;</span>
+              <span class="kpi-trend positive" id="parsers-kpi-parsed-sub"><i data-lucide="database"></i> &mdash;</span>
             </div>
-
             <div class="kpi-card">
               <div class="kpi-icon-wrap"><i data-lucide="check-circle"></i></div>
-              <span class="kpi-label">OCSF 1.1 Compliance</span>
-              <span class="kpi-value" style="color:var(--cherry-primary);">100.0%</span>
-              <span class="kpi-trend positive"><i data-lucide="shield-check"></i> Standard Schema Verified</span>
+              <span class="kpi-label">Mapped to an OCSF Class</span>
+              <span class="kpi-value" style="color:var(--cherry-primary);" id="parsers-kpi-ocsf">&mdash;</span>
+              <span class="kpi-trend positive"><i data-lucide="shield-check"></i> class_uid assigned</span>
             </div>
           </div>
 
-          <!-- 3-Deck Benchmarking & JIT Compiler Suite -->
+          <!-- Measured speed + real usage -->
           <div class="parsers-benchmarks-deck mb-3">
-            <!-- Vertical Bar Graph: 60 FPS Animated Parser Throughput Benchmark -->
             <div class="parsers-benchmark-card">
               <div class="parsers-benchmark-header">
                 <div>
                   <h3 class="parsers-benchmark-title">
                     <i data-lucide="bar-chart-2" style="color:var(--cherry-primary);"></i>
-                    Engine Throughput Velocity (K logs/sec)
+                    Measured Parse Speed (records / second)
                   </h3>
-                  <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Real-time 60 FPS execution
-                    throughput with SIMD 256-bit AVX2 acceleration</p>
+                  <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Each parser timed on its sample record
+                    (median of many runs on this server, parsing only)</p>
                 </div>
-                <span class="badge-pill green-pill" style="font-size:0.6rem;"><span class="pulse-dot"></span> 60 FPS
-                  LIVE</span>
               </div>
-              <div class="parser-vertical-bar-wrap">
-                <canvas id="parsersThroughputCanvas" width="480" height="240"
-                  style="width:100%; height:100%; display:block;"></canvas>
+              <div id="parsers-speed-bars" style="display:flex; flex-direction:column; justify-content:center; flex:1;">
+                <div class="analytics-empty">Measuring&hellip;</div>
               </div>
             </div>
 
-            <!-- JIT Compiler Holographic Chamber Card -->
             <div class="parsers-benchmark-card">
               <div class="parsers-benchmark-header">
                 <div>
                   <h3 class="parsers-benchmark-title">
-                    <i data-lucide="cpu" style="color:var(--cherry-primary);"></i>
-                    JIT WebAssembly Bytecode Chamber
+                    <i data-lucide="pie-chart" style="color:var(--cherry-primary);"></i>
+                    Records Matched per Parser
                   </h3>
-                  <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Arterial laser particle
-                    pipeline compiling Lexer AST into native WASM</p>
+                  <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Stored events this session, by the parser
+                    that recognised them</p>
                 </div>
-                <span class="badge-pill cherry-pill" style="font-size:0.6rem;">JIT ZERO-COPY</span>
               </div>
-              <div class="compiler-chamber-wrapper">
-                <canvas id="wasmCompilerChamberCanvas" width="480" height="240"></canvas>
-              </div>
+              <div id="parsers-usage-bars" style="display:flex; flex-direction:column; justify-content:center; flex:1;"></div>
             </div>
           </div>
 
-          <!-- Latency vs Memory Horizontal Bar Graph Deck -->
-          <div class="parsers-benchmark-card mb-3">
-            <div class="parsers-benchmark-header">
-              <div>
-                <h3 class="parsers-benchmark-title">
-                  <i data-lucide="sliders" style="color:var(--cherry-primary);"></i>
-                  Engine Latency vs. Static Memory Allocation
-                </h3>
-                <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Per-record deterministic parse
-                  time (ms) and isolated air-gapped heap memory (KB)</p>
-              </div>
-              <span class="badge-pill green-pill" style="font-size:0.6rem;">SUB-MILLI TIER</span>
-            </div>
-            <div id="parsersLatencyContainer"
-              style="display:flex; flex-direction:column; justify-content:center; flex:1;">
-              <!-- Populated dynamically by ParsersModule.renderLatencyBars() -->
-            </div>
-          </div>
-
-          <!-- Interactive Parser Laboratory & Sandbox (Live Animated Playground) -->
+          <!-- Test lab -->
           <div class="parsers-sandbox-deck">
-            <!-- Left: Sandbox Raw Input & Controls -->
             <div class="parsers-sandbox-card">
               <div class="d-flex justify-between align-center mb-2">
                 <div>
                   <h3 class="parsers-benchmark-title">
                     <i data-lucide="terminal" style="color:var(--cherry-primary);"></i>
-                    Interactive Parser Testing Laboratory
+                    Parser Test Lab
                   </h3>
-                  <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Execute live logs against any
-                    compiled engine and measure microsecond performance</p>
+                  <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Run any record through a parser on the
+                    backend and time it. Nothing is stored.</p>
                 </div>
               </div>
 
-              <!-- Quick Presets -->
-              <div class="d-flex align-center gap-2 mb-2" style="flex-wrap:wrap;">
-                <span
-                  style="font-size:0.70rem; font-weight:800; color:var(--text-muted); font-family:var(--font-mono);">PRESETS:</span>
-                <button class="btn-cream-action btn-sm sandbox-preset-btn" data-engine-id="ENG-CPP-01"
-                  style="font-size:0.68rem; padding:3px 8px;">Syslog SSH</button>
-                <button class="btn-cream-action btn-sm sandbox-preset-btn" data-engine-id="ENG-WASM-02"
-                  style="font-size:0.68rem; padding:3px 8px;">Palo Alto CEF</button>
-                <button class="btn-cream-action btn-sm sandbox-preset-btn" data-engine-id="ENG-WASM-04"
-                  style="font-size:0.68rem; padding:3px 8px;">CloudTrail</button>
-                <button class="btn-cream-action btn-sm sandbox-preset-btn" data-engine-id="ENG-CPP-05"
-                  style="font-size:0.68rem; padding:3px 8px;">WinEvent</button>
-                <button class="btn-cream-action btn-sm sandbox-preset-btn" data-engine-id="ENG-AI-07"
-                  style="font-size:0.68rem; padding:3px 8px;">SCADA (AI)</button>
-              </div>
+              <div class="d-flex align-center gap-2 mb-2" style="flex-wrap:wrap;" id="parser-sandbox-presets"></div>
 
-              <!-- Engine Selector Dropdown -->
               <div class="mb-2">
-                <label
-                  style="font-family:var(--font-mono); font-size:0.68rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">ACTIVE
-                  ENGINE PIPELINE</label>
+                <label style="font-family:var(--font-mono); font-size:0.68rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">PARSER</label>
                 <select id="parser-sandbox-engine-select" class="form-select"
-                  onchange="ParsersModule.runSandboxBenchmark()"
                   style="width:100%; font-family:var(--font-mono); font-size:0.78rem; padding:8px 12px; background:var(--bg-app); border:1px solid var(--border-card); border-radius:var(--radius-sm); color:var(--text-ink);">
-                  <option value="ENG-CPP-01">ENG-CPP-01: C++ Deterministic RFC 5424 (0.038 ms - Fastest)</option>
-                  <option value="ENG-WASM-02">ENG-WASM-02: WASM CEF ArcSight Engine (0.075 ms)</option>
-                  <option value="ENG-CPP-03">ENG-CPP-03: Nginx/Apache Access Parser (0.045 ms)</option>
-                  <option value="ENG-WASM-04">ENG-WASM-04: AWS CloudTrail S3 JSON Parser (0.110 ms)</option>
-                  <option value="ENG-CPP-05">ENG-CPP-05: Windows Security EventLog XML (0.088 ms)</option>
-                  <option value="ENG-WASM-06">ENG-WASM-06: Suricata EVE IDS Stream (0.062 ms)</option>
-                  <option value="ENG-AI-07">ENG-DYN-07: Dynamic Pattern &amp; Schema Mapper (1.200 ms)</option>
+                  <option value="">Automatic detection (as ingestion does)</option>
                 </select>
               </div>
 
-              <!-- Input Textarea with Animated Laser Scanner Line -->
               <div class="sandbox-textarea-container">
-                <div class="sandbox-laser-scanner"></div>
                 <textarea id="parser-sandbox-input"
                   style="width:100%; height:110px; font-family:var(--font-mono); font-size:0.76rem; line-height:1.4; background:var(--bg-app); border:1px solid var(--border-card); border-radius:var(--radius-sm); padding:10px; color:var(--text-ink); resize:vertical;"
-                  placeholder="Paste raw log payload here...">&lt;38&gt;1 2026-09-02T19:30:00.120Z server-01 sshd 4102 - - Failed password for invalid user admin from 192.168.1.105 port 52410 ssh2</textarea>
+                  placeholder="Paste a raw log record here...">Sep 24 02:10:00 bastion01 sshd[330]: Failed password for admin from 185.220.101.5 port 50211 ssh2</textarea>
               </div>
 
               <div class="d-flex justify-between align-center mt-3">
                 <button class="btn-cherry-primary btn-sm" id="btn-run-sandbox-bench">
-                  <i data-lucide="play"></i> Execute Parser Benchmark
+                  <i data-lucide="play"></i> Run Parser
                 </button>
-                <button class="btn-cream-action btn-sm" id="btn-export-wasm-bytecode">
-                  <i data-lucide="download"></i> Export WASM Binary
+                <button class="btn-cream-action btn-sm" onclick="ParsersModule.openInMapper()">
+                  <i data-lucide="sparkles"></i> Not recognised? Map it
                 </button>
-              </div>
-
-              <!-- Compiler Pipeline Visualization Bar -->
-              <div class="compiler-pipeline-bar">
-                <div class="compiler-pipe-step active">
-                  <span
-                    style="font-family:var(--font-mono); font-size:0.62rem; color:var(--cherry-primary); font-weight:800;">1.
-                    LEXER</span>
-                  <span style="font-size:0.65rem; color:var(--text-muted);">Flex Tokenizer</span>
-                </div>
-                <div class="compiler-pipe-step active">
-                  <span
-                    style="font-family:var(--font-mono); font-size:0.62rem; color:var(--cherry-primary); font-weight:800;">2.
-                    AST MAP</span>
-                  <span style="font-size:0.65rem; color:var(--text-muted);">OCSF Primitives</span>
-                </div>
-                <div class="compiler-pipe-step active">
-                  <span
-                    style="font-family:var(--font-mono); font-size:0.62rem; color:var(--cherry-primary); font-weight:800;">3.
-                    LLVM IR</span>
-                  <span style="font-size:0.65rem; color:var(--text-muted);">SIMD Optimizer</span>
-                </div>
-                <div class="compiler-pipe-step active">
-                  <span
-                    style="font-family:var(--font-mono); font-size:0.62rem; color:var(--status-green); font-weight:800;">4.
-                    WASM JIT</span>
-                  <span style="font-size:0.65rem; color:var(--text-muted);">&lt; 42 KB Binary</span>
-                </div>
-                <div class="compiler-pipe-step active">
-                  <span
-                    style="font-family:var(--font-mono); font-size:0.62rem; color:var(--status-green); font-weight:800;">5.
-                    AIR-GAP</span>
-                  <span style="font-size:0.65rem; color:var(--text-muted);">Zero Cloud Egress</span>
-                </div>
               </div>
             </div>
 
-            <!-- Right: Real-time Token Chips & OCSF JSON Output -->
             <div class="parsers-sandbox-card">
               <div class="d-flex justify-between align-center mb-2">
-                <div>
-                  <h3 class="parsers-benchmark-title">
-                    <i data-lucide="code-2" style="color:var(--status-green);"></i>
-                    Live Normalized OCSF 1.1 Output
-                  </h3>
-                </div>
+                <h3 class="parsers-benchmark-title">
+                  <i data-lucide="code-2" style="color:var(--status-green);"></i>
+                  Parser Output
+                </h3>
                 <div class="d-flex gap-2">
-                  <span class="badge-pill green-pill" id="sandbox-speed-val">0.038 ms</span>
-                  <span class="badge-pill cherry-pill" id="sandbox-ops-val">Measuring...</span>
+                  <span class="badge-pill green-pill" id="sandbox-speed-val">&mdash;</span>
+                  <span class="badge-pill cherry-pill" id="sandbox-ops-val">&mdash;</span>
                 </div>
               </div>
-
-              <!-- Token Chips -->
-              <span
-                style="font-family:var(--font-mono); font-size:0.68rem; font-weight:700; color:var(--text-muted);">EXTRACTED
-                PRIMITIVE TOKENS:</span>
-              <div class="parser-token-chips-grid mb-3" id="sandbox-tokens-wrap">
-                <!-- Populated dynamically by ParsersModule.runSandboxBenchmark() -->
-              </div>
-
-              <!-- JSON Output -->
+              <span style="font-family:var(--font-mono); font-size:0.68rem; font-weight:700; color:var(--text-muted);" id="sandbox-result-label">EXTRACTED FIELDS:</span>
+              <div class="parser-token-chips-grid mb-3" id="sandbox-tokens-wrap"></div>
               <div style="position:relative; flex:1;">
                 <pre id="sandbox-ocsf-json"
-                  style="height:210px; overflow-y:auto; font-family:var(--font-mono); font-size:0.72rem; line-height:1.4; background:var(--bg-app); border:1px solid var(--border-card); border-radius:var(--radius-sm); padding:10px; margin:0; color:var(--text-ink);"></pre>
+                  style="height:210px; overflow-y:auto; font-family:var(--font-mono); font-size:0.72rem; line-height:1.4; background:var(--bg-app); border:1px solid var(--border-card); border-radius:var(--radius-sm); padding:10px; color:var(--text-ink); white-space:pre-wrap; word-break:break-all;"></pre>
               </div>
             </div>
           </div>
 
-          <!-- Modular Parser Engine Fleet Catalog -->
+          <!-- Catalog -->
           <div class="parsers-catalog-deck">
             <div class="d-flex justify-between align-center" style="flex-wrap:wrap; gap:10px;">
               <div>
                 <h3 class="parsers-benchmark-title">
                   <i data-lucide="grid" style="color:var(--cherry-primary);"></i>
-                  Modular Engine Catalog &amp; Registry Fleet
+                  Parser Catalog
                 </h3>
-                <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Production-verified parsers with
-                  air-gapped hot-reload and schema validation</p>
+                <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Built-in parsers and the mapping rules analysts
+                  have saved in the AI Schema Mapper</p>
               </div>
-
-              <!-- Filter Pills & Search -->
-              <div class="d-flex align-center gap-2">
-                <button class="btn-cream-action btn-sm parser-filter-btn active" data-cat="all">All (7)</button>
-                <button class="btn-cream-action btn-sm parser-filter-btn" data-cat="network">Network &amp; FW</button>
-                <button class="btn-cream-action btn-sm parser-filter-btn" data-cat="cloud">Cloud &amp; IAM</button>
+              <div class="d-flex align-center gap-2" style="flex-wrap:wrap;">
+                <button class="btn-cream-action btn-sm parser-filter-btn active" data-cat="all">All</button>
+                <button class="btn-cream-action btn-sm parser-filter-btn" data-cat="network">Network</button>
+                <button class="btn-cream-action btn-sm parser-filter-btn" data-cat="cloud">Cloud / JSON</button>
                 <button class="btn-cream-action btn-sm parser-filter-btn" data-cat="os">OS &amp; Host</button>
-                <button class="btn-cream-action btn-sm parser-filter-btn" data-cat="ai">AI Synthesized</button>
-                <input type="text" id="parser-catalog-search" placeholder="Search engines..."
-                  style="font-family:var(--font-mono); font-size:0.72rem; padding:4px 10px; background:var(--bg-app); border:1px solid var(--border-card); border-radius:var(--radius-sm); color:var(--text-ink); width:140px;" />
+                <button class="btn-cream-action btn-sm parser-filter-btn" data-cat="custom">Custom &amp; Rules</button>
+                <input type="text" id="parser-catalog-search" placeholder="Search parsers..."
+                  style="font-family:var(--font-mono); font-size:0.72rem; padding:4px 10px; background:var(--bg-app); border:1px solid var(--border-card); border-radius:var(--radius-sm); color:var(--text-ink);" />
               </div>
             </div>
-
-            <!-- Catalog Grid -->
-            <div class="parsers-catalog-grid" id="parser-catalog-grid">
-              <!-- Rendered dynamically by ParsersModule.renderCatalog() -->
-            </div>
+            <div class="parsers-catalog-grid" id="parser-catalog-grid"></div>
           </div>
         </section>
 
         <!-- Screen: Network Topology (Stage 3 Masterpiece) -->
         <section class="screen-view" id="screen-topology">
-          <!-- Hero Header -->
           <div class="screen-header mb-3">
             <div>
-              <h2 class="screen-title">Network Topology Flow Mesh &amp; Arterial Conduits</h2>
-              <p class="screen-subtitle">Volumetric packet flow dynamics, perimeter containment forcefields, and
-                real-time subnet telemetry</p>
+              <h2 class="screen-title">Source Topology &amp; Containment</h2>
+              <p class="screen-subtitle">Source IPs seen in stored events around the LOGVAULT core, ranked by anomalies.
+                Click a node to block or release it.</p>
             </div>
             <div class="screen-header-actions">
-              <span class="badge-pill green-pill"><span class="pulse-dot"></span> 5 SUBNETS ACTIVE</span>
-              <button class="btn-cream-action btn-sm"
-                onclick="TopologyModule.renderBandwidthBars(); TopologyModule.renderForensicsTable(); Utils.showToast('✓ Refreshed network flow conduits and arterial routing.', 'success');">
-                <i data-lucide="refresh-cw"></i> Refresh Mesh
+              <span class="badge-pill green-pill" id="topo-badge">&mdash;</span>
+              <button class="btn-cream-action btn-sm" onclick="TopologyModule.fetchData()">
+                <i data-lucide="refresh-cw"></i> Refresh
               </button>
             </div>
           </div>
 
-          <!-- 4 Telemetry KPIs -->
           <div class="kpi-grid-4 mb-3">
             <div class="kpi-card">
               <div class="kpi-icon-wrap"><i data-lucide="activity"></i></div>
-              <span class="kpi-label">Total Arterial Flow Velocity</span>
-              <span class="kpi-value">2.4 <small style="font-size:0.75rem;">Gbps</small></span>
-              <span class="kpi-trend positive"><i data-lucide="trending-up"></i> +8.4% Nominal Ingestion</span>
+              <span class="kpi-label">Source IPs Observed</span>
+              <span class="kpi-value" id="topo-kpi-sources">0</span>
+              <span class="kpi-trend positive" id="topo-kpi-sources-sub"><i data-lucide="eye"></i> &mdash;</span>
             </div>
-
             <div class="kpi-card">
-              <div class="kpi-icon-wrap"><i data-lucide="clock"></i></div>
-              <span class="kpi-label">Propagation Latency</span>
-              <span class="kpi-value" style="color:var(--status-green);">0.42 <small
-                  style="font-size:0.75rem;">ms</small></span>
-              <span class="kpi-trend positive"><i data-lucide="check-circle-2"></i> Zero Queue Congestion</span>
+              <div class="kpi-icon-wrap"><i data-lucide="alert-triangle"></i></div>
+              <span class="kpi-label">Sources With Anomalies</span>
+              <span class="kpi-value" style="color:var(--cherry-primary);" id="topo-kpi-anomalous">0</span>
+              <span class="kpi-trend positive" id="topo-kpi-anomalous-sub"><i data-lucide="alert-triangle"></i> &mdash;</span>
             </div>
-
             <div class="kpi-card">
               <div class="kpi-icon-wrap"><i data-lucide="layers"></i></div>
-              <span class="kpi-label">Active Subnet Hubs</span>
-              <span class="kpi-value">5 <small
-                  style="font-size:0.75rem; color:var(--status-green);">Online</small></span>
-              <span class="kpi-trend positive"><i data-lucide="shield"></i> 104 Managed Endpoints</span>
+              <span class="kpi-label">Private / Public IPs</span>
+              <span class="kpi-value" id="topo-kpi-split">0 / 0</span>
+              <span class="kpi-trend positive" id="topo-kpi-split-sub"><i data-lucide="globe"></i> &mdash;</span>
             </div>
-
             <div class="kpi-card">
               <div class="kpi-icon-wrap"><i data-lucide="shield-check"></i></div>
-              <span class="kpi-label">Containment Boundaries</span>
-              <span class="kpi-value" style="color:var(--cherry-primary);">100%</span>
-              <span class="kpi-trend positive"><i data-lucide="lock"></i> Zero Cross-Egress Leaks</span>
-            </div>
-          </div>
-
-          <!-- Zone Health Telemetry Strip -->
-          <div class="topology-zones-grid">
-            <div class="topology-zone-card">
-              <div>
-                <span class="badge-pill cherry-pill" style="font-size:0.58rem;">CORE-01</span>
-                <strong style="display:block; font-size:0.78rem; color:var(--text-ink); margin-top:2px;">Singularity Vault</strong>
-              </div>
-              <span class="badge-pill green-pill">SECURE</span>
-            </div>
-            <div class="topology-zone-card">
-              <div>
-                <span class="badge-pill warn-pill" style="font-size:0.58rem;">DMZ-02</span>
-                <strong style="display:block; font-size:0.78rem; color:var(--text-ink); margin-top:2px;">Gateway Firewalls</strong>
-              </div>
-              <span class="badge-pill green-pill">702 EPS</span>
-            </div>
-            <div class="topology-zone-card">
-              <div>
-                <span class="badge-pill green-pill" style="font-size:0.58rem;">LAN-03</span>
-                <strong style="display:block; font-size:0.78rem; color:var(--text-ink); margin-top:2px;">Internal Endpoints</strong>
-              </div>
-              <span class="badge-pill green-pill">304 EPS</span>
-            </div>
-            <div class="topology-zone-card">
-              <div>
-                <span class="badge-pill blue-pill" style="font-size:0.58rem;">CLOUD-04</span>
-                <strong style="display:block; font-size:0.78rem; color:var(--text-ink); margin-top:2px;">AWS CloudTrail</strong>
-              </div>
-              <span class="badge-pill green-pill">140 EPS</span>
+              <span class="kpi-label">Active Containments</span>
+              <span class="kpi-value" style="color:var(--cherry-primary);" id="topo-kpi-contained">0</span>
+              <span class="kpi-trend positive" id="topo-kpi-contained-sub"><i data-lucide="lock"></i> &mdash;</span>
             </div>
           </div>
 
@@ -2474,7 +1949,7 @@
           <div class="topology-mesh-card mb-3">
             <div class="topology-hud-bar">
               <div class="d-flex align-center gap-2">
-                <span class="badge-pill green-pill"><span class="pulse-dot"></span> 60 FPS RADAR MESH</span>
+                <span class="badge-pill green-pill">SOURCES &rarr; CORE</span>
                 <button class="btn-cream-action btn-sm topology-view-btn active" data-view="orbital"
                   style="font-size:0.68rem; padding:4px 10px; font-weight:700;">
                   <i data-lucide="radio"></i> Orbital Radar
@@ -2486,14 +1961,7 @@
               </div>
 
               <div class="d-flex align-center gap-2">
-                <button class="btn-cherry-primary btn-sm" id="btn-topology-packet-burst"
-                  style="font-size:0.68rem; padding:4px 12px; font-weight:700;">
-                  <i data-lucide="zap"></i> Trigger Packet Burst
-                </button>
-                <button class="btn-cream-action btn-sm" id="btn-topology-reset-isolation"
-                  style="font-size:0.68rem; padding:4px 12px; font-weight:700;">
-                  <i data-lucide="shield-check"></i> Reset Shields
-                </button>
+                <span style="font-size:0.68rem; color:var(--text-muted);">Line style: solid = has anomalies &bull; red outline = contained</span>
               </div>
             </div>
             <div class="isometric-topology-wrapper">
@@ -2507,12 +1975,11 @@
               <div>
                 <h3 class="parsers-benchmark-title">
                   <i data-lucide="bar-chart-2" style="color:var(--cherry-primary);"></i>
-                  Node Traffic Saturation &amp; Arterial Flow Rates
+                  Events and Anomalies per Source
                 </h3>
-                <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Real-time packet propagation rate
-                  and active transport saturation across zones</p>
+                <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">The sources drawn in the graph, sized
+                  against the busiest one</p>
               </div>
-              <span class="badge-pill green-pill" style="font-size:0.6rem;">MULTI-ZONE</span>
             </div>
             <div id="topologyBandwidthContainer"
               style="display:flex; flex-direction:column; justify-content:center; flex:1;">
@@ -2525,23 +1992,21 @@
             <div class="anom-records-header-row">
               <h3
                 style="font-family:var(--font-heading); font-size:0.92rem; font-weight:800; color:var(--text-ink); text-transform:uppercase; letter-spacing:0.5px;">
-                Managed Asset Nodes &amp; Containment Isolation Table
+                All Source IPs
               </h3>
-              <span class="badge-pill cherry-pill">ZERO-TRUST ENFORCED</span>
             </div>
             <div style="overflow-x:auto;">
               <table class="anom-records-table">
                 <thead>
                   <tr>
-                    <th>NODE_ID</th>
-                    <th>ASSET_LABEL</th>
-                    <th>SECURITY_ZONE</th>
-                    <th>IP_ADDRESS</th>
-                    <th>THROUGHPUT_FLOW</th>
-                    <th>SECURITY_PROTOCOL</th>
-                    <th>LATENCY</th>
-                    <th>ISOLATION_STATUS</th>
-                    <th>CONTAINMENT_ACTION</th>
+                    <th>SOURCE IP</th>
+                    <th>ADDRESS</th>
+                    <th>EVENTS</th>
+                    <th>ANOMALIES</th>
+                    <th>MAX THREAT</th>
+                    <th>LAST SEEN</th>
+                    <th>STATUS</th>
+                    <th>ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody id="topology-forensics-tbody">
@@ -2557,20 +2022,18 @@
           <!-- Hero Header -->
           <div class="screen-header mb-3">
             <div>
-              <h2 class="screen-title">Platform Settings &amp; Air-Gapped Cache</h2>
-              <p class="screen-subtitle">Local IndexedDB/SQLite footprint management, zero-cloud air-gap controls, and
-                schema compliance</p>
+              <h2 class="screen-title">Platform Settings &amp; Local Storage</h2>
+              <p class="screen-subtitle">Your operator profile, security status, the local SQLite store, retention, and evidence exports</p>
             </div>
             <div class="screen-header-actions">
-              <span class="badge-pill green-pill"><span class="pulse-dot"></span> 100% AIR-GAPPED</span>
-              <button class="btn-cream-action btn-sm"
-                onclick="SettingsModule.renderStorageBars(); SettingsModule.renderMemoryBars(); Utils.showToast('✓ Storage metrics synced with local browser database.', 'success');">
-                <i data-lucide="refresh-cw"></i> Refresh Storage
+              <span class="badge-pill green-pill" id="settings-ai-badge">&mdash;</span>
+              <button class="btn-cream-action btn-sm" onclick="SettingsModule.refreshAll(true)">
+                <i data-lucide="refresh-cw"></i> Refresh
               </button>
             </div>
           </div>
 
-          <!-- 4 Storage KPIs -->
+          <!-- 4 KPIs -->
           <div class="kpi-grid-4 mb-3">
             <div class="kpi-card">
               <div class="kpi-icon-wrap"><i data-lucide="database"></i></div>
@@ -2578,147 +2041,112 @@
               <span class="kpi-value" id="kpi-storage-value">&mdash;</span>
               <span class="kpi-trend positive" id="kpi-storage-sub"><i data-lucide="hard-drive"></i> Loading&hellip;</span>
             </div>
-
             <div class="kpi-card">
               <div class="kpi-icon-wrap"><i data-lucide="shield"></i></div>
-              <span class="kpi-label">Network Isolation</span>
-              <span class="kpi-value" style="color:var(--status-green);">OFFLINE</span>
-              <span class="kpi-trend positive"><i data-lucide="lock"></i> Zero External Egress</span>
+              <span class="kpi-label">AI Endpoint</span>
+              <span class="kpi-value" id="kpi-ai-endpoint">&mdash;</span>
+              <span class="kpi-trend positive" id="kpi-ai-endpoint-sub"><i data-lucide="cpu"></i> Loading&hellip;</span>
             </div>
-
             <div class="kpi-card">
               <div class="kpi-icon-wrap"><i data-lucide="calendar"></i></div>
               <span class="kpi-label">Rolling Retention Window</span>
               <span class="kpi-value" id="kpi-retention-value">&mdash;</span>
               <span class="kpi-trend positive" id="kpi-retention-sub"><i data-lucide="refresh-cw"></i> Loading&hellip;</span>
             </div>
-
             <div class="kpi-card">
               <div class="kpi-icon-wrap"><i data-lucide="check-circle-2"></i></div>
-              <span class="kpi-label">Cryptographic Integrity</span>
-              <span class="kpi-value" style="color:var(--cherry-primary);">SHA-256</span>
-              <span class="kpi-trend positive"><i data-lucide="shield-check"></i> Merkle Tree Active</span>
+              <span class="kpi-label">Evidence Fingerprint</span>
+              <span class="kpi-value" style="color:var(--cherry-primary);" id="kpi-integrity-value">&mdash;</span>
+              <span class="kpi-trend positive" id="kpi-integrity-sub"><i data-lucide="shield-check"></i> SHA-256 hash chain</span>
             </div>
           </div>
 
-          <!-- Executive 2-Column Settings Grid -->
           <div class="settings-executive-grid">
-            <!-- Left Column: Identity & Security Hardening -->
+            <!-- Left column -->
             <div class="d-flex flex-column gap-3">
-              <!-- Operator Profile Card -->
+              <!-- Operator profile -->
               <div class="operator-profile-card">
                 <div class="d-flex justify-between align-center mb-3">
                   <div>
                     <h3 class="parsers-benchmark-title">
                       <i data-lucide="user-check" style="color:var(--cherry-primary);"></i>
-                      Operator Identity &amp; Clearance
+                      Operator Profile
                     </h3>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Air-gapped forensic identity &amp; clearance credentials</p>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Your signed-in account. Your role is set on the account and controls what you may do.</p>
                   </div>
-                  <span class="badge-pill green-pill"><span class="pulse-dot"></span> VERIFIED</span>
+                  <span class="badge-pill green-pill" id="operator-signed-in-badge">SIGNED IN</span>
                 </div>
 
                 <div class="operator-profile-layout">
-                  <!-- Avatar Preview -->
                   <div class="operator-avatar-showcase">
-                    <div class="operator-avatar-large" id="operator-large-avatar">AS</div>
-                    <strong id="operator-preview-name" style="font-size:0.85rem; color:var(--text-ink); margin-bottom:2px;">Agent Sahil</strong>
-                    <span id="operator-preview-role" style="font-size:0.66rem; color:var(--text-muted); font-family:var(--font-mono);">Tier-3 SOC Lead</span>
+                    <div class="operator-avatar-large" id="operator-large-avatar">&mdash;</div>
+                    <strong id="operator-preview-name" style="font-size:0.85rem; color:var(--text-ink); margin-bottom:2px;">&mdash;</strong>
+                    <span id="operator-preview-role" style="font-size:0.66rem; color:var(--text-muted); font-family:var(--font-mono);">&mdash;</span>
                   </div>
 
-                  <!-- Form Inputs -->
                   <div>
                     <div class="operator-form-grid mb-3">
                       <div class="operator-input-group">
-                        <label>Operator Name</label>
-                        <input type="text" id="operator-input-name" placeholder="Enter operator name..." value="Agent Sahil" />
+                        <label for="operator-input-name">Operator Name</label>
+                        <input type="text" id="operator-input-name" placeholder="Your name" maxlength="80" />
                       </div>
-
                       <div class="operator-input-group">
-                        <label>Call-Sign / Badge</label>
-                        <input type="text" id="operator-input-callsign" placeholder="e.g. SOC-OP-9042" value="SOC-OP-9042" />
+                        <label for="operator-input-callsign">Call-Sign / Badge</label>
+                        <input type="text" id="operator-input-callsign" placeholder="e.g. SOC-OP-9042" maxlength="40" />
                       </div>
-
                       <div class="operator-input-group">
-                        <label>SOC Role</label>
-                        <input type="text" id="operator-input-role" placeholder="e.g. Lead SOC Analyst" value="Tier-3 SOC Lead" />
+                        <label for="operator-input-email">Email (sign-in)</label>
+                        <input type="text" id="operator-input-email" readonly />
                       </div>
-
                       <div class="operator-input-group">
-                        <label>Clearance Tier</label>
-                        <select id="operator-select-tier">
-                          <option value="Tier-3 Senior Lead">Tier-3 Senior Incident Commander</option>
-                          <option value="Tier-2 Threat Hunter">Tier-2 Threat Hunter &amp; Forensics</option>
-                          <option value="Tier-1 Triage Analyst">Tier-1 Ingestion Triage Analyst</option>
-                          <option value="CISO Strategic Director">CISO Strategic Operations Director</option>
-                        </select>
+                        <label for="operator-input-role">Role</label>
+                        <input type="text" id="operator-input-role" readonly />
                       </div>
                     </div>
-
                     <div class="d-flex justify-between align-center">
                       <div class="operator-input-group" style="flex:1; margin-right:12px;">
-                        <label>Organization / Defense Cell</label>
-                        <input type="text" id="operator-input-org" placeholder="e.g. Cyber Defense Command" value="Cyber Defense Operations Command" />
+                        <label for="operator-input-org">Organization / Defense Cell</label>
+                        <input type="text" id="operator-input-org" placeholder="e.g. Cyber Defense Command" maxlength="80" />
                       </div>
                       <button class="btn-cherry-primary" id="btn-save-operator-profile" style="margin-top:14px; padding:8px 16px; font-weight:700;">
                         <i data-lucide="save"></i> Save Profile
                       </button>
                     </div>
+
+                    <div class="storage-section-label">Change password</div>
+                    <div class="operator-form-grid">
+                      <div class="operator-input-group">
+                        <label for="operator-pwd-current">Current password</label>
+                        <input type="password" id="operator-pwd-current" autocomplete="current-password" />
+                      </div>
+                      <div class="operator-input-group">
+                        <label for="operator-pwd-new">New password (8+ characters)</label>
+                        <input type="password" id="operator-pwd-new" autocomplete="new-password" minlength="8" />
+                      </div>
+                    </div>
+                    <button class="btn-cream-action btn-sm mt-2" id="btn-change-password"><i data-lucide="key"></i> Change password</button>
                   </div>
                 </div>
               </div>
 
-              <!-- Air-Gapped Security Enforcement Card -->
+              <!-- Security status -->
               <div class="settings-card">
                 <div class="d-flex justify-between align-center mb-2">
                   <div>
                     <h3 class="parsers-benchmark-title">
                       <i data-lucide="shield-alert" style="color:var(--cherry-primary);"></i>
-                      Air-Gapped Security Policies
+                      Security Status
                     </h3>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Hardened system policies guaranteeing absolute zero-egress compliance</p>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Read live from the running server configuration</p>
                   </div>
-                  <span class="badge-pill green-pill">AIR-GAP ACTIVE</span>
                 </div>
-
-                <div class="settings-policy-item">
-                  <div>
-                    <strong style="font-size:0.78rem; color:var(--text-ink); display:block;">Strict Air-Gapped Network Lock</strong>
-                    <span style="font-size:0.68rem; color:var(--text-muted);">Enforce zero outbound fetch, WebSocket, and telemetry calls</span>
-                  </div>
-                  <span class="badge-pill green-pill">ENFORCED</span>
-                </div>
-
-                <div class="settings-policy-item">
-                  <div>
-                    <strong style="font-size:0.78rem; color:var(--text-ink); display:block;">Zero-Copy WASM Heap Isolation</strong>
-                    <span style="font-size:0.68rem; color:var(--text-muted);">Sandboxed memory pointers to prevent buffer overruns</span>
-                  </div>
-                  <span class="badge-pill green-pill">ACTIVE</span>
-                </div>
-
-                <div class="settings-policy-item">
-                  <div>
-                    <strong style="font-size:0.78rem; color:var(--text-ink); display:block;">Local ONNX AI Model In-Browser Cache</strong>
-                    <span style="font-size:0.68rem; color:var(--text-muted);">Deterministic zero-shot schema inference without cloud APIs</span>
-                  </div>
-                  <span class="badge-pill green-pill">LOADED</span>
-                </div>
-
-                <div class="settings-policy-item">
-                  <div>
-                    <strong style="font-size:0.78rem; color:var(--text-ink); display:block;">FIPS 140-3 Cryptographic Integrity Chain</strong>
-                    <span style="font-size:0.68rem; color:var(--text-muted);">SHA-256 Merkle root hashing of all ingested log batches</span>
-                  </div>
-                  <span class="badge-pill green-pill">VERIFIED</span>
-                </div>
-
+                <div id="settings-security-status"><div class="analytics-empty">Loading&hellip;</div></div>
               </div>
             </div>
 
-            <!-- Right Column: Storage Architecture & Forensic Operations -->
+            <!-- Right column -->
             <div class="d-flex flex-column gap-3">
-              <!-- Storage Architecture Breakdown Card -->
+              <!-- Storage -->
               <div class="settings-card">
                 <div class="d-flex justify-between align-center mb-2">
                   <div>
@@ -2731,7 +2159,6 @@
                   <span class="badge-pill green-pill" style="font-size:0.6rem;">SQLITE</span>
                 </div>
 
-                <!-- Storage policy: size limit + retention (0 = unlimited / forever) -->
                 <div class="storage-policy-form">
                   <div class="storage-policy-field">
                     <label for="storage-limit-mode">Storage limit</label>
@@ -2763,78 +2190,86 @@
                 </div>
 
                 <div class="storage-section-label">What is using space</div>
-                <div id="settingsStorageBreakdownContainer" style="display:flex; flex-direction:column; justify-content:center; flex:1;">
-                  <!-- Populated dynamically by SettingsModule.renderStorageBars() -->
-                </div>
-                
-                <div class="d-flex justify-between align-center mt-3 pt-2" style="border-top:1px solid var(--border-subtle);">
-                  <span style="font-family:var(--font-mono); font-size:0.68rem; font-weight:700; color:var(--text-muted);">RUNTIME WASM HEAP POOL:</span>
-                  <span class="badge-pill cherry-pill" style="font-size:0.58rem;">512 MB QUOTA</span>
-                </div>
-                <div id="settingsMemoryContainer" style="display:flex; flex-direction:column; justify-content:center; margin-top:8px;">
-                  <!-- Populated dynamically by SettingsModule.renderMemoryBars() -->
-                </div>
+                <div id="settingsStorageBreakdownContainer" style="display:flex; flex-direction:column; justify-content:center; flex:1;"></div>
               </div>
 
-              <!-- Forensic Operations & Maintenance Card -->
+              <!-- Evidence & maintenance -->
               <div class="settings-card">
                 <div class="d-flex justify-between align-center mb-2">
                   <div>
                     <h3 class="parsers-benchmark-title">
                       <i data-lucide="archive" style="color:var(--cherry-primary);"></i>
-                      Forensic Maintenance Operations
+                      Evidence Export &amp; Maintenance
                     </h3>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Cryptographically sealed export and local storage maintenance</p>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Downloads are generated by the backend from stored data</p>
                   </div>
-                  <span class="badge-pill green-pill">MAINTENANCE</span>
                 </div>
 
                 <div class="d-flex flex-column gap-2 mt-2">
                   <div class="settings-op-btn-card" id="btn-export-forensic-bundle">
                     <div>
-                      <strong style="font-size:0.78rem; color:var(--text-ink); display:block;"><i data-lucide="download" style="vertical-align:middle; margin-right:4px;"></i> Export Encrypted Forensic Bundle (.lvault)</strong>
-                      <span style="font-size:0.66rem; color:var(--text-muted);">AES-256 encrypted package with SHA-256 Merkle chain verification</span>
+                      <strong style="font-size:0.78rem; color:var(--text-ink); display:block;"><i data-lucide="download" style="vertical-align:middle; margin-right:4px;"></i> Export Forensic Evidence Bundle (.zip)</strong>
+                      <span style="font-size:0.66rem; color:var(--text-muted);">Events (JSON Lines), alerts, containment list, mapping rules, and a manifest with the SHA-256 of every file</span>
                     </div>
-                    <span class="badge-pill cherry-pill" style="font-size:0.6rem;">EXPORT</span>
+                    <select id="bundle-scope" class="filter-select" onclick="event.stopPropagation()" style="font-size:0.66rem;">
+                      <option value="session">This session</option>
+                      <option value="all">All stored data</option>
+                    </select>
+                  </div>
+
+                  <div class="settings-op-btn-card" id="btn-export-firewall-rules">
+                    <div>
+                      <strong style="font-size:0.78rem; color:var(--text-ink); display:block;"><i data-lucide="shield-ban" style="vertical-align:middle; margin-right:4px;"></i> Export Containment as Firewall Rules</strong>
+                      <span style="font-size:0.66rem; color:var(--text-muted);" id="containment-export-sub">Blocked IPs and isolated hosts, ready for the network team</span>
+                    </div>
+                    <select id="firewall-format" class="filter-select" onclick="event.stopPropagation()" style="font-size:0.66rem;">
+                      <option value="iptables">iptables (.sh)</option>
+                      <option value="cisco">Cisco ACL</option>
+                      <option value="windows">Windows Firewall (.ps1)</option>
+                      <option value="csv">CSV</option>
+                    </select>
                   </div>
 
                   <div class="settings-op-btn-card" id="btn-download-ocsf-defs">
                     <div>
-                      <strong style="font-size:0.78rem; color:var(--text-ink); display:block;"><i data-lucide="file-text" style="vertical-align:middle; margin-right:4px;"></i> Download OCSF v1.1 Schema Definitions</strong>
-                      <span style="font-size:0.66rem; color:var(--text-muted);">Standardized JSON schema matrices for Class 3002, 4001, 2001</span>
+                      <strong style="font-size:0.78rem; color:var(--text-ink); display:block;"><i data-lucide="file-text" style="vertical-align:middle; margin-right:4px;"></i> Download OCSF 1.1 Definitions</strong>
+                      <span style="font-size:0.66rem; color:var(--text-muted);">Classes, categories and the field mapping LOGVAULT uses, plus your mapping rules</span>
                     </div>
-                    <span class="badge-pill green-pill" style="font-size:0.6rem;">DOWNLOAD</span>
+                    <span class="badge-pill green-pill" style="font-size:0.6rem;">JSON</span>
                   </div>
 
                   <div class="settings-op-btn-card" id="btn-vacuum-database">
                     <div>
-                      <strong style="font-size:0.78rem; color:var(--text-ink); display:block;"><i data-lucide="zap" style="vertical-align:middle; margin-right:4px;"></i> Vacuum &amp; Re-Index SQLite Tables</strong>
-                      <span style="font-size:0.66rem; color:var(--text-muted);">Defragment B-Tree indexes and reclaim unallocated space</span>
+                      <strong style="font-size:0.78rem; color:var(--text-ink); display:block;"><i data-lucide="zap" style="vertical-align:middle; margin-right:4px;"></i> Vacuum SQLite Database</strong>
+                      <span style="font-size:0.66rem; color:var(--text-muted);">Rebuild the database file and reclaim free space</span>
                     </div>
                     <span class="badge-pill green-pill" style="font-size:0.6rem;">OPTIMIZE</span>
                   </div>
 
                   <div class="settings-op-btn-card" id="btn-purge-buffers">
                     <div>
-                      <strong style="font-size:0.78rem; color:var(--status-amber); display:block;"><i data-lucide="trash-2" style="vertical-align:middle; margin-right:4px;"></i> Flush Transient Ring Memory Queues</strong>
-                      <span style="font-size:0.66rem; color:var(--text-muted);">Clear volatile FIFO queues without touching historical storage</span>
+                      <strong style="font-size:0.78rem; color:var(--status-red); display:block;"><i data-lucide="trash-2" style="vertical-align:middle; margin-right:4px;"></i> Delete All Stored Events</strong>
+                      <span style="font-size:0.66rem; color:var(--text-muted);">Permanently removes every event and alert (Tier-3 / Commander only). Export a bundle first.</span>
                     </div>
-                    <span class="badge-pill gold-pill" style="font-size:0.6rem;">FLUSH</span>
+                    <span class="badge-pill crit-pill" style="font-size:0.6rem;">DELETE</span>
                   </div>
                 </div>
 
-                <!-- Cryptographic Audit Seal -->
                 <div class="settings-audit-seal-card">
                   <div class="d-flex justify-between align-center">
-                    <span style="font-family:var(--font-mono); font-size:0.66rem; font-weight:800; color:var(--text-ink);"><i data-lucide="shield-check" style="vertical-align:middle; margin-right:4px; color:var(--status-green);"></i> AIR-GAP CRYPTOGRAPHIC MERKLE ROOT</span>
-                    <span class="badge-pill green-pill" style="font-size:0.56rem;">FIPS 140-3</span>
+                    <span style="font-family:var(--font-mono); font-size:0.66rem; font-weight:800; color:var(--text-ink);"><i data-lucide="shield-check" style="vertical-align:middle; margin-right:4px; color:var(--status-green);"></i> EVIDENCE FINGERPRINT (ALL STORED EVENTS)</span>
+                    <button class="btn-cream-action btn-sm" style="font-size:0.6rem; padding:2px 8px;" onclick="SettingsModule.loadIntegrity(true)">Recompute</button>
                   </div>
-                  <code class="settings-audit-seal-hash">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code>
+                  <code class="settings-audit-seal-hash" id="settings-integrity-hash">&mdash;</code>
+                  <div style="font-size:0.62rem; color:var(--text-muted); margin-top:4px;" id="settings-integrity-note">
+                    SHA-256 chain over every event id and raw log, in arrival order. Note it down: if any stored event is edited or deleted, this value changes.
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </section>
+
 
       </main>
     </div>
@@ -2854,7 +2289,7 @@
         <p class="login-brand-sub">Universal Log Intelligence &amp; SOC Platform (SIH26156)</p>
         <div class="login-clearance-pill">
           <span class="live-dot-cherry"></span>
-          <span>AIR-GAPPED TELEMETRY &bull; FIPS 140-3 COMPLIANT</span>
+          <span>AIR-GAPPED TELEMETRY &bull; LOCAL SIGN-IN</span>
         </div>
       </div>
 
@@ -2897,18 +2332,7 @@
           </div>
         </div>
 
-        <div class="login-input-group">
-          <label for="login-operator-tier">SECURITY CLEARANCE TIER</label>
-          <div class="login-field-wrap">
-            <i data-lucide="shield-alert" class="login-field-icon"></i>
-            <select id="login-operator-tier">
-              <option value="Tier-3 SOC Lead" selected>Tier-3 SOC Lead (Full Command Authority)</option>
-              <option value="Tier-2 Senior Analyst">Tier-2 Senior Analyst (Triage &amp; SOAR)</option>
-              <option value="Tier-1 Security Analyst">Tier-1 Security Analyst (Monitoring)</option>
-              <option value="Incident Commander">Incident Commander (Executive Authority)</option>
-            </select>
-          </div>
-        </div>
+        <div class="login-error" id="login-error" role="alert" style="display:none;"></div>
 
         <div class="login-remember-row">
           <label class="login-checkbox-label">
@@ -2916,8 +2340,8 @@
             <span>Keep session active</span>
           </label>
           <span class="login-forgot-key"
-            onclick="Utils.showToast('Operator Demo Key: sahil.soc@logvault.sih (Passphrase prefilled)', 'info')">
-            Key Guidance
+            onclick="Utils.showToast('Evaluation accounts are created on first start. The buttons above fill them in; your role comes from the account.', 'info')">
+            Which account?
           </span>
         </div>
 
@@ -2938,11 +2362,11 @@
 
       <div class="login-card-footer">
         <div class="login-footer-badges">
-          <span><i data-lucide="lock"></i> Zero-Trust RBAC</span>
+          <span><i data-lucide="lock"></i> Role-based access</span>
           <span>&bull;</span>
-          <span><i data-lucide="cpu"></i> Local WASM Engine</span>
+          <span><i data-lucide="cpu"></i> Local AI (Ollama)</span>
           <span>&bull;</span>
-          <span><i data-lucide="shield"></i> FIPS 140-3</span>
+          <span><i data-lucide="shield"></i> PBKDF2 passwords</span>
         </div>
       </div>
     </div>
@@ -2965,7 +2389,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Application Logic Modules in Dependency Order -->
-  <script src="js/mock-data.js"></script>
+  <script src="js/api.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/navigation.js"></script>
   <script src="js/charts.js"></script>

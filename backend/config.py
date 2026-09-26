@@ -26,6 +26,13 @@ class Config:
     RETENTION_DAYS = int(os.getenv("RETENTION_DAYS", "0"))
     STORAGE_CHECK_INTERVAL = float(os.getenv("STORAGE_CHECK_INTERVAL", "600"))
 
+    # Sign-in. AUTH_REQUIRED=false turns off the token check (single trusted user, tests).
+    AUTH_REQUIRED = os.getenv("LOGVAULT_AUTH", "true").lower() in ("1", "true", "yes")
+    # Create the four evaluation operator accounts on first start
+    SEED_OPERATORS = os.getenv("LOGVAULT_SEED_OPERATORS", "true").lower() in ("1", "true", "yes")
+    # One-click "demo access" button / ?auth=demo sign in as the seeded SOC lead
+    DEMO_LOGIN = os.getenv("LOGVAULT_DEMO_LOGIN", "true").lower() in ("1", "true", "yes")
+
     # Offline IP geolocation database folder (any MaxMind-format .mmdb)
     GEOIP_DIR = os.getenv("GEOIP_DIR", os.path.join(os.path.dirname(BASE_DIR), "geoip"))
     

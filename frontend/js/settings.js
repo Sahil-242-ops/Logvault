@@ -23,6 +23,7 @@ const SettingsModule = {
     this.loadSecurityStatus();
     this.loadIntegrity(false);
     this.loadContainmentCount();
+    this.loadAudit();
     if (notify) Utils.showToast('Settings refreshed from the backend.', 'success');
   },
 
@@ -99,10 +100,18 @@ const SettingsModule = {
     const esc = v => Utils.escapeHtml(String(v ?? ''));
     if (el) el.innerHTML =
       row('Sign-in required for the API', st.auth_required ? 'Every /api call needs a session token' : 'LOGVAULT_AUTH=false: anyone who can reach the port has full access', st.auth_required, st.auth_required ? 'ENFORCED' : 'OFF')
+      + row('Encrypted connection (HTTPS)', st.tls ? 'TLS is on for this server' : 'Plain HTTP: set LOGVAULT_TLS=true to serve HTTPS', st.tls, st.tls ? 'ON' : 'OFF')
       + row('Passwords', `${esc(st.password_hashing)}; sessions expire after ${st.session_hours} h`, true, 'HASHED')
       + row('One-click demo access', st.demo_login_enabled ? 'Turn off with LOGVAULT_DEMO_LOGIN=false for real deployments' : 'Disabled', !st.demo_login_enabled, st.demo_login_enabled ? 'ON' : 'OFF')
       + row('Local AI endpoint', `${esc(st.ai_endpoint)} &bull; ${esc(st.ai_status)}${st.ai_model ? ` (${esc(st.ai_model)})` : ''}`, st.ai_endpoint_local, st.ai_endpoint_local ? 'LOCAL' : 'REMOTE')
       + row('Offline GeoIP database', st.geoip_offline_database ? 'Installed: IP locations are resolved on this server' : 'Not installed: run scripts/download_geoip.py', st.geoip_offline_database, st.geoip_offline_database ? 'READY' : 'MISSING')
+      + (() => {
+        const os = st.opensearch || {};
+        if (!os.enabled) return row('OpenSearch full-text index', 'Off: SQLite stores and searches everything. Optional: docker compose --profile opensearch with OPENSEARCH_URL set', true, 'OPTIONAL');
+        const detail = `${esc(os.url)} &bull; index ${esc(os.index)} &bull; ${os.indexed} indexed${os.failed ? `, ${os.failed} failed` : ''}${os.last_error ? ` &bull; last error: ${esc(os.last_error).slice(0, 80)}` : ''}`
+          + ` <button class="btn-cream-action btn-sm" style="margin-left:6px; font-size:0.6rem; padding:1px 6px;" onclick="SettingsModule.reindex()">Re-index stored events</button>`;
+        return row('OpenSearch full-text index', detail, os.reachable !== false, os.reachable === false ? 'UNREACHABLE' : 'ON');
+      })()
       + row('Operator accounts', `${st.operators} account${st.operators === 1 ? '' : 's'} &bull; ${st.active_containments} active containment${st.active_containments === 1 ? '' : 's'} &bull; ${st.mapping_rules} mapping rule${st.mapping_rules === 1 ? '' : 's'}`, true, String(st.operators));
 
     const set = (id, html) => { const e = document.getElementById(id); if (e) e.innerHTML = html; };
@@ -110,6 +119,17 @@ const SettingsModule = {
     set('kpi-ai-endpoint-sub', `<i data-lucide="cpu"></i> ${esc(st.ai_status)}`);
     set('settings-ai-badge', st.ai_endpoint_local ? 'AI RUNS LOCALLY' : 'AI ENDPOINT IS REMOTE');
     if (window.lucide) lucide.createIcons();
+  },
+
+  async reindex() {
+    Utils.showToast('Re-indexing stored events into OpenSearch...', 'info');
+    try {
+      const r = await LogVaultAPI._postJSON('/api/search/reindex?scope=all', {}, 600000);
+      Utils.showToast(`Indexed ${r.reindexed.toLocaleString()} events into OpenSearch.`, 'success');
+      this.loadSecurityStatus();
+    } catch (err) {
+      Utils.showToast(`Re-index failed: ${err.message}`, 'error');
+    }
   },
 
   async loadIntegrity(notify) {
@@ -124,6 +144,63 @@ const SettingsModule = {
       if (window.lucide) lucide.createIcons();
     } catch (err) {
       if (notify) Utils.showToast(`Could not compute fingerprint: ${err.message}`, 'error');
+    }
+  },
+
+  AUDIT_LABELS: {
+    sign_in: 'Sign in', sign_in_demo: 'Demo sign in', sign_out: 'Sign out', update_profile: 'Update profile',
+    change_password: 'Change password', create_operator: 'Create operator', list_operators: 'List operators',
+    upload_logs: 'Upload log file', ingest_record: 'Ingest one record', run_ai_investigation: 'Run AI investigation',
+    approve_alert: 'Approve alert', reject_alert: 'Reject alert', change_alert_status: 'Change alert status',
+    change_storage_policy: 'Change storage policy', apply_storage_policy: 'Apply storage policy',
+    vacuum_database: 'Vacuum database', delete_all_events: 'Delete all events', save_mapping_rule: 'Save mapping rule',
+    delete_mapping_rule: 'Delete mapping rule', reindex_opensearch: 'Re-index OpenSearch', contain_asset: 'Block IP / isolate host', release_containment: 'Release containment',
+    export_firewall_rules: 'Export firewall rules', download_dossier: 'Download dossier', export_forensic_bundle: 'Export forensic bundle',
+    export_siem: 'Export to SIEM', download_ocsf_definitions: 'Download OCSF definitions', export_audit_log: 'Export audit log'
+  },
+
+  async loadAudit() {
+    const tbody = document.getElementById('audit-tbody');
+    const select = document.getElementById('audit-filter-action');
+    if (!tbody) return;
+    const action = select ? select.value : '';
+    let res;
+    try {
+      res = await LogVaultAPI._getJSON(`/api/audit?limit=100${action ? `&action=${encodeURIComponent(action)}` : ''}`);
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:16px; color:var(--text-muted);">${Utils.escapeHtml(err.message)}</td></tr>`;
+      return;
+    }
+    if (select) {
+      const current = select.value;
+      select.innerHTML = '<option value="">All actions</option>' + res.actions.map(a =>
+        `<option value="${Utils.escapeHtml(a)}">${Utils.escapeHtml(this.AUDIT_LABELS[a] || a)}</option>`).join('');
+      select.value = current;
+    }
+    const pill = { success: 'green-pill', denied: 'crit-pill', failed: 'warn-pill' };
+    tbody.innerHTML = res.entries.length ? res.entries.map(e => `
+      <tr>
+        <td class="cell-mono-muted" title="${Utils.escapeHtml(e.at)}">${Utils.escapeHtml(new Date(e.at).toLocaleString())}</td>
+        <td>${Utils.escapeHtml(e.actor || 'anonymous')}</td>
+        <td><strong>${Utils.escapeHtml(this.AUDIT_LABELS[e.action] || e.action)}</strong></td>
+        <td><code style="font-size:0.68rem;">${Utils.escapeHtml(String(e.target || ''))}</code></td>
+        <td><span class="badge-pill ${pill[e.outcome] || 'green-pill'}">${Utils.escapeHtml(e.outcome)}</span></td>
+        <td class="cell-mono-muted">${Utils.escapeHtml(e.client_ip || '')}</td>
+      </tr>`).join('')
+      : '<tr><td colspan="6" style="text-align:center; padding:16px; color:var(--text-muted);">No entries yet.</td></tr>';
+    const foot = document.getElementById('audit-footnote');
+    if (foot) foot.textContent = `Showing ${res.entries.length} of ${res.total.toLocaleString()} entries (newest first).`;
+  },
+
+  async verifyAudit() {
+    const out = document.getElementById('audit-verify-result');
+    try {
+      const r = await LogVaultAPI._getJSON('/api/audit/verify', 60000);
+      if (out) out.innerHTML = r.ok
+        ? `<span class="badge-pill green-pill">CHAIN INTACT</span> All ${r.entries.toLocaleString()} entries verified.`
+        : `<span class="badge-pill crit-pill">TAMPERED</span> Entry #${r.broken_at_seq}: ${Utils.escapeHtml(r.reason)}.`;
+    } catch (err) {
+      if (out) out.textContent = err.message;
     }
   },
 
@@ -192,6 +269,13 @@ const SettingsModule = {
       btnSaveOp.addEventListener('click', () => this.saveOperatorProfile());
     }
 
+    const auditFilter = document.getElementById('audit-filter-action');
+    if (auditFilter) auditFilter.addEventListener('change', () => this.loadAudit());
+    const btnVerify = document.getElementById('btn-audit-verify');
+    if (btnVerify) btnVerify.addEventListener('click', () => this.verifyAudit());
+    const btnAuditExport = document.getElementById('btn-audit-export');
+    if (btnAuditExport) btnAuditExport.addEventListener('click', () => this.download('/api/audit/export', 'logvault-audit-log.jsonl', 'Audit log export'));
+
     const btnPwd = document.getElementById('btn-change-password');
     if (btnPwd) btnPwd.addEventListener('click', () => this.changePassword());
 
@@ -199,7 +283,27 @@ const SettingsModule = {
     if (btnExport) {
       btnExport.addEventListener('click', () => {
         const scope = (document.getElementById('bundle-scope') || {}).value || 'session';
-        this.download(`/api/export/bundle?scope=${scope}`, 'logvault-forensics.zip', 'Forensic bundle');
+        const pass = document.getElementById('bundle-passphrase');
+        const passphrase = pass ? pass.value : '';
+        Utils.showToast(passphrase ? 'Preparing encrypted bundle...' : 'Preparing forensic bundle...', 'info');
+        LogVaultAPI.downloadPost('/api/export/bundle', { scope, passphrase: passphrase || null }, 'logvault-forensics.zip')
+          .then(r => {
+            if (pass) pass.value = '';
+            Utils.showToast(passphrase
+              ? `Downloaded ${r.name} (AES-256 encrypted). Decrypt with scripts/decrypt_bundle.py.`
+              : `Downloaded ${r.name} (${this.formatBytes(r.bytes)}).`, 'success');
+          })
+          .catch(err => Utils.showToast(`Forensic bundle failed: ${err.message}`, 'error'));
+      });
+    }
+
+    const btnSiem = document.getElementById('btn-export-siem');
+    if (btnSiem) {
+      btnSiem.addEventListener('click', () => {
+        const fmt = (document.getElementById('siem-format') || {}).value || 'ocsf-jsonl';
+        const scope = (document.getElementById('siem-scope') || {}).value || 'session';
+        const only = (document.getElementById('siem-only-anomalies') || {}).checked;
+        this.download(`/api/export/siem?format=${fmt}&scope=${scope}&only_anomalies=${only}`, `logvault-${fmt}.txt`, 'SIEM export');
       });
     }
 

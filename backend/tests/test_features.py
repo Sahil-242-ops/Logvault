@@ -6,7 +6,7 @@ import zipfile
 import pytest
 from fastapi.testclient import TestClient
 
-from backend import auth, containment, mapper
+from backend import audit, auth, containment, mapper
 from backend.app import app
 from backend.config import config
 from backend.db import db
@@ -24,6 +24,7 @@ def tmp_db(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "current_session_id", "test-session")
     db.init_db()
     auth.init_auth_tables()
+    audit.init_tables()
     containment.init_tables()
     mapper.init_tables()
     yield
@@ -102,7 +103,8 @@ def test_mapper_rule_is_used_for_new_events():
     assert inferred["kind"] == "pattern"
     targets = {m["targetField"]: m["value"] for m in inferred["mappings"]}
     assert targets["source_ip"] == "192.168.1.45" and targets["destination_port"] == "22"
-    assert inferred["current_parser"]["format"] == "unknown"
+    # Before a rule exists only the generic custom-text reader (or nothing) recognises it
+    assert inferred["current_parser"]["format"] in ("unknown", "custom")
 
     r = client.post("/api/mapper/rules", json={
         "name": "Cisco ASA", "kind": "pattern", "anchor": inferred["anchor"],
@@ -158,3 +160,136 @@ def test_forensic_bundle_manifest_hashes_match():
 def test_preview_normalize_does_not_store():
     client.post("/api/normalize?store=false", json={"raw": SSH_FAIL})
     assert client.get("/api/events").json()["total"] == 0
+
+
+def test_audit_log_records_actions_and_detects_tampering(monkeypatch):
+    monkeypatch.setattr(config, "AUTH_REQUIRED", True)
+    client.post("/api/auth/login", json={"email": "sahil.soc@logvault.sih", "password": "wrong-pass"})
+    t = client.post("/api/auth/login", json={"email": "sahil.soc@logvault.sih", "password": "CyberSecurity2026!"}).json()["token"]
+    h = {"Authorization": f"Bearer {t}"}
+    client.post("/api/containment", json={"kind": "ip", "value": "203.0.113.9", "reason": "test"}, headers=h)
+    tier1 = client.post("/api/auth/login", json={"email": "sneha.triage@logvault.sih", "password": "TriageAnalyst2026!"}).json()["token"]
+    client.delete("/api/events?confirm=true", headers={"Authorization": f"Bearer {tier1}"})
+
+    log = client.get("/api/audit", headers=h).json()["entries"]
+    seen = [(e["action"], e["actor"], e["outcome"]) for e in reversed(log)]
+    assert ("sign_in", "sahil.soc@logvault.sih", "failed") in seen
+    assert ("sign_in", "sahil.soc@logvault.sih", "success") in seen
+    assert ("contain_asset", "sahil.soc@logvault.sih", "success") in seen
+    assert ("delete_all_events", "sneha.triage@logvault.sih", "denied") in seen
+    assert client.get("/api/audit", headers={"Authorization": f"Bearer {tier1}"}).status_code == 403
+    assert client.get("/api/audit/verify", headers=h).json()["ok"] is True
+
+    conn = db.get_connection()
+    conn.execute("UPDATE audit_log SET actor = 'someone-else' WHERE action = 'contain_asset'")
+    conn.commit()
+    conn.close()
+    result = client.get("/api/audit/verify", headers=h).json()
+    assert result["ok"] is False and result["broken_at_seq"]
+
+
+
+def test_siem_exports_every_format():
+    import csv as _csv
+    import gzip
+    _ingest(SSH_FAIL)
+    _ingest('192.168.1.45 - bob [28/Aug/2026:10:31:05 +0000] "POST /login HTTP/1.1" 401 532')
+
+    lines = client.get("/api/export/siem?format=ocsf-jsonl").text.strip().splitlines()
+    ocsf = [json.loads(l) for l in lines]
+    assert len(ocsf) == 2 and {o["class_uid"] for o in ocsf} == {3002, 4002}
+    assert all(o["type_uid"] == o["class_uid"] * 100 + o["activity_id"] for o in ocsf)
+    assert all(o["metadata"]["version"] == "1.1.0" and len(o["unmapped"]["raw_sha256"]) == 64 for o in ocsf)
+
+    gz = client.get("/api/export/siem?format=ocsf-jsonl-gz").content
+    assert len(gzip.decompress(gz).decode().strip().splitlines()) == 2
+
+    rows = list(_csv.DictReader(io.StringIO(client.get("/api/export/siem?format=csv").text)))
+    assert len(rows) == 2 and rows[0]["source_ip"] == "185.220.101.5"
+
+    cef = client.get("/api/export/siem?format=cef").text.strip().splitlines()
+    assert all(l.startswith("CEF:0|BetterCallCode|LOGVAULT|1.0|") for l in cef) and "src=185.220.101.5" in cef[0]
+
+    hec = json.loads(client.get("/api/export/siem?format=splunk-hec").text)
+    assert len(hec) == 2 and hec[0]["sourcetype"] == "ocsf:json" and hec[0]["event"]["class_uid"] == 3002
+
+    bulk = client.get("/api/export/siem?format=elastic-bulk").text.strip().splitlines()
+    assert len(bulk) == 4 and json.loads(bulk[0])["index"]["_index"] == "logvault-ocsf"
+
+    only = client.get("/api/export/siem?format=ocsf-jsonl&only_anomalies=true").text.strip().splitlines()
+    assert len(only) == 1
+    assert client.get("/api/export/siem?format=nope").status_code == 400
+
+
+def test_every_event_carries_ocsf_validation():
+    evt = _ingest(SSH_FAIL)
+    assert evt["ocsf_validation"]["valid"] is True and evt["ocsf_validation"]["errors"] == []
+    evt = _ingest("just some words here")
+    assert evt["ocsf_validation"]["valid"] is True
+    assert any("ingestion time" in w for w in evt["ocsf_validation"]["warnings"])
+
+
+
+def test_encrypted_bundle_round_trip():
+    from backend.crypto_box import decrypt
+    from cryptography.exceptions import InvalidTag
+    _ingest(SSH_FAIL)
+    assert client.post("/api/export/bundle", json={"passphrase": "short"}).status_code == 400
+    r = client.post("/api/export/bundle", json={"scope": "session", "passphrase": "correct horse battery"})
+    assert r.status_code == 200 and r.headers["content-disposition"].endswith('.lvault"')
+    assert r.content.startswith(b"LVAULT1\n") and b"events.jsonl" not in r.content  # nothing readable
+    z = zipfile.ZipFile(io.BytesIO(decrypt(r.content, "correct horse battery")))
+    assert json.loads(z.read("manifest.json"))["event_count"] == 1
+    with pytest.raises(InvalidTag):
+        decrypt(r.content, "wrong passphrase!!")
+    plain = client.post("/api/export/bundle", json={"scope": "session"})
+    assert plain.headers["content-disposition"].endswith('.zip"')
+
+
+def test_self_signed_certificate(tmp_path, monkeypatch):
+    from backend import serve
+    from cryptography import x509
+    monkeypatch.setattr(serve, "CERT", str(tmp_path / "cert.pem"))
+    monkeypatch.setattr(serve, "KEY", str(tmp_path / "key.pem"))
+    monkeypatch.setattr(serve, "TLS_DIR", str(tmp_path))
+    serve.ensure_self_signed()
+    cert = x509.load_pem_x509_certificate(open(tmp_path / "cert.pem", "rb").read())
+    assert "LOGVAULT" in cert.subject.rfc4514_string()
+
+
+
+def test_opensearch_index_and_search_with_fallback(monkeypatch):
+    import asyncio
+    import httpx
+    from backend import search_index
+    docs = {}
+
+    def fake_opensearch(request: httpx.Request):
+        if request.url.path == "/_bulk":
+            lines = request.content.decode().strip().splitlines()
+            for action, doc in zip(lines[::2], lines[1::2]):
+                docs[json.loads(action)["index"]["_id"]] = json.loads(doc)
+            return httpx.Response(200, json={"errors": False, "items": [{"index": {"status": 201}}] * (len(lines) // 2)})
+        if request.url.path.endswith("/_search"):
+            q = json.loads(request.content)["query"]["bool"]["must"][0]["simple_query_string"]["query"].lower()
+            hits = [{"_id": i} for i, d in docs.items() if q in json.dumps(d).lower()]
+            return httpx.Response(200, json={"hits": {"total": {"value": len(hits)}, "hits": hits}})
+        if request.method in ("HEAD", "PUT"):
+            return httpx.Response(200, json={"acknowledged": True})
+        return httpx.Response(404)
+
+    monkeypatch.setattr(config, "OPENSEARCH_URL", "http://opensearch:9200")
+    monkeypatch.setitem(search_index._state, "index_ready", False)
+    monkeypatch.setattr(search_index, "transport", httpx.MockTransport(fake_opensearch))
+    evts = [_ingest(SSH_FAIL), _ingest('192.168.1.45 - bob [28/Aug/2026:10:31:05 +0000] "POST /login HTTP/1.1" 401 532')]
+    asyncio.run(search_index.index_now(evts))
+    assert len(docs) == 2 and docs[evts[0]["id"]]["class_uid"] == 3002
+
+    r = client.get("/api/events?search=bastion01").json()
+    assert r["search_engine"] == "opensearch" and [e["id"] for e in r["events"]] == [evts[0]["id"]]
+
+    # OpenSearch down -> the same search is answered by SQLite
+    monkeypatch.setattr(search_index, "transport", httpx.MockTransport(lambda req: httpx.Response(503)))
+    r = client.get("/api/events?search=bastion01").json()
+    assert r["search_engine"] == "sqlite" and r["total"] == 1
+    assert search_index.status()["reachable"] is False

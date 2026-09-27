@@ -26,10 +26,10 @@ def test_json_lines_and_structural_lines_skipped():
     assert records == ["real log line here"]
 
 
-def test_csv_with_header_becomes_json_rows():
+def test_csv_with_header_keeps_column_names_on_each_row():
     records, layout = split_records("u.csv", "user,src_ip,status\ncarol,10.0.0.1,failed\n")
     assert layout == "csv-with-header"
-    assert json.loads(records[0]) == {"user": "carol", "src_ip": "10.0.0.1", "status": "failed"}
+    assert records == ["user,src_ip,status\ncarol,10.0.0.1,failed"]
 
 
 def test_csv_without_header_falls_back_to_lines():
@@ -64,3 +64,16 @@ def test_junk_records_are_not_sent_to_ai():
     assert not looks_like_log("[")
     assert not looks_like_log('"a": 1,')
     assert looks_like_log("Failed password for root from 1.2.3.4")
+
+
+def test_xml_document_is_split_into_events_and_xxe_refused():
+    doc = ('<?xml version="1.0"?>\n<Events>\n'
+           '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event"><System><EventID>4625</EventID></System>'
+           '<EventData><Data Name="TargetUserName">admin</Data></EventData></Event>\n'
+           '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event"><System><EventID>1102</EventID></System></Event>\n'
+           '</Events>')
+    records, layout = split_records("security.xml", doc)
+    assert layout == "xml-document" and len(records) == 2
+    assert all(r.startswith("<") and "EventID" in r for r in records)
+    _, layout = split_records("evil.xml", '<!DOCTYPE x [<!ENTITY a "b">]>\n<x>&a;</x>')
+    assert layout != "xml-document"

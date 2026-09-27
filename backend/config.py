@@ -33,6 +33,16 @@ class Config:
     # One-click "demo access" button / ?auth=demo sign in as the seeded SOC lead
     DEMO_LOGIN = os.getenv("LOGVAULT_DEMO_LOGIN", "true").lower() in ("1", "true", "yes")
 
+    # Serve HTTPS (backend/serve.py): uses data/tls/cert.pem + key.pem, self-signed if absent
+    TLS = os.getenv("LOGVAULT_TLS", "false").lower() in ("1", "true", "yes")
+
+    # Optional OpenSearch full-text index (empty = off; SQLite alone stores and searches)
+    OPENSEARCH_URL = os.getenv("OPENSEARCH_URL", "")
+    OPENSEARCH_INDEX = os.getenv("OPENSEARCH_INDEX", "logvault-ocsf-v1")
+    OPENSEARCH_USER = os.getenv("OPENSEARCH_USER", "")
+    OPENSEARCH_PASSWORD = os.getenv("OPENSEARCH_PASSWORD", "")
+    OPENSEARCH_VERIFY_TLS = os.getenv("OPENSEARCH_VERIFY_TLS", "true").lower() in ("1", "true", "yes")
+
     # Offline IP geolocation database folder (any MaxMind-format .mmdb)
     GEOIP_DIR = os.getenv("GEOIP_DIR", os.path.join(os.path.dirname(BASE_DIR), "geoip"))
     

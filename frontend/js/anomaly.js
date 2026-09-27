@@ -742,7 +742,7 @@ const AnomalyModule = {
     if (select) select.value = id;
     try {
       const [dossier, cont] = await Promise.all([
-        LogVaultAPI._getJSON(`/api/alerts/${encodeURIComponent(id)}/dossier`, 20000),
+        LogVaultAPI._getJSON(`/api/alerts/${encodeURIComponent(id)}/context`, 20000),
         LogVaultAPI.getContainment()
       ]);
       this.incident = dossier;

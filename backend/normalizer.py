@@ -7,7 +7,7 @@ from .config import config
 from .pii_masker import PIIMasker
 from .anomaly_detector import anomaly_detector
 from . import containment
-from .schema.ocsf import get_ocsf_class_uid
+from .schema.ocsf import get_ocsf_class_uid, to_ocsf, validate as validate_ocsf
 
 # event_type substring -> (OCSF class, OCSF category); first match wins
 OCSF_EVENT_CLASS_RULES = (
@@ -164,6 +164,8 @@ class Normalizer:
             "ai_is_suspicious": ai_intelligence.get("is_suspicious", False)
         }
         
+        # 6. Validation: the OCSF form of this event checked against the schema requirements
+        result["ocsf_validation"] = validate_ocsf(to_ocsf(result))
         return result
 
     async def batch_normalize(self, raw_logs: List[str]) -> List[Dict[str, Any]]:

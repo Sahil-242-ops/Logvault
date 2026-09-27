@@ -16,6 +16,13 @@ services:
       INVESTIGATE_INTERVAL: ${INVESTIGATE_INTERVAL:-5}
       STORAGE_LIMIT_GB: ${STORAGE_LIMIT_GB:-0}
       RETENTION_DAYS: ${RETENTION_DAYS:-0}
+      # Security: sign-in, evaluation accounts, one-click demo, HTTPS (self-signed cert in the data volume)
+      LOGVAULT_AUTH: ${LOGVAULT_AUTH:-true}
+      LOGVAULT_SEED_OPERATORS: ${LOGVAULT_SEED_OPERATORS:-true}
+      LOGVAULT_DEMO_LOGIN: ${LOGVAULT_DEMO_LOGIN:-true}
+      LOGVAULT_TLS: ${LOGVAULT_TLS:-false}
+      # Optional OpenSearch index: start with --profile opensearch and set OPENSEARCH_URL=http://opensearch:9200
+      OPENSEARCH_URL: ${OPENSEARCH_URL:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -31,6 +38,24 @@ services:
     volumes:
       - ollama-models:/root/.ollama
 
+  # Optional full-text index (air-gapped: pre-load the image). Start with: docker compose --profile opensearch up -d
+  # and set OPENSEARCH_URL=http://opensearch:9200 for the logvault service.
+  opensearch:
+    image: opensearchproject/opensearch:2.17.1
+    container_name: logvault-opensearch
+    profiles: ["opensearch"]
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      # Reachable only inside the compose network (no published port); enable the security plugin
+      # and set OPENSEARCH_USER / OPENSEARCH_PASSWORD when OpenSearch runs on a shared network.
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+
 volumes:
   logvault-data:
   ollama-models:
+  opensearch-data:

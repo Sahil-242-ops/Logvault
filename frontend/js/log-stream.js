@@ -198,6 +198,11 @@ const LogStream = {
       backendBadge.className = LogVaultAPI.isBackendAvailable() ? 'badge-pill green-pill' : 'badge-pill crit-pill';
       backendBadge.textContent = LogVaultAPI.isBackendAvailable() ? 'Online' : 'Offline';
     }
+    const engineEl = document.getElementById('stream-search-engine');
+    if (engineEl) {
+      engineEl.style.display = this.filters.searchQuery && result && result.search_engine ? 'inline-flex' : 'none';
+      engineEl.textContent = result && result.search_engine === 'opensearch' ? 'Searched by OpenSearch' : 'Searched by SQLite';
+    }
     if (result && result.events) {
       const lat = result.events.map(e => e.processing_latency_ms).filter(v => typeof v === 'number');
       const latEl = document.getElementById('stream-latency');

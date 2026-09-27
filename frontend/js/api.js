@@ -23,8 +23,8 @@ const NormalizerExamples = {
     raw: '{"eventTime":"2026-08-28T10:31:07Z","eventSource":"iam.amazonaws.com","eventName":"CreateAccessKey","userIdentity":{"type":"IAMUser","userName":"sec-admin","accountId":"987654321012"},"sourceIPAddress":"10.24.8.12","userAgent":"aws-cli/2.15.0","errorCode":null}'
   },
   windows: {
-    name: 'Windows Security Event 4625',
-    raw: 'EventID=4625 AccountName=Administrator Workstation=DC-PROD-01 SourceIP=192.168.1.45 Status=0xC000006D'
+    name: 'Windows Security Event 4625 (XML)',
+    raw: '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event"><System><Provider Name="Microsoft-Windows-Security-Auditing"/><EventID>4625</EventID><TimeCreated SystemTime="2026-08-28T10:31:08Z"/><Computer>DC-PROD-01.corp.local</Computer><Channel>Security</Channel></System><EventData><Data Name="TargetUserName">Administrator</Data><Data Name="IpAddress">192.168.1.45</Data><Data Name="Status">0xC000006D</Data></EventData></Event>'
   },
   kubernetes: {
     name: 'Kubernetes Ingress NGINX',
@@ -118,6 +118,30 @@ const LogVaultAPI = {
   // Download a backend file (the token travels in the header, never in the URL)
   async download(path, fallbackName) {
     const res = await fetch(`${this._baseURL}${path}`, { signal: AbortSignal.timeout(300000) });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `HTTP ${res.status}`);
+    }
+    const match = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '');
+    const name = match ? match[1] : fallbackName;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    return { name, bytes: blob.size };
+  },
+
+  // POST variant for downloads that carry secrets (the body never appears in URLs or logs)
+  async downloadPost(path, body, fallbackName) {
+    const res = await fetch(`${this._baseURL}${path}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      signal: AbortSignal.timeout(300000)
+    });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.detail || `HTTP ${res.status}`);

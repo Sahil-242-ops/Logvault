@@ -151,7 +151,7 @@ Rebuild the Docker image afterwards so the file is included.
 
 ```mermaid
 flowchart LR
-    A["📄 Any log file<br/>Syslog · Apache · JSON<br/>CSV · CEF · Windows"] --> B["🔍 Detect format<br/>& split records"]
+    A["📄 Any log file<br/>Syslog · JSON · CEF · XML<br/>CSV · Apache · Windows · custom"] --> B["🔍 Detect format<br/>& split records"]
     B --> C["🔄 Normalize<br/>to OCSF 1.1"]
     C --> D["🚨 Detection rules<br/>+ MITRE ATT&CK"]
     D --> E[("🗄️ Local<br/>database")]
@@ -191,8 +191,13 @@ Sep 24 02:10:00 bastion01 sshd[330]: Failed password for admin from 185.220.101.
 
 | | Feature | What it means for an analyst |
 |:-:|:--|:--|
-| 🔀 | **Automatic format detection** | Syslog, Apache/Nginx, JSON, JSON Lines, CSV, CEF and Windows events — no configuration |
-| 📐 | **One standard schema** | Every record becomes OCSF 1.1, so all sources can be searched and compared together |
+| 🔀 | **Automatic format detection** | Syslog (RFC 5424 and 3164), JSON / JSON Lines, CEF, XML (Windows Event XML and any XML), CSV (with or without header), Apache/Nginx, Windows key=value — and plain custom text, where IPs, users, ports and times are found by shape |
+| 🧩 | **Plug-and-play onboarding** | Unknown format? The Schema Mapper proposes a field mapping (the local AI suggests the event type); save it as a rule and every later record of that format is parsed with it |
+| 📐 | **One standard schema** | Every record becomes an OCSF 1.1 event (class, category, activity, severity, endpoints, actor) and is **validated** against the OCSF requirements; the raw log stays linked to it |
+| 📤 | **SIEM & data lake export** | OCSF JSON Lines (plain or gzip), CSV, CEF (ArcSight / QRadar), Splunk HEC and Elasticsearch/OpenSearch bulk — downloads only, nothing leaves on its own |
+| 🔎 | **Optional OpenSearch** | Switch on the OpenSearch add-on and every event is also indexed there for full-text search; SQLite stays the store of record |
+| 📜 | **Audit log** | Every sign-in, change, containment and export is recorded with who did it, in a SHA-256 hash chain that exposes any edit |
+| 🔐 | **Security by design** | Sign-in with hashed passwords and four roles, optional HTTPS, AES-256 encrypted evidence bundles, block-IP / isolate-host containment |
 | 🚨 | **Attack detection** | SQL injection, XSS, path traversal, brute force, command execution, privilege escalation, data exfiltration and obfuscated payloads |
 | 🎯 | **MITRE ATT&CK mapping** | Every finding names the attacker technique, e.g. *T1110 – Brute Force* |
 | 🤖 | **AI investigation** | Correlates related events, gives a verdict, root cause, evidence and step-by-step actions |
@@ -233,6 +238,7 @@ The LOGVAULT server makes **zero internet calls**. Everything it needs — AI, I
 |:--|:--|
 | Web interface and API | Local server (FastAPI) |
 | Log database | Local file (SQLite), kept across restarts |
+| Full-text search | SQLite, or a local OpenSearch container — optional |
 | AI model | Local (Ollama) — optional |
 | IP → location lookup | Local database file |
 | World map | Bundled with the app |
@@ -274,32 +280,31 @@ docker compose up -d
 
 | Layer | Technology |
 |:--|:--|
-| Backend | Python · FastAPI · SQLite |
+| Backend | Python · FastAPI · SQLite · OpenSearch (optional) |
 | AI | Ollama (Llama 3.2) — runs locally |
 | Frontend | HTML · CSS · JavaScript (no framework) |
-| Standards | OCSF 1.1 · MITRE ATT&CK |
+| Standards | OCSF 1.1 · MITRE ATT&CK · CEF · Splunk HEC |
 | Deployment | Docker · Docker Compose |
-| Quality | 42 automated tests (`python -m pytest backend/tests`) |
+| Quality | 69 automated tests (`python -m pytest backend/tests`) |
 
 ---
 
 ## 📌 Current Scope
 
-We are honest about what the prototype does today:
+What the prototype does today, and its limits:
 
-- 🔐 **Login is for demo only.** The sign-in screen accepts any credentials and the API has no authentication yet. Run it on a trusted network.
-- 💻 **Open it on the same machine.** The interface talks to `127.0.0.1:8000`, so use a browser on the machine running LOGVAULT.
-- 🎨 **Some screens are illustrative.** The 3D threat graph, Sources Health, Parser Registry and Schema Inference screens show sample data. The Normalizer, Live Log Stream, Alert Center, Event Analytics, Network Topology and Settings storage use real data.
-- 🛑 **Approving is a decision, not an action.** LOGVAULT is not connected to firewalls; it records the decision and the recommended steps.
-- 🧠 **Small AI models make mistakes.** `llama3.2:1b` is fast but sometimes wrong — which is exactly why rules keep the final verdict cautious and a human approves.
+- 🔐 **Real sign-in and roles.** Passwords are checked by the server (PBKDF2). The four evaluation accounts and one-click demo are for judging; turn them off for real use (`LOGVAULT_SEED_OPERATORS=false`, `LOGVAULT_DEMO_LOGIN=false`).
+- 🔒 **HTTPS is optional.** Set `LOGVAULT_TLS=true` to serve HTTPS; without your own certificate in `data/tls/` a self-signed one is created and browsers warn once. The SQLite file itself is not encrypted; use disk encryption on the host.
+- 🛑 **Containment is a list, not a firewall change.** Blocking an IP or isolating a host raises CRITICAL alerts for any new activity and exports ready-to-apply iptables / Cisco / Windows Firewall rules; applying them is up to the network team.
+- 🧠 **Small AI models make mistakes.** `llama3.2:1b` is fast but sometimes wrong — which is why rules keep the verdict cautious and a human approves. Field mapping uses rules; the AI suggests the event type and threat.
+- 📥 **Ingestion is by upload or REST API.** There is no collector agent or network syslog listener yet.
 
 ### 🚀 What's next
 
-- [ ] Real user accounts and role-based access
-- [ ] Access from any machine on the network
+- [ ] Syslog listener (UDP/TCP 514) and a lightweight collector agent
 - [ ] Cross-record correlation (brute-force bursts, impossible travel)
+- [ ] Encryption of the database at rest
 - [ ] Direct firewall integration for one-click blocking
-- [ ] Export to other SIEM tools in OCSF format
 
 ---
 
@@ -324,6 +329,10 @@ Set in `.env` (copy [`.env.example`](.env.example)) or as environment variables.
 | `LOGVAULT_AUTH` | `true` | Require sign-in for every API call (`false` only for a trusted single-user setup) |
 | `LOGVAULT_SEED_OPERATORS` | `true` | Create the four evaluation accounts on first start |
 | `LOGVAULT_DEMO_LOGIN` | `true` | Allow the one-click demo sign-in and `?auth=demo` |
+| `LOGVAULT_TLS` | `false` | Serve HTTPS (certificate from `data/tls/cert.pem` + `key.pem`, self-signed if absent) |
+| `OPENSEARCH_URL` | *(empty = off)* | OpenSearch address, e.g. `http://opensearch:9200` with `docker compose --profile opensearch up -d` |
+| `OPENSEARCH_INDEX` | `logvault-ocsf-v1` | Index name |
+| `OPENSEARCH_USER` · `OPENSEARCH_PASSWORD` | *(empty)* | Credentials when the OpenSearch security plugin is on |
 
 ### API
 
@@ -345,6 +354,10 @@ Live, interactive documentation: **http://127.0.0.1:8000/docs**
 | `GET` · `POST` · `DELETE` | `/api/containment` · `/api/containment/export` | Block IPs / isolate hosts (new activity becomes CRITICAL); export as iptables, Cisco ACL, Windows Firewall or CSV |
 | `GET` | `/api/alerts/{id}/dossier` · `/api/export/bundle` · `/api/export/ocsf` | Evidence downloads (bundle has a SHA-256 manifest) |
 | `GET` | `/api/integrity` · `/api/system/status` | Evidence fingerprint (SHA-256 hash chain) and live security status |
+| `GET` | `/api/export/siem?format=` | `ocsf-jsonl`, `ocsf-jsonl-gz`, `csv`, `cef`, `splunk-hec`, `elastic-bulk` (add `&only_anomalies=true`, `&scope=all`) |
+| `POST` | `/api/export/bundle` | Forensic bundle; with `{"passphrase": "..."}` it is AES-256-GCM encrypted (decrypt with `scripts/decrypt_bundle.py`) |
+| `GET` | `/api/audit` · `/api/audit/verify` · `/api/audit/export` | Audit log, hash-chain check, JSON Lines export |
+| `GET` · `POST` | `/api/search/status` · `/api/search/reindex` | OpenSearch status and re-indexing of stored events |
 
 ### Project structure
 
@@ -353,7 +366,7 @@ LOGVAULT/
 ├── backend/                 Python API (FastAPI)
 │   ├── app.py               Starts the server, serves the frontend, runs background workers
 │   ├── api.py               REST endpoints
-│   ├── parsers/             Syslog, Apache, JSON, CEF, Windows, key=value
+│   ├── parsers/             Syslog, JSON, CEF, XML, CSV, Apache, Windows, key=value, custom text
 │   ├── mitre/               Detection rules with MITRE ATT&CK mapping
 │   ├── ai/                  Ollama adapter, prompts, alert investigator
 │   ├── schema/              OCSF 1.1 classes
@@ -363,7 +376,7 @@ LOGVAULT/
 │   ├── styles.css           Design system — light and dark themes
 │   └── js/                  One module per screen
 ├── samples/                 Demo log files for judges and testers
-├── scripts/                 One-time tools: IP database download, world map generator
+├── scripts/                 IP database download, world map generator, encrypted-bundle decryptor
 ├── geoip/                   Offline IP location database (downloaded, not in git)
 ├── Dockerfile
 ├── docker-compose.yml

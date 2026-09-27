@@ -462,6 +462,17 @@ class DatabaseManager:
         conn.close()
         return {"sources": sources, "total": len(sources)}
 
+    def get_events_by_ids(self, ids):
+        """Events for the given ids, in the same order (ids not found are skipped)."""
+        if not ids:
+            return []
+        conn = self.get_connection()
+        rows = conn.execute(f"SELECT id, normalized_json FROM events WHERE id IN ({','.join('?' * len(ids))})",
+                            list(ids)).fetchall()
+        conn.close()
+        by_id = {r[0]: json.loads(r[1]) for r in rows}
+        return [by_id[i] for i in ids if i in by_id]
+
     def get_event(self, event_id):
         conn = self.get_connection()
         c = conn.cursor()

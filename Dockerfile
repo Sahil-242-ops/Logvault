@@ -28,6 +28,7 @@ EXPOSE 8000
 VOLUME ["/app/data"]
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=8).status == 200 else 1)"
+    CMD python -c "import os,ssl,urllib.request,sys; tls=os.getenv('LOGVAULT_TLS','false').lower() in ('1','true','yes'); url=('https' if tls else 'http')+'://127.0.0.1:8000/api/health'; sys.exit(0 if urllib.request.urlopen(url, timeout=8, context=ssl._create_unverified_context() if tls else None).status == 200 else 1)"
 
-CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# HTTPS when LOGVAULT_TLS=true (see backend/serve.py)
+CMD ["python", "-m", "backend.serve"]

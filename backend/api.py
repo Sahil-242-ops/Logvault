@@ -1,6 +1,7 @@
 import time
+import json
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 from .normalizer import normalizer
 from .parsers.detector import detector
@@ -11,7 +12,7 @@ from .ingest import split_records
 from .ai import investigator
 from . import analytics
 from . import storage
-from . import auth, containment, mapper, stats, export
+from . import auth, containment, mapper, stats, export, audit, search_index
 import asyncio
 from typing import Optional
 
@@ -57,6 +58,7 @@ async def normalize_log(req: LogRequest, store: bool = True):
     result = await normalizer.normalize(req.raw)
     if store:
         db.insert_event(result)
+        search_index.enqueue([result], db.current_session_id)
     return result
 
 @router.post("/api/detect")
@@ -73,7 +75,7 @@ async def detect_log(req: LogRequest):
 
 @router.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
-    if not (file.filename or '').lower().endswith(('.log', '.txt', '.csv', '.json', '.jsonl')):
+    if not (file.filename or '').lower().endswith(('.log', '.txt', '.csv', '.json', '.jsonl', '.xml')):
         raise HTTPException(status_code=400, detail="Unsupported file extension")
 
     contents = await file.read()
@@ -93,6 +95,7 @@ async def upload_file(file: UploadFile = File(...)):
     start_time = time.time()
     results = await normalizer.batch_normalize(records)
     db.insert_events(results)
+    search_index.enqueue(results, db.current_session_id)
 
     successful = 0
     anomalous = 0
@@ -171,7 +174,19 @@ async def get_events(
     detected_format: Optional[str] = None,
     since_minutes: Optional[int] = None
 ):
-    return db.get_events(limit, offset, search, severity, event_type, source_ip, detected_format, since_minutes)
+    # Full-text search goes to OpenSearch when it is configured; SQLite stays the store of record
+    if search and search_index.enabled():
+        hit = await search_index.search(search, db.current_session_id, limit=max(500, limit + offset))
+        if hit is not None:
+            events = db.get_events_by_ids(hit["ids"])
+            keep = lambda e: ((not severity or severity == "ALL" or e.get("severity") == severity)
+                              and (not event_type or event_type == "ALL" or e.get("event_type") == event_type)
+                              and (not source_ip or e.get("source_ip") == source_ip)
+                              and (not detected_format or detected_format == "ALL" or e.get("detected_format") == detected_format))
+            events = [e for e in events if keep(e)]
+            return {"events": events[offset:offset + limit], "total": len(events), "search_engine": "opensearch"}
+    return {**db.get_events(limit, offset, search, severity, event_type, source_ip, detected_format, since_minutes),
+            "search_engine": "sqlite"}
 
 @router.get("/api/anomalies")
 async def get_anomalies(
@@ -347,17 +362,24 @@ class OperatorCreateRequest(BaseModel):
     password: str
 
 @router.post("/api/auth/login")
-async def login(req: LoginRequest):
+async def login(req: LoginRequest, request: Request):
     session = auth.login(req.email, req.password)
+    ip = request.client.host if request.client else None
     if not session:
+        audit.record("sign_in", actor=(req.email or "").lower().strip()[:120], client_ip=ip, outcome="failed",
+                     detail="wrong email or password")
         raise HTTPException(status_code=401, detail="Wrong email or password")
+    audit.record("sign_in", actor=session["operator"]["email"], client_ip=ip, detail=session["operator"]["role"])
     return session
 
 @router.post("/api/auth/demo")
-async def demo_login():
+async def demo_login(request: Request):
     session = auth.demo_login()
+    ip = request.client.host if request.client else None
     if not session:
+        audit.record("sign_in_demo", client_ip=ip, outcome="denied", detail="demo access disabled")
         raise HTTPException(status_code=403, detail="Demo access is turned off on this installation")
+    audit.record("sign_in_demo", actor=session["operator"]["email"], client_ip=ip, detail=session["operator"]["role"])
     return session
 
 @router.get("/api/auth/config")
@@ -429,7 +451,7 @@ async def collectors():
 # ---------------------------------------------------------------- parsers
 
 PARSER_CATALOG = (
-    {"id": "syslog", "name": "Syslog (BSD / SSH auth)", "category": "os", "formats": "RFC 3164 syslog, OpenSSH / PAM auth",
+    {"id": "syslog", "name": "Syslog (RFC 5424 / 3164)", "category": "os", "formats": "RFC 5424 and RFC 3164 syslog; SSH, PAM, sudo, iptables",
      "ocsf_class": "Authentication (3002)",
      "sample": "Sep 24 02:10:00 bastion01 sshd[330]: Failed password for admin from 185.220.101.5 port 50211 ssh2"},
     {"id": "cef", "name": "CEF (ArcSight)", "category": "network", "formats": "Common Event Format v0",
@@ -444,15 +466,24 @@ PARSER_CATALOG = (
     {"id": "windows", "name": "Windows Security events", "category": "os", "formats": "EventID key=value exports",
      "ocsf_class": "Authentication (3002)",
      "sample": "EventID=4625 AccountName=administrator Workstation=WIN-DC01 SourceIP=10.0.4.23 Status=0xC000006D"},
+    {"id": "xml", "name": "XML (Windows Event / generic)", "category": "os", "formats": "Windows Event XML, any XML record",
+     "ocsf_class": "Authentication (3002) / by content",
+     "sample": '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event"><System><EventID>4625</EventID><Computer>DC01</Computer></System><EventData><Data Name="TargetUserName">admin</Data><Data Name="IpAddress">10.0.0.5</Data></EventData></Event>'},
+    {"id": "csv", "name": "CSV", "category": "cloud", "formats": "CSV rows with or without a header",
+     "ocsf_class": "By event content",
+     "sample": "timestamp,src_ip,user,action,status\n2026-09-24T02:10:00Z,10.0.0.5,admin,login,failed"},
     {"id": "generic_kv", "name": "Generic key=value", "category": "custom", "formats": "Any key=value record",
      "ocsf_class": "By event content",
      "sample": "USR=john ACT=LOGIN RES=FAIL SRC=10.2.4.5 DEV=web01 PROT=SSH PORT=22"},
+    {"id": "custom", "name": "Custom / unknown text", "category": "custom", "formats": "Free text: IPs, ports, users, times, HTTP requests found by shape",
+     "ocsf_class": "By event content",
+     "sample": "2026-09-24 02:10:00 WARN user admin failed login from 10.0.0.5 port 22"},
 )
 
 def _parser_pattern(parser_id: str) -> Optional[str]:
     """The regex the parser actually runs (JSON is parsed as a document, not by regex)."""
     p = detector.parsers.get(parser_id)
-    for attr in ("pattern", "header_pattern", "kv_pattern"):
+    for attr in ("pattern", "rfc5424_pattern", "header_pattern", "start_pattern", "kv_pattern"):
         rx = getattr(p, attr, None)
         if rx is not None:
             return rx.pattern
@@ -628,6 +659,14 @@ async def containment_release(entry_id: str, request: Request):
 
 # ---------------------------------------------------------------- exports
 
+@router.get("/api/alerts/{event_id}/context")
+async def alert_context(event_id: str, request: Request):
+    """Same content as the dossier, for viewing on screen (not recorded as an evidence download)."""
+    body = export.alert_dossier(event_id, _analyst(request) or None)
+    if not body:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return body
+
 @router.get("/api/alerts/{event_id}/dossier")
 async def alert_dossier(event_id: str, request: Request):
     body = export.alert_dossier(event_id, _analyst(request) or None)
@@ -643,6 +682,37 @@ async def export_bundle(request: Request, scope: str = "session"):
     return Response(content=data, media_type="application/zip",
                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
+@router.get("/api/export/formats")
+async def export_formats():
+    return {"formats": [{"id": k, "extension": v[0], "description": v[2]} for k, v in export.SIEM_FORMATS.items()]}
+
+@router.get("/api/export/siem")
+async def export_siem(format: str = "ocsf-jsonl", scope: str = "session", only_anomalies: bool = False):
+    if format not in export.SIEM_FORMATS:
+        raise HTTPException(status_code=400, detail=f"format must be one of {list(export.SIEM_FORMATS)}")
+    if scope not in ("session", "all"):
+        raise HTTPException(status_code=400, detail="scope must be session or all")
+    name = export.siem_filename(format, scope, only_anomalies)
+    return StreamingResponse(export.stream_siem(format, scope, only_anomalies), media_type=export.SIEM_FORMATS[format][1],
+                             headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+class BundleRequest(BaseModel):
+    scope: str = "session"
+    passphrase: Optional[str] = None  # set -> AES-256-GCM encrypted .lvault instead of .zip
+
+@router.post("/api/export/bundle")
+async def export_bundle_encrypted(req: BundleRequest, request: Request):
+    """POST so the passphrase travels in the body, never in a URL or access log."""
+    if req.scope not in ("session", "all"):
+        raise HTTPException(status_code=400, detail="scope must be session or all")
+    try:
+        data, filename = await asyncio.to_thread(export.forensic_bundle, _analyst(request) or None, req.scope,
+                                                 req.passphrase or None)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return Response(content=data, media_type="application/octet-stream" if req.passphrase else "application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
 @router.get("/api/export/ocsf")
 async def export_ocsf():
     return JSONResponse(export.ocsf_definitions(),
@@ -653,7 +723,7 @@ async def export_ocsf():
 # ---------------------------------------------------------------- system status / integrity
 
 @router.get("/api/system/status")
-async def system_status():
+async def system_status(request: Request):
     """Live security posture, every value read from the running configuration."""
     from urllib.parse import urlparse
     import ipaddress as _ip
@@ -665,6 +735,7 @@ async def system_status():
     ai = await local_ai.get_status()
     return {
         "auth_required": config.AUTH_REQUIRED,
+        "tls": config.TLS or request.url.scheme == "https",
         "demo_login_enabled": config.DEMO_LOGIN,
         "password_hashing": f"PBKDF2-SHA256, {auth.PBKDF2_ROUNDS:,} rounds",
         "session_hours": auth.SESSION_HOURS,
@@ -676,6 +747,7 @@ async def system_status():
         "geoip_offline_database": analytics.geoip.available,
         "active_containments": len(containment.list_entries()),
         "mapping_rules": len(mapper.list_rules()),
+        "opensearch": search_index.status(),
     }
 
 @router.get("/api/integrity")
@@ -683,3 +755,52 @@ async def integrity(scope: str = "all"):
     if scope not in ("session", "all"):
         raise HTTPException(status_code=400, detail="scope must be session or all")
     return await asyncio.to_thread(export.evidence_fingerprint, scope)
+
+
+
+# ---------------------------------------------------------------- audit log
+
+@router.get("/api/audit")
+async def audit_list(request: Request, limit: int = 100, offset: int = 0,
+                     action: Optional[str] = None, actor: Optional[str] = None):
+    _require_rank(request, 2, "read the audit log")
+    return audit.list_entries(min(max(limit, 1), 500), max(offset, 0), action, actor)
+
+@router.get("/api/audit/verify")
+async def audit_verify(request: Request):
+    _require_rank(request, 2, "verify the audit log")
+    return await asyncio.to_thread(audit.verify)
+
+@router.get("/api/audit/export")
+async def audit_export(request: Request):
+    _require_rank(request, 3, "export the audit log")
+    rows = audit.list_entries(limit=1000000)["entries"][::-1]
+    body = "\n".join(json.dumps(r) for r in rows) + "\n"
+    return Response(content=body, media_type="application/x-ndjson",
+                    headers={"Content-Disposition": 'attachment; filename="logvault-audit-log.jsonl"'})
+
+
+
+# ---------------------------------------------------------------- optional OpenSearch index
+
+@router.get("/api/search/status")
+async def search_status():
+    return search_index.status()
+
+@router.post("/api/search/reindex")
+async def search_reindex(request: Request, scope: str = "all"):
+    """Index events stored before OpenSearch was switched on."""
+    _require_rank(request, 3, "rebuild the search index")
+    if not search_index.enabled():
+        raise HTTPException(status_code=400, detail="OpenSearch is not configured (set OPENSEARCH_URL)")
+    batch, sent = [], 0
+    for evt in export._iter_events(scope, False):
+        batch.append(evt)
+        if len(batch) >= 500:
+            await search_index.index_now(batch)
+            sent += len(batch)
+            batch = []
+    if batch:
+        await search_index.index_now(batch)
+        sent += len(batch)
+    return {**search_index.status(), "reindexed": sent}

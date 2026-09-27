@@ -6,7 +6,8 @@
 const FORMAT_COLORS = ['#8F1127', '#4A0B18', '#924C00', '#6E1B3E', '#3D3537', '#B4233C', '#C47A16', '#756568'];
 const FORMAT_LABELS = {
   syslog: 'Syslog', cef: 'ArcSight CEF', apache: 'Apache / Nginx', json: 'JSON / CloudTrail',
-  windows: 'Windows Security', generic_kv: 'Key=Value', unknown: 'Unparsed'
+  windows: 'Windows Security', generic_kv: 'Key=Value', xml: 'XML', csv: 'CSV',
+  custom: 'Custom text', unknown: 'Unparsed'
 };
 
 const Charts = {

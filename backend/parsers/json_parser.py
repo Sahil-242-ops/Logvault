@@ -67,23 +67,26 @@ def _event_type(data: Dict[str, Any]) -> str:
     return "JSON_EVENT"
 
 
+def map_fields(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Fill the standard fields from common aliases, severity words and event type.
+    Shared by the JSON, XML and CSV parsers."""
+    for field, aliases in FIELD_ALIASES.items():
+        if data.get(field) not in (None, "") and not isinstance(data.get(field), (dict, list)):
+            continue
+        value = next((v for v in (_lookup(data, a) for a in aliases) if v not in (None, "")), None)
+        if value is not None:
+            data[field] = value
+    sev = _severity(data)
+    if sev:
+        data["severity"] = sev
+    data["event_type"] = _event_type(data)
+    return data
+
+
 class JSONParser:
     def parse(self, raw_log: str) -> Dict[str, Any]:
         try:
             data = json.loads(raw_log)
-            if isinstance(data, dict):
-                for field, aliases in FIELD_ALIASES.items():
-                    if data.get(field) not in (None, "") and not isinstance(data.get(field), (dict, list)):
-                        continue
-                    value = next((v for v in (_lookup(data, a) for a in aliases) if v not in (None, "")), None)
-                    if value is not None:
-                        data[field] = value
-
-                sev = _severity(data)
-                if sev:
-                    data["severity"] = sev
-                data["event_type"] = _event_type(data)
-                return data
-            return None
         except json.JSONDecodeError:
             return None
+        return map_fields(data) if isinstance(data, dict) else None

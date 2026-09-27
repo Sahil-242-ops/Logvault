@@ -13,7 +13,7 @@ from .ai.local_ai import local_ai
 from .ai.investigator import investigation_worker
 from .storage import maintenance_worker
 from .config import config
-from . import auth, containment, mapper
+from . import auth, containment, mapper, audit, search_index
 
 # Reachable without signing in
 PUBLIC_API = {"/api/health", "/api/auth/login", "/api/auth/demo", "/api/auth/config"}
@@ -25,6 +25,7 @@ FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 async def lifespan(app: FastAPI):
     db.init_db()
     auth.init_auth_tables()
+    audit.init_tables()
     containment.init_tables()
     mapper.init_tables()
     # Generate new current session ID
@@ -39,8 +40,10 @@ async def lifespan(app: FastAPI):
     worker = asyncio.create_task(investigation_worker()) if config.AUTO_INVESTIGATE else None
     # Storage limit / retention enforcement (no-op while unlimited)
     maintenance = asyncio.create_task(maintenance_worker())
+    indexer = asyncio.create_task(search_index.worker())
     yield
     maintenance.cancel()
+    indexer.cancel()
     if worker:
         worker.cancel()
 
@@ -60,6 +63,57 @@ async def require_sign_in(request: Request, call_next):
         if operator is None and config.AUTH_REQUIRED and path not in PUBLIC_API:
             return JSONResponse({"detail": "Sign in required"}, status_code=401)
     return await call_next(request)
+
+# Requests that change data or hand out evidence -> audit log label.
+# Sign-in is recorded by the endpoint itself (the operator is only known after it succeeds).
+AUDITED_ROUTES = {
+    ("POST", "/api/upload"): "upload_logs",
+    ("POST", "/api/normalize"): "ingest_record",
+    ("POST", "/api/auth/logout"): "sign_out",
+    ("PUT", "/api/auth/me"): "update_profile",
+    ("POST", "/api/auth/password"): "change_password",
+    ("POST", "/api/operators"): "create_operator",
+    ("GET", "/api/operators"): "list_operators",
+    ("POST", "/api/alerts/{event_id}/investigate"): "run_ai_investigation",
+    ("POST", "/api/alerts/{event_id}/approve"): "approve_alert",
+    ("POST", "/api/alerts/{event_id}/reject"): "reject_alert",
+    ("POST", "/api/alerts/{event_id}/status"): "change_alert_status",
+    ("PUT", "/api/storage/policy"): "change_storage_policy",
+    ("POST", "/api/storage/enforce"): "apply_storage_policy",
+    ("POST", "/api/storage/vacuum"): "vacuum_database",
+    ("DELETE", "/api/events"): "delete_all_events",
+    ("POST", "/api/search/reindex"): "reindex_opensearch",
+    ("POST", "/api/mapper/rules"): "save_mapping_rule",
+    ("DELETE", "/api/mapper/rules/{rule_id}"): "delete_mapping_rule",
+    ("POST", "/api/containment"): "contain_asset",
+    ("DELETE", "/api/containment/{entry_id}"): "release_containment",
+    ("GET", "/api/containment/export"): "export_firewall_rules",
+    ("GET", "/api/alerts/{event_id}/dossier"): "download_dossier",
+    ("GET", "/api/export/bundle"): "export_forensic_bundle",
+    ("POST", "/api/export/bundle"): "export_forensic_bundle",
+    ("GET", "/api/export/siem"): "export_siem",
+    ("GET", "/api/export/ocsf"): "download_ocsf_definitions",
+    ("GET", "/api/audit/export"): "export_audit_log",
+}
+
+
+@app.middleware("http")
+async def audit_trail(request: Request, call_next):
+    response = await call_next(request)
+    route = request.scope.get("route")
+    label = AUDITED_ROUTES.get((request.method, getattr(route, "path", None)))
+    # Previews (store=false) change nothing
+    if label and not (label == "ingest_record" and request.query_params.get("store") == "false"):
+        op = getattr(request.state, "operator", None)
+        status = response.status_code
+        outcome = "success" if status < 400 else ("denied" if status in (401, 403) else "failed")
+        target = next(iter(request.path_params.values()), None) or request.query_params.get("format") \
+            or request.query_params.get("scope")
+        audit.record(label, actor=op["email"] if op else None, target=target,
+                     detail={"method": request.method, "path": request.url.path, "status": status},
+                     client_ip=request.client.host if request.client else None, outcome=outcome)
+    return response
+
 
 # Added last so it is the outermost layer and 401 answers still carry CORS headers
 app.add_middleware(

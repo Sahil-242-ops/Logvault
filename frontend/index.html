@@ -587,6 +587,7 @@
               <i data-lucide="search"></i>
               <input type="text" id="stream-search-input" placeholder="Search IP, user, message, keywords..." />
             </div>
+            <span class="badge-pill green-pill" id="stream-search-engine" style="display:none;"></span>
           </div>
 
           <!-- Monospace Live Log Table -->
@@ -906,6 +907,12 @@
                   <div class="dossier-meta-tile">
                     <span class="meta-tile-label"><i data-lucide="shield-check" style="width:12px;height:12px;"></i> PII STATUS</span>
                     <div class="meta-tile-val"><span id="res-pii-status" class="badge-pill green-pill">-</span></div>
+                  </div>
+
+                  <!-- OCSF validation -->
+                  <div class="dossier-meta-tile">
+                    <span class="meta-tile-label"><i data-lucide="badge-check" style="width:12px;height:12px;"></i> OCSF VALIDATION</span>
+                    <div class="meta-tile-val"><span id="res-ocsf-validation" class="badge-pill">-</span></div>
                   </div>
                 </div>
 
@@ -2210,11 +2217,38 @@
                     <div>
                       <strong style="font-size:0.78rem; color:var(--text-ink); display:block;"><i data-lucide="download" style="vertical-align:middle; margin-right:4px;"></i> Export Forensic Evidence Bundle (.zip)</strong>
                       <span style="font-size:0.66rem; color:var(--text-muted);">Events (JSON Lines), alerts, containment list, mapping rules, and a manifest with the SHA-256 of every file</span>
+                      <input type="password" id="bundle-passphrase" onclick="event.stopPropagation()" autocomplete="new-password"
+                        placeholder="Optional passphrase (10+ chars) to encrypt with AES-256"
+                        style="display:block; width:100%; margin-top:6px; font-size:0.68rem; padding:4px 8px; background:var(--bg-app); border:1px solid var(--border-card); border-radius:var(--radius-sm); color:var(--text-ink);" />
                     </div>
                     <select id="bundle-scope" class="filter-select" onclick="event.stopPropagation()" style="font-size:0.66rem;">
                       <option value="session">This session</option>
                       <option value="all">All stored data</option>
                     </select>
+                  </div>
+
+                  <div class="settings-op-btn-card" id="btn-export-siem">
+                    <div>
+                      <strong style="font-size:0.78rem; color:var(--text-ink); display:block;"><i data-lucide="database-zap" style="vertical-align:middle; margin-right:4px;"></i> Export to SIEM / Data Lake</strong>
+                      <span style="font-size:0.66rem; color:var(--text-muted);" id="siem-format-help">OCSF 1.1 events for Splunk, QRadar, ArcSight, Elastic / OpenSearch or a data lake</span>
+                      <label style="display:flex; align-items:center; gap:4px; font-size:0.66rem; color:var(--text-muted); margin-top:4px;" onclick="event.stopPropagation()">
+                        <input type="checkbox" id="siem-only-anomalies" /> Anomalies only
+                      </label>
+                    </div>
+                    <div class="d-flex flex-column gap-1" onclick="event.stopPropagation()">
+                      <select id="siem-format" class="filter-select" style="font-size:0.66rem;">
+                        <option value="ocsf-jsonl">OCSF JSON Lines</option>
+                        <option value="ocsf-jsonl-gz">OCSF JSON Lines .gz (data lake)</option>
+                        <option value="csv">CSV</option>
+                        <option value="cef">CEF (ArcSight / QRadar)</option>
+                        <option value="splunk-hec">Splunk HEC</option>
+                        <option value="elastic-bulk">Elastic / OpenSearch bulk</option>
+                      </select>
+                      <select id="siem-scope" class="filter-select" style="font-size:0.66rem;">
+                        <option value="session">This session</option>
+                        <option value="all">All stored data</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div class="settings-op-btn-card" id="btn-export-firewall-rules">
@@ -2267,6 +2301,38 @@
                 </div>
               </div>
             </div>
+          </div>
+          <!-- Audit log (full width) -->
+          <div class="settings-card mt-3" id="settings-audit-card">
+            <div class="d-flex justify-between align-center mb-2" style="flex-wrap:wrap; gap:8px;">
+              <div>
+                <h3 class="parsers-benchmark-title">
+                  <i data-lucide="scroll-text" style="color:var(--cherry-primary);"></i>
+                  Audit Log
+                </h3>
+                <p style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Every sign-in, change, containment and export, with who did it.
+                  Each entry holds the SHA-256 of the one before, so any edit or deletion is detected.</p>
+              </div>
+              <div class="d-flex gap-2 align-center" style="flex-wrap:wrap;">
+                <select id="audit-filter-action" class="filter-select" style="font-size:0.7rem;">
+                  <option value="">All actions</option>
+                </select>
+                <button class="btn-cream-action btn-sm" id="btn-audit-verify"><i data-lucide="shield-check"></i> Verify chain</button>
+                <button class="btn-cream-action btn-sm" id="btn-audit-export"><i data-lucide="download"></i> Export</button>
+              </div>
+            </div>
+            <div id="audit-verify-result" style="font-size:0.72rem; margin-bottom:8px;"></div>
+            <div class="table-scroll-container">
+              <table class="logvault-table">
+                <thead>
+                  <tr><th>Time</th><th>Who</th><th>Action</th><th>Target</th><th>Result</th><th>From</th></tr>
+                </thead>
+                <tbody id="audit-tbody">
+                  <tr><td colspan="6" style="text-align:center; padding:16px; color:var(--text-muted);">Loading&hellip;</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="storage-footnote" id="audit-footnote" style="margin-top:6px;"></div>
           </div>
         </section>
 

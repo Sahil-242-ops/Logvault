@@ -244,9 +244,12 @@ const Normalizer = {
 
   async executeCustomPipeline(rawText, { store = true } = {}) {
     this.setPipelineStageLoading(true);
+    // Only the latest run may render: an earlier, slower request (AI can take seconds) is dropped
+    const runId = this._runId = (this._runId || 0) + 1;
 
     try {
       const parsedResult = await window.LogVaultAPI.normalizeLog(rawText, { store });
+      if (runId !== this._runId) return;
 
       const tokens = rawText.split(/[\s,]+/).map(t => {
         let type = 'generic';
@@ -628,6 +631,20 @@ const Normalizer = {
     if (mitreEl) {
       mitreEl.innerText = mitre;
       mitreEl.className = mitre !== 'None' ? 'badge-pill high-pill' : 'badge-pill';
+    }
+
+    const valEl = document.getElementById('res-ocsf-validation');
+    const val = (data._raw_backend || data).ocsf_validation;
+    if (valEl) {
+      if (!val) {
+        valEl.textContent = '-';
+        valEl.className = 'badge-pill';
+        valEl.title = '';
+      } else {
+        valEl.textContent = !val.valid ? `Invalid (${val.errors.length})` : val.warnings.length ? `Valid, ${val.warnings.length} note${val.warnings.length > 1 ? 's' : ''}` : 'Valid';
+        valEl.className = `badge-pill ${!val.valid ? 'crit-pill' : val.warnings.length ? 'warn-pill' : 'green-pill'}`;
+        valEl.title = [...val.errors, ...val.warnings].join('\n') || 'All OCSF base-event and class requirements met';
+      }
     }
 
     if (piiEl) {

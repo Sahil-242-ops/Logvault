@@ -28,6 +28,12 @@ async def lifespan(app: FastAPI):
     audit.init_tables()
     containment.init_tables()
     mapper.init_tables()
+    # Warm every parser once (regex compilation, XML reader setup) so the first real log
+    # is timed like every other one instead of paying the one-off start-up cost
+    from .api import PARSER_CATALOG
+    from .parsers.detector import detector
+    for sample in PARSER_CATALOG:
+        detector.detect_and_parse(sample["sample"])
     # Generate new current session ID
     db.current_session_id = str(uuid.uuid4())
     print(f"[BOOT] New Empty Application Session: {db.current_session_id}")

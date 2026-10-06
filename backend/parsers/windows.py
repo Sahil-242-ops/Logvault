@@ -29,7 +29,7 @@ EVENT_IDS = {
 # Windows field name -> LogVault field
 FIELD_MAP = {
     "TargetUserName": "user", "SubjectUserName": "subject_user", "AccountName": "user",
-    "IpAddress": "source_ip", "SourceIP": "source_ip", "SourceAddress": "source_ip",
+    "IpAddress": "source_ip", "SourceIP": "source_ip", "SourceAddress": "source_ip", "SourceNetworkAddress": "source_ip",
     "IpPort": "source_port", "SourcePort": "source_port",
     "DestAddress": "destination_ip", "DestPort": "destination_port",
     "Computer": "host", "Workstation": "host", "WorkstationName": "workstation",

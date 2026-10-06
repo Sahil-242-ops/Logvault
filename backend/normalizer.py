@@ -29,10 +29,11 @@ class Normalizer:
         self.pii_masker = PIIMasker()
 
     async def normalize(self, raw_log: str, use_ai: bool = True) -> Dict[str, Any]:
-        start_time = time.time()
+        start_time = time.perf_counter()
 
-        # 1. Format Detection & Parsing
+        # 1. Format Detection & Parsing (timed on its own: the AI step below can take seconds)
         fmt, parsed, confidence = detector.detect_and_parse(raw_log)
+        parse_ms = (time.perf_counter() - start_time) * 1000
         parser_type = "DETERMINISTIC"
 
         if not parsed:
@@ -40,6 +41,7 @@ class Normalizer:
             fmt = "unknown"
 
         # 2. Genuine AI Intelligence Enrichment
+        ai_start = time.perf_counter()
         if use_ai:
             ai_intelligence = await local_ai.analyze(raw_log)
         else:
@@ -52,6 +54,7 @@ class Normalizer:
                 "mitre_techniques": []
             }
         
+        ai_ms = (time.perf_counter() - ai_start) * 1000
         parsed["ai_provider"] = ai_intelligence.get("ai_provider", "none")
         parsed["ai_model"] = ai_intelligence.get("ai_model", "none")
         
@@ -123,12 +126,15 @@ class Normalizer:
 
         class_uid = get_ocsf_class_uid(event_class_name)
 
-        latency_ms = (time.time() - start_time) * 1000
+        latency_ms = (time.perf_counter() - start_time) * 1000
 
         # Construct final output
         result = {
             "id": str(uuid.uuid4()),
-            "processing_latency_ms": round(latency_ms, 3),
+            "processing_latency_ms": round(latency_ms, 3),       # whole pipeline
+            "parse_latency_ms": round(parse_ms, 3),              # format detection + parser only
+            "ai_latency_ms": round(ai_ms, 3),                    # local AI (0 when skipped, ~0 when cached)
+            "ai_cached": bool(ai_intelligence.get("_cache_hit")),
             "detected_format": fmt,
             "detection_confidence": confidence,
             "parser_name": f"Mapping rule: {fmt[7:]}" if fmt.startswith("custom:") else f"{fmt.upper()} Parser",

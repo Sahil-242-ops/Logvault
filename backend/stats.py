@@ -39,7 +39,7 @@ def dashboard() -> Dict[str, Any]:
                COALESCE(SUM(CASE WHEN json_extract(normalized_json, '$.ocsf_class_uid') > 0 THEN 1 ELSE 0 END), 0),
                COALESCE(SUM(CASE WHEN COALESCE(source_ip, user, host) IS NOT NULL THEN 1 ELSE 0 END), 0),
                AVG(json_extract(normalized_json, '$.parse_confidence')),
-               AVG(json_extract(normalized_json, '$.processing_latency_ms'))
+               AVG(COALESCE(json_extract(normalized_json, '$.parse_latency_ms'), json_extract(normalized_json, '$.processing_latency_ms')))
         FROM events WHERE 1=1 {where}
     """, params)
     total, anomalous, critical, parsed, ocsf_mapped, with_fields, avg_conf, avg_latency = c.fetchone()
@@ -119,7 +119,7 @@ def collectors() -> Dict[str, Any]:
         SELECT COALESCE(NULLIF(host, ''), NULLIF(source_ip, ''), 'unattributed') AS origin,
                COALESCE(detected_format, 'unknown'), COUNT(*), COALESCE(SUM(is_anomalous), 0),
                MAX(threat_score), MIN(received_at), MAX(received_at),
-               AVG(json_extract(normalized_json, '$.processing_latency_ms')),
+               AVG(COALESCE(json_extract(normalized_json, '$.parse_latency_ms'), json_extract(normalized_json, '$.processing_latency_ms'))),
                COUNT(DISTINCT source_ip)
         FROM events WHERE 1=1 {where}
         GROUP BY origin, 2 ORDER BY 3 DESC
@@ -161,7 +161,7 @@ def parser_usage() -> Dict[str, Dict[str, Any]]:
     conn = db.get_connection()
     rows = conn.execute(f"""
         SELECT COALESCE(detected_format, 'unknown'), COUNT(*),
-               AVG(json_extract(normalized_json, '$.processing_latency_ms')),
+               AVG(COALESCE(json_extract(normalized_json, '$.parse_latency_ms'), json_extract(normalized_json, '$.processing_latency_ms'))),
                AVG(json_extract(normalized_json, '$.parse_confidence')),
                MAX(received_at)
         FROM events WHERE 1=1 {where} GROUP BY 1

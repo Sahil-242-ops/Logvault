@@ -13,6 +13,8 @@ class ApacheParser:
             return None
             
         data = match.groupdict()
+        if data.get('user') == '-':  # "-" means no authenticated user in the Common Log Format
+            data['user'] = None
         data['action'] = data.get('method')
         data['status'] = int(data.get('status_code')) if data.get('status_code') else None
         data['event_type'] = "HTTP_ACTIVITY"

@@ -62,7 +62,11 @@ async def require_sign_in(request: Request, call_next):
         request.state.operator = operator
         if operator is None and config.AUTH_REQUIRED and path not in PUBLIC_API:
             return JSONResponse({"detail": "Sign in required"}, status_code=401)
-    return await call_next(request)
+    response = await call_next(request)
+    # UI files: always revalidate (ETag), so a browser never runs an outdated copy of the app
+    if not path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 # Requests that change data or hand out evidence -> audit log label.
 # Sign-in is recorded by the endpoint itself (the operator is only known after it succeeds).

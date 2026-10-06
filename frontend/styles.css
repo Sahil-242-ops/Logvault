@@ -349,14 +349,6 @@ body {
   font-weight: 600;
 }
 
-.live-green-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: #48BB78;
-  box-shadow: 0 0 6px #48BB78;
-  display: inline-block;
-}
 
 .clock-time-display {
   font-family: var(--font-mono);
@@ -573,23 +565,8 @@ body {
   border-color: var(--cherry-border);
 }
 
-.badge-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  display: inline-block;
-}
 
-.badge-dot.green {
-  background-color: #34D399;
-  box-shadow: 0 0 5px rgba(52, 211, 153, 0.7);
-}
 
-.badge-dot.cherry {
-  background-color: #FF6B8B;
-  box-shadow: 0 0 5px rgba(255, 107, 139, 0.7);
-}
 
 .badge-text-primary {
   font-weight: 600;
@@ -1355,20 +1332,7 @@ body {
   border: 1px solid #78480C;
 }
 
-.pulse-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--status-green);
-  animation: pulseGreen 1.4s infinite;
-}
 
-.paused-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--status-amber);
-}
 
 @keyframes pulseGreen {
   0% {
@@ -5361,14 +5325,6 @@ body.theme-dark .flowchart-stage-col {
   letter-spacing: 0.5px;
 }
 
-.live-dot-cherry {
-  width: 6px;
-  height: 6px;
-  background: var(--cherry-primary);
-  border-radius: 50%;
-  box-shadow: 0 0 8px var(--cherry-primary);
-  animation: pulse-dot 1.8s infinite;
-}
 
 @keyframes pulse-dot {
 
@@ -6147,15 +6103,6 @@ body.theme-dark .flowchart-stage-col {
   margin-top: 10px;
 }
 
-.live-dot-cherry {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: #FF3366;
-  box-shadow: 0 0 8px #FF3366;
-  display: inline-block;
-  animation: pulseDot 1.4s infinite;
-}
 
 /* Quick Clearance Presets Grid */
 .login-presets-wrap {
@@ -7354,3 +7301,141 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   .dash-middle-grid,
   .dash-lower-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Status badges: solid colour with readable text (no glowing dots) */
+.solid-green,
+.solid-cherry {
+  color: #FFF8F0 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+.solid-green {
+  background: #1B5E3C !important;
+  border-color: #1B5E3C !important;
+}
+.solid-cherry {
+  background: #8F1127 !important;
+  border-color: #8F1127 !important;
+}
+.solid-green *,
+.solid-cherry * { color: inherit !important; }
+.solid-green .badge-text-secondary,
+.solid-cherry .badge-text-secondary { opacity: 0.85; }
+.system-status-indicator.solid-green {
+  display: inline-flex;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+}
+.k-ai-working.solid-cherry {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+/* Workflow filters are all solid now, so the selected one gets a ring */
+.wf-pill-btn.solid-green.active,
+.wf-pill-btn.solid-cherry.active { box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--text-ink) !important; }
+
+/* ---------- Header status badges (top bar, banners) ---------- */
+.header-status-badge.solid-green,
+.header-status-badge.solid-cherry {
+  gap: 9px;
+  padding: 6px 14px 6px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+.header-status-badge.solid-green { background: linear-gradient(135deg, #1F6B45, #154C31) !important; }
+.header-status-badge.solid-cherry { background: linear-gradient(135deg, #9C1A30, #74122A) !important; }
+.header-status-badge .hdr-badge-icon {
+  width: 22px; height: 22px; padding: 4px; flex-shrink: 0;
+  border-radius: 7px; background: rgba(255, 255, 255, 0.12);
+}
+.header-status-badge.solid-green .badge-text-primary,
+.header-status-badge.solid-cherry .badge-text-primary { font-size: 0.74rem; font-weight: 600; letter-spacing: 0.1px; }
+.header-status-badge.solid-green .badge-text-sub,
+.header-status-badge.solid-cherry .badge-text-sub {
+  font-size: 0.6rem; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; opacity: 0.72;
+}
+
+/* ---------- Sidebar engine label ---------- */
+.system-status-indicator.solid-green {
+  align-self: flex-start;
+  gap: 6px;
+  padding: 3px 9px 3px 7px;
+  border-radius: 6px;
+  background: rgba(31, 107, 69, 0.55) !important;
+  border: 1px solid rgba(134, 239, 172, 0.18) !important;
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+.system-status-indicator .engine-icon { width: 12px; height: 12px; opacity: 0.85; }
+
+/* ---------- Record tables (Reporting Sources, Topology sources) ---------- */
+.anom-records-header-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px;
+}
+.records-title {
+  font-family: var(--font-heading); font-size: 0.95rem; font-weight: 700; color: var(--text-ink); margin: 0;
+}
+.records-sub { font-size: 0.72rem; color: var(--text-muted); margin: 2px 0 0; }
+.records-action svg { width: 15px; height: 15px; }
+.anom-records-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.8rem; }
+.anom-records-table th {
+  text-align: left; font-size: 0.64rem; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase;
+  color: var(--text-muted); padding: 10px 14px; background: var(--bg-card-subtle);
+  border-bottom: 1px solid var(--border-card); white-space: nowrap;
+}
+.anom-records-table th:first-child { border-top-left-radius: 8px; }
+.anom-records-table th:last-child { border-top-right-radius: 8px; }
+.anom-records-table td {
+  padding: 11px 14px; border-bottom: 1px solid var(--border-subtle, var(--border-card));
+  color: var(--text-ink); vertical-align: middle; white-space: nowrap;
+}
+.anom-records-table tbody tr { transition: background-color 0.12s ease; }
+.anom-records-table tbody tr:hover td { background: var(--bg-card-subtle); }
+.anom-records-table tbody tr:last-child td { border-bottom: none; }
+.anom-records-table .num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+.anom-records-table td.muted { color: var(--text-muted); }
+.anom-records-table td small { font-size: 0.66rem; margin-left: 2px; color: var(--text-muted); }
+.anom-records-table td.is-alert { color: var(--cherry-primary); font-weight: 700; }
+.anom-records-table .actions-col { text-align: right; width: 1%; }
+.src-name { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.src-sub { font-size: 0.66rem; color: var(--text-muted); margin-top: 2px; }
+.src-tag {
+  font-size: 0.58rem; font-weight: 600; padding: 1px 6px; border-radius: 4px;
+  background: #8F1127; color: #FFF8F0; letter-spacing: 0.3px;
+}
+.fmt-chip {
+  display: inline-block; font-size: 0.7rem; padding: 2px 8px; border-radius: 5px;
+  background: var(--bg-card-subtle); border: 1px solid var(--border-card); color: var(--text-ink);
+}
+.threat-score {
+  display: inline-block; min-width: 30px; text-align: center; padding: 1px 6px; border-radius: 5px; font-weight: 600;
+}
+.threat-score.is-high { background: rgba(143, 17, 39, 0.1); color: #8F1127; }
+.threat-score.is-mid { background: rgba(196, 122, 22, 0.12); color: #9A5B0A; }
+.threat-score.is-low { color: var(--text-muted); }
+.status-chip { display: inline-block; font-size: 0.68rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
+.status-chip.status-active { background: #1B5E3C; color: #FFF8F0; }
+.status-chip.status-idle { background: rgba(196, 122, 22, 0.14); color: #8A5208; }
+.status-chip.status-silent { background: var(--bg-card-subtle); color: var(--text-muted); border: 1px solid var(--border-card); }
+.row-btn {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 0.7rem; font-weight: 600;
+  padding: 4px 10px; border-radius: 6px; cursor: pointer; margin-left: 4px;
+  background: transparent; border: 1px solid var(--border-card); color: var(--text-ink);
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+.row-btn svg { width: 13px; height: 13px; }
+.row-btn:hover { background: var(--bg-card-subtle); border-color: var(--text-muted); }
+.row-btn-danger { color: #8F1127; }
+.row-btn-danger:hover { background: rgba(143, 17, 39, 0.08); border-color: #8F1127; }
+
+/* ---------- Normalizer: how the log was read ---------- */
+.regex-plain { font-size: 0.78rem; color: var(--text-ink); margin: 6px 0 8px; line-height: 1.45; }
+.regex-details summary {
+  cursor: pointer; font-size: 0.72rem; font-weight: 600; color: var(--cherry-primary); list-style: none; user-select: none;
+}
+.regex-details summary::-webkit-details-marker { display: none; }
+.regex-details summary::before { content: "\25B8"; display: inline-block; margin-right: 6px; transition: transform 0.15s ease; }
+.regex-details[open] summary::before { transform: rotate(90deg); }
+.regex-details[open] .regex-code-snippet { margin-top: 8px; }
+

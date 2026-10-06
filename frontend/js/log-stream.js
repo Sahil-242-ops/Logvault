@@ -143,8 +143,8 @@ const LogStream = {
     }
 
     if (badge) {
-      badge.className = this.isPlaying ? 'live-indicator-badge live' : 'live-indicator-badge paused';
-      badge.innerHTML = this.isPlaying ? '<span class="pulse-dot"></span> LIVE STREAM' : '<span class="paused-dot"></span> STREAM PAUSED';
+      badge.className = this.isPlaying ? 'live-indicator-badge live solid-green' : 'live-indicator-badge paused solid-cherry';
+      badge.innerHTML = this.isPlaying ? 'LIVE STREAM' : 'STREAM PAUSED';
     }
 
     if (this.isPlaying) {
@@ -204,9 +204,9 @@ const LogStream = {
       engineEl.textContent = result && result.search_engine === 'opensearch' ? 'Searched by OpenSearch' : 'Searched by SQLite';
     }
     if (result && result.events) {
-      const lat = result.events.map(e => e.processing_latency_ms).filter(v => typeof v === 'number');
+      const lat = result.events.map(e => e.parse_latency_ms ?? e.processing_latency_ms).filter(v => typeof v === 'number');
       const latEl = document.getElementById('stream-latency');
-      if (latEl) latEl.textContent = lat.length ? `${(lat.reduce((a, v) => a + v, 0) / lat.length).toFixed(2)} ms / record` : '—';
+      if (latEl) latEl.textContent = lat.length ? `${(lat.reduce((a, v) => a + v, 0) / lat.length).toFixed(2)} ms parse / record` : '—';
       const existingIds = new Set(this.logs.map(l => l.id));
       let newCount = 0;
       
@@ -305,11 +305,11 @@ const LogStream = {
     if (liveEpsValEl) liveEpsValEl.innerText = epsStr;
     if (liveEpsBadgeEl) {
       if (this.currentEps > 0) {
-        liveEpsBadgeEl.className = 'badge-pill green-pill';
-        liveEpsBadgeEl.innerHTML = `<span class="pulse-dot"></span> <span>${epsStr}</span> EPS`;
+        liveEpsBadgeEl.className = 'badge-pill green-pill solid-green';
+        liveEpsBadgeEl.innerHTML = `<span>${epsStr}</span> EPS`;
       } else {
-        liveEpsBadgeEl.className = 'badge-pill';
-        liveEpsBadgeEl.innerHTML = `<span class="paused-dot"></span> <span>0.0</span> EPS`;
+        liveEpsBadgeEl.className = 'badge-pill solid-cherry';
+        liveEpsBadgeEl.innerHTML = `<span>0.0</span> EPS`;
       }
     }
 

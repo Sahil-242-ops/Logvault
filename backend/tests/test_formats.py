@@ -76,3 +76,21 @@ def test_structured_events_trigger_detection(raw, rule):
     parsed["raw_log"] = raw
     result = anomaly_detector.detect(parsed)
     assert result["is_anomalous"] and any(f["rule_name"] == rule for f in result["findings"])
+
+
+
+def test_json_envelope_is_unwrapped():
+    from backend.parsers.detector import detector
+    cases = {
+        '{"timestamp":"2026-07-15T12:34:56Z","type":"syslog","log":"Jul 15 12:34:56 server01 sshd[12345]: Failed password for invalid user admin from 192.168.1.100 port 54321 ssh2"}': ("syslog", "192.168.1.100"),
+        '{"timestamp":"2026-07-15T12:42:10Z","log":"203.0.113.1 - - [15/Jul/2026:12:42:10 +0000] \\"GET /../../etc/passwd HTTP/1.1\\" 400 7"}': ("apache", "203.0.113.1"),
+        '{"ts":"2026-07-15T12:45:00Z","message":"CEF:0|Palo Alto Networks|PAN-OS|11.0|TRAFFIC|drop|8|src=10.10.10.25 dst=192.168.1.5"}': ("cef", "10.10.10.25"),
+    }
+    for raw, (fmt, ip) in cases.items():
+        got, parsed, _ = detector.detect_and_parse(raw)
+        assert (got, parsed.get("source_ip"), parsed.get("envelope")) == (fmt, ip, "json"), raw
+    # the wrapper's full ISO time wins over a year-less syslog time
+    _, parsed, _ = detector.detect_and_parse(list(cases)[0])
+    assert parsed["timestamp"] == "2026-07-15T12:34:56Z"
+    # plain JSON events are unchanged
+    assert detector.detect_and_parse('{"user":"alice","action":"login","src_ip":"10.0.0.1"}')[0] == "json"

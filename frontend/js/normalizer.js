@@ -338,6 +338,9 @@ const Normalizer = {
       parser: r.parser_name || 'Backend Parser',
       parserType: r.parser_type || 'DETERMINISTIC',
       latency: (r.processing_latency_ms || 0).toFixed(2) + ' ms',
+      parseLatency: r.parse_latency_ms !== undefined ? r.parse_latency_ms.toFixed(3) + ' ms' : null,
+      aiLatency: r.ai_latency_ms !== undefined ? r.ai_latency_ms : null,
+      aiCached: !!r.ai_cached,
       confidence: r.parse_confidence || r.detection_confidence || 0,
       ocsf_class: r.ocsf_class_name || null,
       ocsf_class_uid: r.ocsf_class_uid || null,
@@ -502,8 +505,8 @@ const Normalizer = {
     const badge = document.getElementById('norm-pipeline-status-badge');
     if (badge) {
       badge.innerHTML = isLoading
-        ? '<span class="pulse-dot"></span> PARSING TELEMETRY...'
-        : '<span class="status-dot green-dot"></span> PIPELINE SYNCHRONIZED';
+        ? 'PARSING TELEMETRY...'
+        : 'PIPELINE SYNCHRONIZED';
     }
   },
 
@@ -546,7 +549,8 @@ const Normalizer = {
     const parserLatency = document.getElementById('norm-parser-latency');
     const parserTypeBadge = document.getElementById('norm-parser-type-badge');
     if (parserName) parserName.innerText = data.parser;
-    if (parserLatency) parserLatency.innerText = data.latency || '—';
+    // Parser card: the parser's own time. Ribbon: the whole record, with the AI share spelled out.
+    if (parserLatency) parserLatency.innerText = data.parseLatency || '—';
     if (parserTypeBadge) {
       parserTypeBadge.innerText = data.parserType || 'DETERMINISTIC';
       parserTypeBadge.className = data.parserType === 'AI_HEURISTIC' ? 'badge-pill cherry-pill' : 'badge-pill gold-pill';
@@ -554,7 +558,7 @@ const Normalizer = {
 
     // Ribbon, OCSF strip and flow badge for this record
     const setText = (id, t) => { const el = document.getElementById(id); if (el) el.innerHTML = t; };
-    setText('norm-ribbon-latency', data.latency || '&mdash;');
+    setText('norm-ribbon-latency', data.parseLatency || '&mdash;');
     setText('norm-flow-badge', Utils.escapeHtml(`${data.format} → ${data.ocsf_class || 'Unknown class'}`));
     setText('norm-ocsf-class-pill', data.ocsf_class_uid ? Utils.escapeHtml(`Class ${data.ocsf_class_uid}: ${data.ocsf_class}`) : 'No OCSF class');
     const schemaVals = Object.values(data.schema || {});
@@ -618,7 +622,7 @@ const Normalizer = {
     if (modelEl) modelEl.innerText = hasModel ? aiModel : '—';
     if (badgeEl) {
       badgeEl.innerText = hasModel ? `Ollama: ${aiModel}` : 'No Local AI';
-      badgeEl.className = hasModel ? 'badge-pill green-pill' : 'badge-pill warn-pill';
+      badgeEl.className = hasModel ? 'badge-pill green-pill solid-green' : 'badge-pill warn-pill solid-cherry';
     }
 
     let mitre = 'None';
@@ -715,14 +719,35 @@ const Normalizer = {
     const entropyScore = Math.min(8.0, entropy).toFixed(2);
     const pct = Math.min(100, Math.round((entropy / 6.0) * 100));
 
-    entropyValEl.innerText = `${entropyScore} / 8.0 (Normal Telemetry)`;
+    // Same thresholds as the backend detector: above 5.5 looks encoded/obfuscated, above 6.5 very likely
+    const level = entropy > 6.5 ? 'Very high' : entropy > 5.5 ? 'High' : 'Normal';
+    entropyValEl.innerText = `${entropyScore} / 8.0 (${level})`;
     entropyFillEl.style.width = `${pct}%`;
+    const note = document.getElementById('norm-entropy-note');
+    if (note) {
+      note.textContent = entropy > 5.5
+        ? 'Randomness this high usually means encoded or obfuscated content; LOGVAULT flags it as an anomaly.'
+        : 'Ordinary log text. Encoded or obfuscated payloads score above 5.5 and are flagged.';
+    }
   },
 
   // Show the regex of the parser that actually handled this record
   renderRegexPattern(format) {
     const patternBox = document.getElementById('norm-regex-pattern-display');
     if (!patternBox) return;
+    const plain = document.getElementById('norm-regex-plain');
+    if (plain) {
+      const name = window.Charts ? Charts.formatLabel(format) : format;
+      plain.innerHTML = !format || format === 'unknown'
+        ? 'No parser recognised this record. Map it in the Schema Mapper to teach LOGVAULT the format.'
+        : format === 'json'
+          ? 'Read as a JSON document; field names were matched to the common schema. Fixed rules, no AI.'
+          : format === 'custom'
+            ? 'No specific parser matched, so IPs, users, ports and times were picked out by their shape.'
+            : String(format).startsWith('custom:')
+              ? `Read by your saved mapping rule <strong>${Utils.escapeHtml(format.slice(7))}</strong>.`
+              : `Read by the <strong>${Utils.escapeHtml(name)}</strong> parser, a fixed pattern that gives the same result every time (no AI).`;
+    }
     const pat = this.parserPatterns[format];
     if (!pat) {
       patternBox.innerHTML = format === 'json'
@@ -832,13 +857,13 @@ const Normalizer = {
 
     astBox.innerHTML = `
       <div style="padding:14px; font-family:var(--font-mono); font-size:0.75rem; line-height:1.6;">
-        <div style="color:var(--cherry-primary); font-weight:800; margin-bottom:8px;">Root::OCSF_Event_Envelope [Class UID: ${data.schema.ocsf_class_uid || 3001}]</div>
+        <div style="color:var(--cherry-primary); font-weight:800; margin-bottom:8px;">Root::OCSF_Event_Envelope [Class UID: ${data.ocsf_class_uid || 0}${data.ocsf_class ? ' ' + Utils.escapeHtml(data.ocsf_class) : ''}]</div>
         <div style="padding-left:14px; border-left:2px solid var(--border-card);">
-          <div style="color:var(--text-muted);">&bull; Metadata::Header &rarr; <span style="color:var(--status-green);">Deterministic (0.04ms)</span></div>
-          <div style="color:var(--text-muted);">&bull; EventClass &rarr; <strong style="color:var(--text-ink);">${data.schema.event_type}</strong></div>
-          <div style="color:var(--text-muted);">&bull; Network::SourceEndpoint &rarr; <strong style="color:var(--cherry-primary);">${data.schema.source_ip || data.schema.src_ip || 'N/A'}</strong></div>
-          <div style="color:var(--text-muted);">&bull; Identity::Subject &rarr; <strong style="color:var(--text-ink);">${data.schema.user || data.schema.target_user || 'system'}</strong></div>
-          <div style="color:var(--text-muted);">&bull; Status::Resolution &rarr; <span class="badge-pill ${data.schema.status === 'SUCCESS' ? 'green-pill' : 'crit-pill'}">${data.schema.status || 'OK'}</span></div>
+          <div style="color:var(--text-muted);">&bull; Metadata::Parser &rarr; <span style="color:var(--status-green);">${Utils.escapeHtml(data.parser || 'none')} (${Utils.escapeHtml(data.parseLatency || '—')})</span></div>
+          <div style="color:var(--text-muted);">&bull; EventClass &rarr; <strong style="color:var(--text-ink);">${Utils.escapeHtml(data.schema.event_type || '')}</strong></div>
+          <div style="color:var(--text-muted);">&bull; Network::SourceEndpoint &rarr; <strong style="color:var(--cherry-primary);">${Utils.escapeHtml(data.schema.source_ip || 'N/A')}</strong></div>
+          <div style="color:var(--text-muted);">&bull; Identity::Subject &rarr; <strong style="color:var(--text-ink);">${Utils.escapeHtml(data.schema.user || 'N/A')}</strong></div>
+          <div style="color:var(--text-muted);">&bull; Status::Resolution &rarr; <span class="badge-pill ${/FAIL|DENI|BLOCK|REJECT/i.test(data.schema.status || '') ? 'crit-pill' : 'green-pill'}">${Utils.escapeHtml(data.schema.status || 'RECORDED')}</span></div>
         </div>
       </div>
     `;

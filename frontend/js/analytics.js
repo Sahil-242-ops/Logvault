@@ -238,7 +238,7 @@ const AnalyticsModule = {
 
     if (badge && badgeText) {
       const ok = geo && geo.geoip_available;
-      badge.className = `header-status-badge ${ok ? 'green' : 'amber'}`;
+      badge.className = `header-status-badge ${ok ? 'green solid-green' : 'amber solid-cherry'}`;
       badgeText.innerText = !geo ? 'Backend offline' : (ok ? `Offline GeoIP: ${geo.geoip_database}` : 'GeoIP database missing');
       badge.title = ok
         ? 'IP geolocation runs locally from the bundled database. No network lookups. IP geolocation by DB-IP (db-ip.com), CC BY 4.0.'

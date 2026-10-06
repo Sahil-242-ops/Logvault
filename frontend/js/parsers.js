@@ -144,7 +144,7 @@ const ParsersModule = {
     }
     const total = this.usage.total_events || 1;
     el.innerHTML = rows.map(p => this.barRow(p.name,
-      p.unparsed ? 'map these in the AI Schema Mapper' : `avg ${p.avg_latency_ms} ms full pipeline`,
+      p.unparsed ? 'map these in the AI Schema Mapper' : `avg ${p.avg_latency_ms} ms to parse`,
       p.events / total * 100, `${p.events.toLocaleString()} (${(p.events / total * 100).toFixed(1)}%)`,
       p.unparsed ? 'var(--status-amber)' : 'var(--cherry-primary)')).join('');
   },
@@ -242,7 +242,7 @@ const ParsersModule = {
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-family:var(--font-mono); font-size:0.68rem; margin-bottom:12px;">
             ${cell('Parse speed', speed, 'var(--status-green)')}
             ${cell('Records matched', (p.events || 0).toLocaleString(), 'var(--cherry-primary)')}
-            ${cell('Avg pipeline time', p.events ? `${p.avg_latency_ms} ms` : '&mdash;', 'var(--text-ink)')}
+            ${cell('Avg parse time', p.events ? `${p.avg_latency_ms} ms` : '&mdash;', 'var(--text-ink)')}
             ${cell('OCSF class', Utils.escapeHtml(p.ocsf_class), 'var(--text-ink)')}
           </div>
         </div>

@@ -103,9 +103,9 @@
       <!-- Sidebar Bottom System State & Collapse -->
       <div class="sidebar-footer">
         <div class="sidebar-bottom-meta">
-          <div class="system-status-indicator">
-            <span class="live-green-dot"></span>
-            <span>Local Engine Active</span>
+          <div class="system-status-indicator solid-green">
+            <i data-lucide="cpu" class="engine-icon"></i>
+            <span>Local engine active</span>
           </div>
           <div class="clock-time-display" id="clock-time">10:31:09 AM</div>
           <div class="clock-date-display" id="clock-date">Aug 28, 2026</div>
@@ -147,8 +147,8 @@
           </button>
 
           <!-- System Throughput Badge -->
-          <div class="header-status-badge green">
-            <span class="badge-dot green"></span>
+          <div class="header-status-badge green solid-green">
+            <i data-lucide="activity" class="hdr-badge-icon"></i>
             <div>
               <span class="badge-text-primary" id="hdr-throughput">Measuring...</span>
               <span class="badge-text-sub">Pipeline Healthy</span>
@@ -156,8 +156,8 @@
           </div>
 
           <!-- Offline / Edge Processing Badge -->
-          <div class="header-status-badge cherry">
-            <span class="badge-dot cherry"></span>
+          <div class="header-status-badge cherry solid-cherry">
+            <i data-lucide="shield-check" class="hdr-badge-icon"></i>
             <div>
               <span class="badge-text-primary">Air-Gapped</span>
               <span class="badge-text-sub">Edge Processing</span>
@@ -314,8 +314,8 @@
                   <p id="dash-activity-sub">Events stored over time (solid) and anomalies (dashed)</p>
                 </div>
                 <div class="d-flex align-center gap-2">
-                  <span class="badge-pill high-pill" id="dash-ingest-badge"><span class="badge-dot cherry" style="width:5px;height:5px;"></span>No events yet</span>
-                  <span class="badge-pill green-pill" id="dash-parsed-badge"><span class="badge-dot green" style="width:5px;height:5px;"></span>Parsed 0%</span>
+                  <span class="badge-pill high-pill solid-cherry" id="dash-ingest-badge">No events yet</span>
+                  <span class="badge-pill green-pill solid-green" id="dash-parsed-badge">Parsed 0%</span>
                 </div>
               </div>
               <div class="spline-chart-wrap">
@@ -412,8 +412,8 @@
           <div class="live-stream-header-toolbar">
             <div class="stream-title-group">
               <h2>Live Ingestion Stream</h2>
-              <div class="live-indicator-badge live" id="stream-live-badge">
-                <span class="pulse-dot"></span> Pipeline Active
+              <div class="live-indicator-badge live solid-green" id="stream-live-badge">
+                Pipeline Active
               </div>
             </div>
 
@@ -544,7 +544,7 @@
             <div class="live-spark-meter-card">
               <div class="d-flex justify-between align-center">
                 <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">Current Throughput</span>
-                <span class="badge-pill green-pill" id="stream-live-eps-badge"><span class="pulse-dot"></span> <span id="stream-live-eps-val">0.0</span> EPS</span>
+                <span class="badge-pill solid-cherry" id="stream-live-eps-badge"><span id="stream-live-eps-val">0.0</span> EPS</span>
               </div>
               <div class="mt-2">
                 <div style="font-family:var(--font-heading); font-size:1.6rem; font-weight:800; color:var(--text-ink);">
@@ -637,15 +637,15 @@
                 <h2>Log Normalization &amp; Schema Mapping Engine</h2>
                 <p>Deterministic parsing and field transformation into Open Cybersecurity Schema Framework (OCSF 1.1 / Elastic Standard)</p>
               </div>
-              <div class="badge-pill green-pill" id="norm-pipeline-status-badge">
-                <span class="status-dot green-dot"></span> Pipeline Active
+              <div class="badge-pill green-pill solid-green" id="norm-pipeline-status-badge">
+                Pipeline Active
               </div>
             </div>
 
             <!-- Normalizer Hero Telemetry Ribbon -->
             <div class="normalizer-telemetry-ribbon">
               <div class="norm-stat-tile">
-                <span class="norm-stat-label">Last Record Processing</span>
+                <span class="norm-stat-label">Parse Time (Last Record)</span>
                 <span class="norm-stat-val" style="color:var(--cherry-primary);" id="norm-ribbon-latency">&mdash;</span>
               </div>
               <div class="norm-stat-tile">
@@ -742,27 +742,22 @@
                 <div class="entropy-bar-track">
                   <div id="norm-entropy-bar-fill" class="entropy-bar-fill"></div>
                 </div>
-                <small style="color:var(--text-muted); font-size:0.68rem; margin-top:4px; display:block;">Telemetry
-                  noise within safe bounds (0.01% anomaly risk).</small>
+                <small id="norm-entropy-note" style="color:var(--text-muted); font-size:0.68rem; margin-top:4px; display:block;"></small>
               </div>
 
               <!-- Regex Pattern Breakdown Box -->
               <div class="regex-pattern-card">
                 <div class="regex-pattern-head">
-                  <span>Named Capture Regex Pattern</span>
-                  <div class="d-flex align-center gap-2">
-                    <button class="btn-cream-action btn-sm" id="btn-copy-regex"
-                      style="padding:2px 8px; font-size:0.68rem;">
-                      <i data-lucide="copy" style="width:12px;"></i> Copy Regex
-                    </button>
-                    <span class="badge-pill green-pill" style="font-size:0.6rem;">Python re</span>
-                  </div>
+                  <span>How this log was read</span>
                 </div>
-                <div class="regex-code-snippet" id="norm-regex-pattern-display">
-                  ^(?&lt;timestamp&gt;\w+\s+\d+\s+[\d:]+)\s+(?&lt;host&gt;\S+)\s+sshd\[(?&lt;pid&gt;\d+)\]:\s+Failed
-                  password for (?&lt;user&gt;\S+) from
-                  (?&lt;src_ip&gt;[\d.]+)\s+port\s+(?&lt;port&gt;\d+)\s+(?&lt;protocol&gt;\w+)$
-                </div>
+                <p class="regex-plain" id="norm-regex-plain">Run a log to see which parser read it.</p>
+                <details class="regex-details">
+                  <summary>Show the exact pattern</summary>
+                  <div class="regex-code-snippet" id="norm-regex-pattern-display"></div>
+                  <button class="btn-cream-action btn-sm" id="btn-copy-regex" style="padding:2px 8px; font-size:0.68rem; margin-top:8px;">
+                    <i data-lucide="copy" style="width:12px;"></i> Copy pattern
+                  </button>
+                </details>
               </div>
 
               <!-- Detection Summary Box -->
@@ -831,8 +826,8 @@
                     </div>
                   </div>
                   <div class="dossier-header-right">
-                    <span id="res-ollama-badge" class="badge-pill green-pill">
-                      <span class="pulse-dot"></span> Ollama: llama3.2:1b
+                    <span id="res-ollama-badge" class="badge-pill green-pill solid-green">
+                      Ollama
                     </span>
                   </div>
                 </div>
@@ -1129,17 +1124,17 @@
             </div>
 
             <div class="wf-filter-group">
-              <button class="wf-pill-btn" data-wf-filter="Active">
-                <span class="status-dot red-dot"></span> Active (<span id="wf-count-active">0</span>)
+              <button class="wf-pill-btn solid-cherry" data-wf-filter="Active">
+                Active (<span id="wf-count-active">0</span>)
               </button>
-              <button class="wf-pill-btn" data-wf-filter="Awaiting Approval">
-                <span class="status-dot" style="background-color:var(--cherry-primary);"></span> Awaiting Approval (<span id="wf-count-awaiting">0</span>)
+              <button class="wf-pill-btn solid-cherry" data-wf-filter="Awaiting Approval">
+                Awaiting Approval (<span id="wf-count-awaiting">0</span>)
               </button>
-              <button class="wf-pill-btn" data-wf-filter="Investigating">
-                <span class="status-dot" style="background-color:var(--status-amber);"></span> Investigating (<span id="wf-count-investigating">0</span>)
+              <button class="wf-pill-btn solid-cherry" data-wf-filter="Investigating">
+                Investigating (<span id="wf-count-investigating">0</span>)
               </button>
-              <button class="wf-pill-btn" data-wf-filter="Resolved">
-                <span class="status-dot green-dot"></span> Resolved (<span id="wf-count-resolved">0</span>)
+              <button class="wf-pill-btn solid-green" data-wf-filter="Resolved">
+                Resolved (<span id="wf-count-resolved">0</span>)
               </button>
               <button class="wf-pill-btn active" data-wf-filter="ALL">All (<span id="wf-count-all">0</span>)</button>
             </div>
@@ -1311,8 +1306,8 @@
             <div>
               <div class="d-flex align-center gap-2 mb-1">
                 <span class="badge-pill cherry-pill"><i data-lucide="sparkles"></i> Schema Mapper</span>
-                <span class="badge-pill green-pill" id="ai-inference-status-badge">
-                  <span class="status-dot green-dot"></span> Ready
+                <span class="badge-pill green-pill solid-green" id="ai-inference-status-badge">
+                  Ready
                 </span>
               </div>
               <h2 style="font-family:var(--font-heading); font-size:1.25rem; font-weight:800; color:var(--text-ink);">
@@ -1480,8 +1475,7 @@
               <p>Where anomalous traffic originates, when activity happens, and which sources generate the most alerts</p>
             </div>
             <div class="banner-right">
-              <span class="header-status-badge green" id="geo-db-badge">
-                <span class="badge-dot green"></span>
+              <span class="header-status-badge green solid-green" id="geo-db-badge">
                 <span id="geo-db-badge-text">Offline GeoIP</span>
               </span>
               <button class="btn-cream-action btn-sm" id="btn-refresh-analytics" title="Refresh analytics">
@@ -1583,8 +1577,7 @@
               <p>Every system that has sent logs this session, grouped by host (or source IP) and log format</p>
             </div>
             <div class="banner-right">
-              <span class="header-status-badge green" id="sources-status-badge">
-                <span class="badge-dot green"></span>
+              <span class="header-status-badge green solid-green" id="sources-status-badge">
                 <span>Loading&hellip;</span>
               </span>
               <button class="btn-cream-action btn-sm" onclick="SourcesModule.refresh(true)">
@@ -1624,12 +1617,12 @@
             </div>
             <div class="kpi-card">
               <div class="kpi-icon-wrap" style="color:var(--cherry-primary);"><i data-lucide="activity"></i></div>
-              <span class="kpi-label">MEAN PROCESSING TIME</span>
+              <span class="kpi-label">MEAN PARSE TIME</span>
               <div class="kpi-val-group">
                 <span class="kpi-value" id="src-kpi-latency">0</span>
                 <span class="kpi-unit">ms / record</span>
               </div>
-              <span class="kpi-trend positive"><i data-lucide="cpu"></i> Parse + detect + mask, measured</span>
+              <span class="kpi-trend positive"><i data-lucide="cpu"></i> Format detection + parsing, measured</span>
             </div>
           </div>
 
@@ -1700,7 +1693,7 @@
           <div class="sources-benchmarks-grid">
             <div class="sources-benchmark-card">
               <div class="d-flex justify-between align-center mb-2">
-                <span style="font-family:var(--font-heading); font-size:0.78rem; font-weight:800; color:var(--text-ink); text-transform:uppercase;">Mean Processing Time by Format</span>
+                <span style="font-family:var(--font-heading); font-size:0.78rem; font-weight:800; color:var(--text-ink); text-transform:uppercase;">Mean Parse Time by Format</span>
                 <span class="badge-pill green-pill" style="font-size:0.6rem;">Measured per record</span>
               </div>
               <div class="latency-bench-stack" id="latency-benchmarks-container"></div>
@@ -1717,27 +1710,27 @@
           <!-- Source table -->
           <div class="sources-fleet-card mt-3">
             <div class="anom-records-header-row">
-              <h3 style="font-family:var(--font-heading); font-size:0.92rem; font-weight:800; color:var(--text-ink); text-transform:uppercase; letter-spacing:0.5px;">
-                Reporting Sources</h3>
-              <div class="d-flex gap-2">
-                <button class="btn-cherry-primary btn-sm" onclick="Navigation.navigateTo('normalizer')">
-                  <i data-lucide="upload"></i> Ingest Logs
-                </button>
+              <div>
+                <h3 class="records-title">Reporting Sources</h3>
+                <p class="records-sub">Each host or IP that sent logs, per log format</p>
               </div>
+              <button class="btn-cherry-primary btn-sm records-action" onclick="Navigation.navigateTo('normalizer')">
+                <i data-lucide="upload"></i> Ingest Logs
+              </button>
             </div>
             <div style="overflow-x:auto;">
               <table class="anom-records-table">
                 <thead>
                   <tr>
-                    <th>SOURCE (HOST / IP)</th>
-                    <th>FORMAT</th>
-                    <th>EVENTS</th>
-                    <th>RATE WHILE SENDING</th>
-                    <th>ANOMALIES</th>
-                    <th>MAX THREAT</th>
-                    <th>LAST SEEN</th>
-                    <th>STATUS</th>
-                    <th>ACTIONS</th>
+                    <th>Source</th>
+                    <th>Format</th>
+                    <th class="num">Events</th>
+                    <th class="num" title="Average rate while this source was sending">Rate</th>
+                    <th class="num">Anomalies</th>
+                    <th class="num">Max threat</th>
+                    <th>Last seen</th>
+                    <th>Status</th>
+                    <th class="actions-col"></th>
                   </tr>
                 </thead>
                 <tbody id="sources-fleet-tbody"></tbody>
@@ -2353,8 +2346,7 @@
         </div>
         <h1 class="login-brand-title">LOGVAULT <span>SOC</span></h1>
         <p class="login-brand-sub">Universal Log Intelligence &amp; SOC Platform (SIH26156)</p>
-        <div class="login-clearance-pill">
-          <span class="live-dot-cherry"></span>
+        <div class="login-clearance-pill solid-cherry">
           <span>AIR-GAPPED TELEMETRY &bull; LOCAL SIGN-IN</span>
         </div>
       </div>

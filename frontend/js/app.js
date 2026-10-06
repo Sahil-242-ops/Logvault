@@ -60,8 +60,8 @@ const App = {
       if (statusEl) {
         const aiMode = health.ai_status_message || 'LOCAL AI OFFLINE';
         const modelInfo = health.model || 'NONE';
-        statusEl.innerHTML = `<span class="pulse-dot"></span> ${aiMode} · ${modelInfo}`;
-        statusEl.className = health.local_ai ? 'badge-pill green-pill' : 'badge-pill warn-pill';
+        statusEl.innerHTML = `${aiMode} · ${modelInfo}`;
+        statusEl.className = health.local_ai ? 'badge-pill green-pill solid-green' : 'badge-pill warn-pill solid-cherry';
         statusEl.title = `Status: ${aiMode} | Provider: ${health.ai_provider || 'NONE'} | Model: ${health.model || 'NONE'} | Network: ${health.network_mode.toUpperCase()}`;
       }
       if (!isRetry || health.local_ai) {
@@ -75,8 +75,8 @@ const App = {
       return;
     } else {
       if (statusEl) {
-        statusEl.innerHTML = `<span class="pulse-dot"></span> OFFLINE`;
-        statusEl.className = 'badge-pill crit-pill';
+        statusEl.innerHTML = 'OFFLINE';
+        statusEl.className = 'badge-pill crit-pill solid-cherry';
         statusEl.title = 'Python Backend Offline.';
       }
       Utils.showToast('⚠ Python Backend Offline. Start FastAPI on port 8000.', 'error');
@@ -170,7 +170,7 @@ const App = {
       set('kpi-suspicious-count', d.anomalous_events.toLocaleString());
       set('kpi-anomalies-count', d.critical_anomalies.toLocaleString());
       set('kpi-logs-caption', total
-        ? `<i data-lucide="gauge"></i> Avg ${d.avg_latency_ms} ms per record`
+        ? `<i data-lucide="gauge"></i> Parsed in ${d.avg_latency_ms} ms per record (avg)`
         : '<i data-lucide="trending-up"></i> Stored this session');
       set('hdr-throughput', total ? `${total.toLocaleString()} logs processed` : 'No events processed');
 
@@ -180,9 +180,9 @@ const App = {
         ? `Events per ${bucketMin >= 60 ? `${bucketMin / 60} h` : `${bucketMin} min`} (solid) and anomalies (dashed)`
         : 'Events stored over time (solid) and anomalies (dashed)');
       const lastBucket = (tl.buckets || []).slice(-1)[0];
-      set('dash-ingest-badge', `<span class="badge-dot cherry" style="width:5px;height:5px;"></span>${
+      set('dash-ingest-badge', `${
         !total ? 'No events yet' : lastBucket && lastBucket.events ? 'Ingestion active' : 'Idle'}`);
-      set('dash-parsed-badge', `<span class="badge-dot green" style="width:5px;height:5px;"></span>Parsed ${d.parsed_rate}%`);
+      set('dash-parsed-badge', `Parsed ${d.parsed_rate}%`);
 
       const segments = Charts.formatSegments();
       set('donut-center-count', String(d.formats.filter(f => f.format !== 'unknown').length));

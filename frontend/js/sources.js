@@ -43,13 +43,17 @@ const SourcesModule = {
   render() {
     const d = this.data;
     if (!d) {
-      this.set('sources-status-badge', '<span class="badge-dot"></span><span>Backend offline</span>');
+      this.set('sources-status-badge', '<span>Backend offline</span>');
+      const off = document.getElementById('sources-status-badge');
+      if (off) off.className = 'header-status-badge cherry solid-cherry';
       return;
     }
     const rows = d.collectors;
     const silent = rows.filter(r => r.status === 'SILENT').length;
 
-    this.set('sources-status-badge', `<span class="badge-dot ${d.active_collectors ? 'green' : ''}"></span><span>${
+    const srcBadge = document.getElementById('sources-status-badge');
+    if (srcBadge) srcBadge.className = `header-status-badge ${d.active_collectors ? 'green solid-green' : 'cherry solid-cherry'}`;
+    this.set('sources-status-badge', `<span>${
       !rows.length ? 'No sources yet' : d.active_collectors ? `${d.active_collectors} sending now` : 'All sources quiet'}</span>`);
     this.set('src-kpi-sources', rows.length.toLocaleString());
     this.set('src-kpi-sources-sub', `<i data-lucide="layers"></i> ${d.formats.length} format${d.formats.length === 1 ? '' : 's'} &bull; ${d.total_events.toLocaleString()} events`);
@@ -248,7 +252,7 @@ const SourcesModule = {
     this.set('latency-benchmarks-container', list.length ? list.map(f =>
       this.barRow(Charts.formatLabel(f.format), `${f.events.toLocaleString()} records`, max ? f.avg / max * 100 : 0,
         `${f.avg < 10 ? f.avg.toFixed(3) : f.avg.toFixed(0)} ms`, f.avg > 1000 ? 'var(--status-amber)' : 'var(--status-green)')
-    ).join('') + '<div class="storage-footnote">Records analysed by the local AI take seconds; rule-only records take well under a millisecond.</div>'
+    ).join('')
       : '<div class="analytics-empty">No events yet.</div>');
   },
 
@@ -277,20 +281,23 @@ const SourcesModule = {
       const kind = isIp(r.origin) ? 'ip' : 'host';
       const ref = `SourcesModule.data.collectors[${i}].origin`;
       const canContain = r.origin !== 'unattributed' && !r.contained;
+      const threatClass = r.max_threat >= 80 ? 'is-high' : r.max_threat >= 50 ? 'is-mid' : 'is-low';
       return `
         <tr>
-          <td><strong>${origin}</strong>${r.contained ? ' <span class="badge-pill crit-pill" style="font-size:0.55rem;">CONTAINED</span>' : ''}
-            <div style="font-size:0.62rem; color:var(--text-muted);">${r.distinct_source_ips} source IP${r.distinct_source_ips === 1 ? '' : 's'}</div></td>
-          <td>${Utils.escapeHtml(Charts.formatLabel(r.format))}</td>
-          <td style="font-family:var(--font-mono);">${r.events.toLocaleString()}</td>
-          <td style="font-family:var(--font-mono);">${r.events_per_minute.toLocaleString()} / min</td>
-          <td style="font-family:var(--font-mono); color:${r.anomalies ? 'var(--cherry-primary)' : 'inherit'};">${r.anomalies.toLocaleString()}</td>
-          <td style="font-family:var(--font-mono);">${r.max_threat}</td>
-          <td style="font-family:var(--font-mono); font-size:0.7rem;">${App.timeAgo(r.last_seen)}</td>
-          <td><span class="badge-pill ${statusPill[r.status]}">${r.status}</span></td>
-          <td style="white-space:nowrap;">
-            <button class="btn-outline-cherry btn-sm" onclick="SourcesModule.viewLogs(${ref})">Logs</button>
-            ${canContain ? `<button class="btn-cream-action btn-sm" onclick="SourcesModule.contain('${kind}', ${ref})">Contain</button>` : ''}
+          <td>
+            <div class="src-name">${origin}${r.contained ? ' <span class="src-tag">Contained</span>' : ''}</div>
+            <div class="src-sub">${r.origin === 'unattributed' ? 'no host or IP in the log' : `${r.distinct_source_ips} source IP${r.distinct_source_ips === 1 ? '' : 's'}`}</div>
+          </td>
+          <td><span class="fmt-chip">${Utils.escapeHtml(Charts.formatLabel(r.format))}</span></td>
+          <td class="num">${r.events.toLocaleString()}</td>
+          <td class="num muted">${r.events_per_minute.toLocaleString()}<small>/min</small></td>
+          <td class="num ${r.anomalies ? 'is-alert' : 'muted'}">${r.anomalies.toLocaleString()}</td>
+          <td class="num"><span class="threat-score ${threatClass}">${r.max_threat}</span></td>
+          <td class="muted">${App.timeAgo(r.last_seen)}</td>
+          <td><span class="status-chip status-${r.status.toLowerCase()}">${r.status.charAt(0) + r.status.slice(1).toLowerCase()}</span></td>
+          <td class="actions-col">
+            <button class="row-btn" onclick="SourcesModule.viewLogs(${ref})"><i data-lucide="list"></i> Logs</button>
+            ${canContain ? `<button class="row-btn row-btn-danger" onclick="SourcesModule.contain('${kind}', ${ref})"><i data-lucide="shield-ban"></i> Contain</button>` : ''}
           </td>
         </tr>`;
     }).join('');

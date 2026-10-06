@@ -61,7 +61,7 @@ const AiMapper = {
   setBadge(text, cls = 'green-pill') {
     const badge = document.getElementById('ai-inference-status-badge');
     if (badge) {
-      badge.className = `badge-pill ${cls}`;
+      badge.className = `badge-pill ${cls} ${cls === 'green-pill' ? 'solid-green' : 'solid-cherry'}`;
       badge.innerHTML = text;
     }
   },
@@ -73,16 +73,16 @@ const AiMapper = {
     }
     const input = document.getElementById('ai-raw-input-box');
     if (input) input.value = raw;
-    this.setBadge(`<span class="pulse-dot"></span> ${useAi ? 'Asking local AI...' : 'Mapping fields...'}`, 'gold-pill');
+    this.setBadge(useAi ? 'Asking local AI...' : 'Mapping fields...', 'gold-pill');
     try {
       const result = await LogVaultAPI.mapperInfer(raw, useAi);
       result.mappings.forEach(m => { if (!m.mapped) m.targetField = 'ignore'; });
       this.current = result;
       this.render();
       this.renderPreview();
-      this.setBadge(`<span class="status-dot green-dot"></span> ${result.mapped_fields} of ${result.total_fields} fields mapped`);
+      this.setBadge(`${result.mapped_fields} of ${result.total_fields} fields mapped`);
     } catch (err) {
-      this.setBadge('<span class="status-dot"></span> Error', 'crit-pill');
+      this.setBadge('Error', 'crit-pill');
       Utils.showToast(`Mapping failed: ${err.message}`, 'error');
     }
   },

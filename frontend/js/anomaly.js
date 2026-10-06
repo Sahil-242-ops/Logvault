@@ -269,7 +269,7 @@ const AnomalyModule = {
 
       let actionBtn = '';
       if (inc.status === 'AI Investigating') {
-        actionBtn = '<span class="k-ai-working"><span class="pulse-dot"></span> AI investigating</span>';
+        actionBtn = '<span class="k-ai-working solid-cherry">AI investigating</span>';
       } else if (inc.status === 'OPEN') {
         actionBtn = `<button class="k-move-btn" data-action="investigate" data-id="${this.esc(inc.id)}">Run AI now</button>`;
       } else if (inc.status === 'Awaiting Approval') {
@@ -521,7 +521,7 @@ const AnomalyModule = {
     const inv = inc.investigation;
 
     if (inc.status === 'AI Investigating') {
-      el.innerHTML = `<div class="ai-inv-pending"><span class="pulse-dot"></span> AI is investigating: correlating related events, checking detection rules and consulting the local model&hellip;</div>`;
+      el.innerHTML = `<div class="ai-inv-pending solid-cherry">AI is investigating: correlating related events, checking detection rules and consulting the local model&hellip;</div>`;
       return;
     }
     if (!inv) {
@@ -640,7 +640,7 @@ const AnomalyModule = {
     } else if (inc.status === 'OPEN') {
       html = `<div class="d-flex gap-2 flex-wrap">${btn('rerun', 'btn-cherry-primary', 'bot', 'Run AI investigation now')}</div>`;
     } else if (inc.status === 'AI Investigating') {
-      html = `<div class="d-flex gap-2"><button class="btn-cream-action" disabled><span class="pulse-dot"></span> AI investigating&hellip;</button></div>`;
+      html = `<div class="d-flex gap-2"><button class="btn-cream-action solid-cherry" disabled>AI investigating&hellip;</button></div>`;
     } else if (inc.status === 'Investigating') {
       html = `
         <div class="approval-heading"><i data-lucide="search"></i> Manual investigation in progress.</div>
